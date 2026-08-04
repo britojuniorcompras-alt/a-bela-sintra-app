@@ -213,7 +213,7 @@
 
     <div class="product-list" id="productList"></div>
 
-    <div class="bottom-bar">
+    <div class="bottom-bar" id="mainBottomBar">
         <button onclick="acaoBotaoPrincipal()"><span id="bottomBarLabel">Ver Pedido</span> (<span id="cartCount">0</span>)</button>
     </div>
 </div>
@@ -575,17 +575,6 @@ var setores = [
       { nome: "LEITE DE COCO SOCOCO DE 1 LITRO", icone: "📦", grupo: "Aroumar" },
       { nome: "OLEO DE SOJA LISA C/6 900ml", icone: "📦", grupo: "Aroumar" },
       { nome: "VINAGRE DE ALCOOL BRANCO CASTELO", icone: "📦", grupo: "Aroumar" },
-      { nome: "FERMENTO BIOLOGICO FRESCO - 500 G", icone: "🍞", grupo: "Fleischmann" },
-      { nome: "MELHORADOR", icone: "🍞", grupo: "Fleischmann" },
-      { nome: "FARINHA DE TRIGO ANACONDA - 5 KG integral", icone: "🌾", grupo: "Anaconda" },
-      { nome: "FARINHA DE TRIGO ANACONDA PREMIUM - 5KG", icone: "🌾", grupo: "Anaconda" },
-      { nome: "FARINHA PARA PÃO ANAMIX - 25 KG", icone: "🌾", grupo: "Anaconda" },
-      { nome: "AZEITONA VERDE SEM CAROÇO BALDE", icone: "🫒", grupo: "Entreposto das Feijoadas" },
-      { nome: "AZEITONA PRETA SEM CAROÇO BALDE", icone: "🫒", grupo: "Entreposto das Feijoadas" },
-      { nome: "LINGUIÇA TOSCANA AURORA", icone: "🫒", grupo: "Entreposto das Feijoadas" },
-      { nome: "LINGUIÇA CALABRESA AURORA", icone: "🫒", grupo: "Entreposto das Feijoadas" },
-      { nome: "BACON ESPECIAL", icone: "🫒", grupo: "Entreposto das Feijoadas" },
-      { nome: "PRESUNTO TIPO PARMA", icone: "🫒", grupo: "Entreposto das Feijoadas" },
       { nome: "ALCAPARRA EM CONSERVA - BALDE DE 2 KG", icone: "🛍️", grupo: "Irmãos Avelinos" },
       { nome: "CAFÉ MELITA DE 1 KG", icone: "🛍️", grupo: "Irmãos Avelinos" },
       { nome: "CAFÉ PILÃO PARA FUNCIONARIO 500 G", icone: "🛍️", grupo: "Irmãos Avelinos" },
@@ -600,6 +589,17 @@ var setores = [
       { nome: "NUTELLA BALDE 3KG", icone: "🛍️", grupo: "Irmãos Avelinos" },
       { nome: "SUCO QUALIMAX EM PÓ P/FUNCIONARIO", icone: "🛍️", grupo: "Irmãos Avelinos" },
       { nome: "SUCO TOMATE RAIOLA GARRAFA 1 lt", icone: "🛍️", grupo: "Irmãos Avelinos" },
+      { nome: "FERMENTO BIOLOGICO FRESCO - 500 G", icone: "🍞", grupo: "Fleischmann" },
+      { nome: "MELHORADOR", icone: "🍞", grupo: "Fleischmann" },
+      { nome: "FARINHA DE TRIGO ANACONDA - 5 KG integral", icone: "🌾", grupo: "Anaconda" },
+      { nome: "FARINHA DE TRIGO ANACONDA PREMIUM - 5KG", icone: "🌾", grupo: "Anaconda" },
+      { nome: "FARINHA PARA PÃO ANAMIX - 25 KG", icone: "🌾", grupo: "Anaconda" },
+      { nome: "AZEITONA VERDE SEM CAROÇO BALDE", icone: "🫒", grupo: "Entreposto das Feijoadas" },
+      { nome: "AZEITONA PRETA SEM CAROÇO BALDE", icone: "🫒", grupo: "Entreposto das Feijoadas" },
+      { nome: "LINGUIÇA TOSCANA AURORA", icone: "🫒", grupo: "Entreposto das Feijoadas" },
+      { nome: "LINGUIÇA CALABRESA AURORA", icone: "🫒", grupo: "Entreposto das Feijoadas" },
+      { nome: "BACON ESPECIAL", icone: "🫒", grupo: "Entreposto das Feijoadas" },
+      { nome: "PRESUNTO TIPO PARMA", icone: "🫒", grupo: "Entreposto das Feijoadas" },
       { nome: "ESSÊNCIA DE BAUNILHA OETKER 90 ML", icone: "🧂", grupo: "Bombay" },
       { nome: "GELATINA EM PO SEM SABOR 24 G", icone: "🧂", grupo: "Bombay" },
       { nome: "CATUPIRY UND", icone: "🧀", grupo: "Catupiry" },
@@ -759,9 +759,18 @@ function sincronizarProblemasSupabase() {
 function atualizarBottomBarLabel() {
     var setor = getSetorAtivo();
     var label = document.getElementById('bottomBarLabel');
+    var barra = document.getElementById('mainBottomBar');
     if (!label) return;
+
+    if (setor.navegacaoPorGrupo && grupoNavAtivo === null) {
+        if (barra) { barra.style.display = 'none'; }
+        return;
+    }
+    if (barra) { barra.style.display = 'block'; }
+
     if (setor.tipo === 'checklist') { label.innerText = 'Ver Checklist'; }
     else if (setor.tipo === 'manutencao') { label.innerText = 'Ver Resumo'; }
+    else if (setor.navegacaoPorGrupo && grupoNavAtivo) { label.innerText = 'Enviar Pedido'; }
     else { label.innerText = 'Ver Pedido'; }
 }
 
@@ -1302,12 +1311,19 @@ function verResumo() {
     var linkZap = document.getElementById('btnWhatsAppLink');
     var linkMail = document.getElementById('btnEmailLink');
 
-    document.getElementById('summaryTitulo').innerText = 'Fechamento - ' + setor.nome;
+    var grupoFiltro = (setor.navegacaoPorGrupo && grupoNavAtivo) ? grupoNavAtivo : null;
+    var mapaGrupoPorNome = {};
+    if (grupoFiltro) {
+        for (var m = 0; m < setor.produtos.length; m++) { mapaGrupoPorNome[setor.produtos[m].nome] = setor.produtos[m].grupo; }
+    }
+
+    document.getElementById('summaryTitulo').innerText = grupoFiltro ? ('Fechamento - ' + grupoFiltro) : ('Fechamento - ' + setor.nome);
     
     lista.innerHTML = "";
     var temItens = false;
     
     for (var k in pedidoAtual) {
+        if (grupoFiltro && mapaGrupoPorNome[k] !== grupoFiltro) { continue; }
         var registro = pedidoAtual[k];
         if (itemEstaCompleto(setor, registro)) {
             temItens = true;
@@ -1349,7 +1365,7 @@ function verResumo() {
     } else {
         containerBotao.style.display = "flex";
         linkZap.href = linkWhatsApp(dados.texto);
-        var tituloEmail = (setor.tipo === 'checklist' ? "Fornecedores confirmados" : ("Pedido " + setor.nome)) + " - " + dados.dataStr;
+        var tituloEmail = (grupoFiltro ? ("Pedido " + grupoFiltro) : (setor.tipo === 'checklist' ? "Fornecedores confirmados" : ("Pedido " + setor.nome))) + " - " + dados.dataStr;
         linkMail.href = linkEmail(tituloEmail, dados.texto);
     }
     
@@ -1362,13 +1378,20 @@ function gerarTextoPedido() {
     var dataLocal = new Date();
     var dataStr = dataLocal.toLocaleDateString('pt-BR');
     var horaStr = dataLocal.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-    
-    var titulo = setor.tipo === 'checklist' ? "Fornecedores confirmados" : ("Pedido " + setor.nome);
+
+    var grupoFiltro = (setor.navegacaoPorGrupo && grupoNavAtivo) ? grupoNavAtivo : null;
+    var mapaGrupoPorNome = {};
+    if (grupoFiltro) {
+        for (var m = 0; m < setor.produtos.length; m++) { mapaGrupoPorNome[setor.produtos[m].nome] = setor.produtos[m].grupo; }
+    }
+
+    var titulo = grupoFiltro ? ("Pedido " + grupoFiltro) : (setor.tipo === 'checklist' ? "Fornecedores confirmados" : ("Pedido " + setor.nome));
     var texto = "*" + titulo + " - " + dataStr + " às " + horaStr + "*\n\n";
     var itensParaHistorico = [];
     var temItens = false;
     
     for (var k in pedidoAtual) {
+        if (grupoFiltro && mapaGrupoPorNome[k] !== grupoFiltro) { continue; }
         var registro = pedidoAtual[k];
         if (itemEstaCompleto(setor, registro)) {
             temItens = true;
@@ -1383,19 +1406,29 @@ function gerarTextoPedido() {
         }
     }
     
-    return { texto: texto, itens: itensParaHistorico, temItens: temItens, dataStr: dataStr, horaStr: horaStr, setorNome: setor.nome, setorId: setor.id, tipo: setor.tipo };
+    return { texto: texto, itens: itensParaHistorico, temItens: temItens, dataStr: dataStr, horaStr: horaStr, setorNome: setor.nome, setorId: setor.id, tipo: setor.tipo, grupoFiltro: grupoFiltro };
 }
 
 function salvarEVoltarTela(dados) {
     registrarNoHistoricoCompartilhado({
         data: dados.dataStr + " às " + dados.horaStr,
-        setor: dados.setorNome,
+        setor: dados.grupoFiltro ? (dados.setorNome + ' · ' + dados.grupoFiltro) : dados.setorNome,
         tipo: dados.tipo,
         itens: dados.itens
     });
     
     setTimeout(function() {
-        pedidos[dados.setorId] = {};
+        if (dados.grupoFiltro) {
+            var setorObj = getSetorPorId(dados.setorId);
+            var mapaGrupoPorNome = {};
+            for (var m = 0; m < setorObj.produtos.length; m++) { mapaGrupoPorNome[setorObj.produtos[m].nome] = setorObj.produtos[m].grupo; }
+            var pedidoDoSetor = pedidos[dados.setorId];
+            for (var k in pedidoDoSetor) {
+                if (mapaGrupoPorNome[k] === dados.grupoFiltro) { delete pedidoDoSetor[k]; }
+            }
+        } else {
+            pedidos[dados.setorId] = {};
+        }
         document.getElementById('searchInput').value = "";
         atualizarVisuaisDaLista();
         trocarTela('main-screen');
