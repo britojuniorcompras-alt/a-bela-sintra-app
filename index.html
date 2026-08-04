@@ -1374,6 +1374,10 @@ function verResumo() {
     trocarTela('summary-screen');
 }
 
+function dadosFiscaisTexto() {
+    return "CNPJ: 04.439.383/0001-50\nRazão Social: BETTENCAS RESTAURANTE LTDA\nFantasia: A BELA SINTRA";
+}
+
 function gerarTextoPedido() {
     var setor = getSetorAtivo();
     var pedidoAtual = pedidos[setor.id];
@@ -1388,7 +1392,7 @@ function gerarTextoPedido() {
     }
 
     var titulo = grupoFiltro ? ("Pedido " + grupoFiltro) : (setor.tipo === 'checklist' ? "Fornecedores confirmados" : ("Pedido " + setor.nome));
-    var texto = "*" + titulo + " - " + dataStr + " às " + horaStr + "*\n\n";
+    var texto = "*" + titulo + " - " + dataStr + " às " + horaStr + "*\n" + dadosFiscaisTexto() + "\n\n";
     var itensParaHistorico = [];
     var temItens = false;
     
@@ -1679,7 +1683,7 @@ function dadosResumoManutencao() {
     var dataLocal = new Date();
     var dataStr = dataLocal.toLocaleDateString('pt-BR');
     var horaStr = dataLocal.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-    var texto = "*Resumo de Manutenção - " + dataStr + " às " + horaStr + "*\n\n";
+    var texto = "*Resumo de Manutenção - " + dataStr + " às " + horaStr + "*\n" + dadosFiscaisTexto() + "\n\n";
     var itensParaHistorico = [];
 
     for (var o = 0; o < ordemPrioridades.length; o++) {
