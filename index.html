@@ -7,7 +7,7 @@
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
     :root {
         --bg: #111113;
@@ -18,6 +18,7 @@
         --line: #29292D;
         --accent: #8FD14F;
         --accent-soft: rgba(143, 209, 79, 0.14);
+        --accent-shadow: rgba(143, 209, 79, 0.35);
         --accent-text: #15161A;
         --vinho-logo: var(--accent);
         --radius: 14px;
@@ -47,7 +48,7 @@
         box-shadow: 0 2px 6px rgba(0,0,0,0.25);
     }
     .tab-btn:active, .unit-btn:active, .bottom-bar button:active, .btn-confirm:active, .btn-cancel:active, .btn-whatsapp-link:active, .btn-email-link:active, .btn-copiar:active, .history-share-btn:active, .back-btn-inline:active {
-        box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+        box-shadow: 0 1px 4px var(--accent-shadow);
     }
 
     .tab-btn { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--surface); color: var(--text-dim); font-family: 'Inter', sans-serif; font-weight: 600; font-size: 12.5px; white-space: nowrap; cursor: pointer; transition: 0.2s; }
@@ -71,7 +72,7 @@
     .edit-obs:focus { border-color: var(--accent); }
     .edit-obs::placeholder { color: var(--text-dim); }
     .product-item { padding: 15px 12px; border: 1px solid var(--line); background: var(--surface); margin-bottom: 8px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: 0.15s; border-radius: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
-    .product-item:active { background: var(--surface-2); box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+    .product-item:active { background: var(--surface-2); box-shadow: 0 1px 4px var(--accent-shadow); }
 
     .product-item.selected { position: relative; background: var(--accent-soft); border-radius: 16px; border-color: var(--accent); }
     .product-item.selected::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; background-color: var(--accent); border-radius: 4px;}
@@ -1034,6 +1035,7 @@ function aplicarAccentSetor() {
         var g = parseInt(setor.accent.substr(3,2), 16);
         var b = parseInt(setor.accent.substr(5,2), 16);
         document.documentElement.style.setProperty('--accent-soft', 'rgba(' + r + ',' + g + ',' + b + ',0.14)');
+        document.documentElement.style.setProperty('--accent-shadow', 'rgba(' + r + ',' + g + ',' + b + ',0.35)');
         // Luminância aproximada: decide se o texto sobre a cor do setor deve ser claro ou escuro
         var luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
         document.documentElement.style.setProperty('--accent-text', luminancia > 0.55 ? '#15161A' : '#FFFFFF');
@@ -2457,6 +2459,36 @@ function excluirItemHistorico(indice) {
         });
     }
 }
+
+// ---- Som de clique: gerado na hora (sem arquivo), toca ao tocar em qualquer botão/item ----
+var audioCtxClique = null;
+
+function tocarSomClique() {
+    try {
+        if (!audioCtxClique) {
+            audioCtxClique = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtxClique.state === 'suspended') { audioCtxClique.resume(); }
+
+        var osc = audioCtxClique.createOscillator();
+        var ganho = audioCtxClique.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(760, audioCtxClique.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(420, audioCtxClique.currentTime + 0.05);
+        ganho.gain.setValueAtTime(0.09, audioCtxClique.currentTime);
+        ganho.gain.exponentialRampToValueAtTime(0.001, audioCtxClique.currentTime + 0.07);
+
+        osc.connect(ganho);
+        ganho.connect(audioCtxClique.destination);
+        osc.start();
+        osc.stop(audioCtxClique.currentTime + 0.07);
+    } catch (erro) { /* dispositivos sem suporte a áudio simplesmente ficam em silêncio */ }
+}
+
+document.addEventListener('click', function(evento) {
+    var alvo = evento.target.closest('button, .tab-btn, .product-item, .unit-btn, .btn-whatsapp-link, .btn-email-link, .back-btn, .back-btn-inline, .history-share-btn, .folder-item');
+    if (alvo) { tocarSomClique(); }
+}, true);
 
 document.addEventListener('DOMContentLoaded', iniciar);
 if (document.readyState === "interactive" || document.readyState === "complete") { iniciar(); }
