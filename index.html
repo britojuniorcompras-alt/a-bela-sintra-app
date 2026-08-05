@@ -326,6 +326,11 @@
         <h2 id="agendaDiaTitulo">Dia</h2>
     </div>
     <div class="product-list" id="agendaDiaLista"></div>
+    <div class="summary-footer" id="agendaDiaFooter" style="display:none;">
+        <a id="agendaBtnWhatsApp" class="btn-whatsapp-link" href="#" target="_blank">Enviar via WhatsApp</a>
+        <a id="agendaBtnEmail" class="btn-email-link" href="#">Enviar por E-mail</a>
+        <button class="btn-copiar" onclick="copiarDiaAgenda()">Copiar Texto</button>
+    </div>
     <div class="bottom-bar">
         <button onclick="abrirNovoCompromisso()">+ Adicionar compromisso</button>
     </div>
@@ -1336,6 +1341,16 @@ function iniciar() {
         var dados = dadosResumoManutencao();
         registrarEnvioResumoManutencao(dados);
     });
+
+    document.getElementById('agendaBtnWhatsApp').addEventListener('click', function(e) {
+        var dados = dadosDiaAgenda();
+        registrarEnvioAgenda(dados);
+    });
+
+    document.getElementById('agendaBtnEmail').addEventListener('click', function(e) {
+        var dados = dadosDiaAgenda();
+        registrarEnvioAgenda(dados);
+    });
 }
 
 function filtrarLista() { 
@@ -1984,13 +1999,20 @@ function abrirDiaAgenda(chaveData) {
 
 function renderizarListaDiaAgenda() {
     var lista = document.getElementById('agendaDiaLista');
+    var footer = document.getElementById('agendaDiaFooter');
     lista.innerHTML = "";
     var itens = compromissosCache[agendaDataSelecionada] || [];
 
     if (itens.length === 0) {
         lista.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px;'>Nenhum compromisso neste dia ainda.</p>";
+        footer.style.display = "none";
         return;
     }
+
+    footer.style.display = "flex";
+    var dados = dadosDiaAgenda();
+    document.getElementById('agendaBtnWhatsApp').href = linkWhatsApp(dados.texto);
+    document.getElementById('agendaBtnEmail').href = linkEmail("Agenda - " + dados.dataStr, dados.texto);
 
     for (var i = 0; i < itens.length; i++) {
         var c = itens[i];
@@ -2239,6 +2261,40 @@ function copiarResumoManutencao() {
     if (!dados.temItens) { alert("Nenhum problema pendente no momento."); return; }
     var copiado = copiarTextoGenerico(dados.texto, "✅ Resumo de manutenção copiado!");
     if (copiado) { registrarEnvioResumoManutencao(dados); }
+}
+
+function dadosDiaAgenda() {
+    var itens = compromissosCache[agendaDataSelecionada] || [];
+    var partes = agendaDataSelecionada.split('-');
+    var dataFormatada = partes[2] + ' de ' + NOMES_MESES[parseInt(partes[1], 10) - 1] + ' de ' + partes[0];
+
+    var texto = "*Agenda - " + dataFormatada + "*\n\n";
+    var linhas = [];
+    for (var i = 0; i < itens.length; i++) {
+        var c = itens[i];
+        var linha = "- " + (c.horario ? c.horario + " · " : "") + c.titulo + (c.observacao ? "\n  " + c.observacao : "");
+        texto += linha + "\n";
+        linhas.push(linha);
+    }
+
+    return { texto: texto, itens: linhas, temItens: itens.length > 0, dataStr: dataFormatada, setorNome: "Agenda", tipo: "agenda" };
+}
+
+function registrarEnvioAgenda(dados) {
+    if (!dados.temItens) return;
+    registrarNoHistoricoCompartilhado({
+        data: dados.dataStr,
+        setor: dados.setorNome,
+        tipo: dados.tipo,
+        itens: dados.itens
+    });
+}
+
+function copiarDiaAgenda() {
+    var dados = dadosDiaAgenda();
+    if (!dados.temItens) { alert("Nenhum compromisso neste dia ainda."); return; }
+    var copiado = copiarTextoGenerico(dados.texto, "✅ Agenda do dia copiada!");
+    if (copiado) { registrarEnvioAgenda(dados); }
 }
 
 function copiarPedido() {
