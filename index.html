@@ -2489,7 +2489,7 @@ document.addEventListener('click', function(evento) {
     var alvo = evento.target.closest('button, .tab-btn, .product-item, .unit-btn, .btn-whatsapp-link, .btn-email-link, .back-btn, .back-btn-inline, .history-share-btn, .folder-item');
     if (alvo) {
         tocarSomClique();
-        if (navigator.vibrate) { navigator.vibrate(12); } // só funciona em Android; iPhone ignora silenciosamente
+        if (navigator.vibrate) { navigator.vibrate(35); } // só funciona em Android; iPhone ignora silenciosamente
     }
 }, true);
 
