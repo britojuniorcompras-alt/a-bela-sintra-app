@@ -91,6 +91,23 @@
     .edit-input { width: 100%; padding: 12px 0; font-size: 46px; font-family: 'Space Grotesk', sans-serif; font-weight: 700; text-align: center; border: none; border-bottom: 2px solid var(--accent); background: transparent; color: var(--text); box-sizing: border-box; margin-bottom: 30px; outline: none;}
     .edit-input::placeholder { color: var(--line); }
 
+    .text-input { width: 100%; padding: 14px 16px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 15px; font-family: 'Inter', sans-serif; color: var(--text); outline: none; margin-bottom: 14px; }
+    .text-input:focus { border-color: var(--accent); }
+    .text-input::placeholder { color: var(--text-dim); }
+
+    .calendar-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 6px 20px; }
+    .calendar-nav-btn { background: var(--surface); border: 1px solid var(--line); color: var(--text); width: 38px; height: 38px; border-radius: 10px; font-size: 18px; cursor: pointer; }
+    .calendar-month-label { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--text); text-transform: capitalize; }
+    .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 10px 20px 0 20px; }
+    .calendar-weekdays span { text-align: center; font-size: 11px; color: var(--text-dim); font-weight: 700; text-transform: uppercase; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 8px 20px 30px 20px; }
+    .calendar-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background: var(--surface); cursor: pointer; border: 1px solid transparent; }
+    .calendar-day.empty { visibility: hidden; cursor: default; }
+    .calendar-day .cal-day-num { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 14px; color: var(--text); }
+    .calendar-day.today { border-color: var(--accent); }
+    .calendar-day.today .cal-day-num { color: var(--accent); font-weight: 700; }
+    .calendar-day .cal-day-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-top: 4px; }
+
     .units { display: flex; gap: 8px; margin-bottom: 30px; justify-content: center; flex-wrap: wrap; }
     .unit-btn { padding: 10px 18px; border: 1px solid var(--line); background: var(--surface); color: var(--text-dim); border-radius: 20px; font-weight: 700; font-size: 12.5px; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.8px; cursor: pointer; transition: 0.2s; }
     .unit-btn.active { background: var(--accent); color: #10120F; border-color: var(--accent); }
@@ -303,6 +320,37 @@
     </div>
 </div>
 
+<div id="agenda-day-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
+        <h2 id="agendaDiaTitulo">Dia</h2>
+    </div>
+    <div class="product-list" id="agendaDiaLista"></div>
+    <div class="bottom-bar">
+        <button onclick="abrirNovoCompromisso()">+ Adicionar compromisso</button>
+    </div>
+</div>
+
+<div id="agenda-edit-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('agenda-day-screen')">←</button>
+        <h2>Novo compromisso</h2>
+    </div>
+    <div class="edit-container">
+        <div class="edit-titulo-destaque">
+            <span>📅</span>
+            <span id="agendaEditDataLabel"></span>
+        </div>
+        <input type="text" id="agendaTitulo" class="text-input" placeholder="Título do compromisso">
+        <input type="text" id="agendaHorario" class="text-input" placeholder="Horário (opcional)">
+        <textarea id="agendaObservacao" class="edit-obs" style="display:block;" placeholder="Observação (opcional)"></textarea>
+        <div class="edit-actions">
+            <button class="btn-cancel" onclick="trocarTela('agenda-day-screen')">Cancelar</button>
+            <button class="btn-confirm" onclick="confirmarCompromisso()">Salvar</button>
+        </div>
+    </div>
+</div>
+
 <div id="history-screen" class="screen">
     <div class="screen-header">
         <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
@@ -310,7 +358,6 @@
     </div>
     <div class="history-list" id="historyList"></div>
 </div>
-
 
 <script>
 // ============================================================
@@ -787,6 +834,13 @@ var setores = [
     ]
   },
   {
+    id: "agenda",
+    nome: "Agenda",
+    icone: "📅",
+    tipo: "agenda",
+    accent: "#9B8FD1"
+  },
+  {
     id: "manutencao",
     nome: "Manutenção",
     icone: "🛠️",
@@ -829,6 +883,14 @@ var maturacaoSelecionada = "";
 var appIniciado = false;
 var scrollSalvo = 0;
 var grupoNavAtivo = null; // nome do grupo/fornecedor aberto em setores com navegacaoPorGrupo
+
+var NOMES_MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+var NOMES_DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+var hojeInicial = new Date();
+var agendaAno = hojeInicial.getFullYear();
+var agendaMes = hojeInicial.getMonth();
+var agendaDataSelecionada = null;
+var compromissosCache = lerAgendaSegura();
 
 for (var s = 0; s < setores.length; s++) { pedidos[setores[s].id] = {}; }
 
@@ -890,6 +952,7 @@ function trocarSetor(setorId) {
     atualizarVisuaisDaLista();
 
     if (setorId === 'manutencao') { sincronizarProblemasSupabase(); }
+    if (setorId === 'agenda') { sincronizarAgendaSupabase(); }
 }
 
 function sincronizarProblemasSupabase() {
@@ -923,6 +986,11 @@ function atualizarBottomBarLabel() {
     var label = document.getElementById('bottomBarLabel');
     var barra = document.getElementById('mainBottomBar');
     if (!label) return;
+
+    if (setor.tipo === 'agenda') {
+        if (barra) { barra.style.display = 'none'; }
+        return;
+    }
 
     if (setor.navegacaoPorGrupo && grupoNavAtivo === null) {
         if (barra) { barra.style.display = 'none'; }
@@ -1015,6 +1083,14 @@ function montarListaInicial() {
         navHeader.style.display = 'none';
         gruposAtuais = [];
         montarListaManutencao();
+        return;
+    }
+
+    if (setor.tipo === 'agenda') {
+        if (searchBar) { searchBar.style.display = 'none'; }
+        navHeader.style.display = 'none';
+        gruposAtuais = [];
+        montarCalendario();
         return;
     }
 
@@ -1232,6 +1308,7 @@ function iniciar() {
     montarListaInicial();
     atualizarVisuaisDaLista();
     sincronizarProblemasSupabase();
+    sincronizarAgendaSupabase();
     
     document.getElementById('editQty').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -1777,6 +1854,236 @@ function marcarProblemaSanado(id) {
 
     montarListaProblemasArea();
     atualizarVisuaisDaLista();
+}
+
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+function agendaChaveData(ano, mes, dia) {
+    return ano + '-' + pad2(mes + 1) + '-' + pad2(dia);
+}
+
+function lerAgendaSegura() {
+    try {
+        var dados = localStorage.getItem('agendaCompromissosABS');
+        if (dados) return JSON.parse(dados);
+        return {};
+    } catch (erro) { return {}; }
+}
+
+function salvarAgendaSegura(cache) {
+    try { localStorage.setItem('agendaCompromissosABS', JSON.stringify(cache)); } catch (erro) { }
+}
+
+function sincronizarAgendaSupabase() {
+    supabaseGet('agenda', 'select=*&order=data.asc', function(err, dados) {
+        if (err || !dados) { return; } // mantém o que já está localmente se der erro
+        var novoCache = {};
+        for (var i = 0; i < dados.length; i++) {
+            var d = dados[i];
+            var chave = d.data;
+            if (!novoCache[chave]) { novoCache[chave] = []; }
+            novoCache[chave].push({ id: d.id, titulo: d.titulo, horario: d.horario, observacao: d.observacao });
+        }
+        compromissosCache = novoCache;
+        salvarAgendaSegura(compromissosCache);
+
+        if (setorAtivoId === 'agenda') {
+            montarCalendario();
+            if (agendaDataSelecionada) { renderizarListaDiaAgenda(); }
+        }
+    });
+}
+
+function montarCalendario() {
+    var lista = document.getElementById('productList');
+    lista.innerHTML = "";
+
+    var header = document.createElement('div');
+    header.className = 'calendar-header';
+
+    var btnPrev = document.createElement('button');
+    btnPrev.className = 'calendar-nav-btn';
+    btnPrev.innerText = '‹';
+    btnPrev.onclick = function() { mudarMesAgenda(-1); };
+
+    var label = document.createElement('div');
+    label.className = 'calendar-month-label';
+    label.innerText = NOMES_MESES[agendaMes] + ' de ' + agendaAno;
+
+    var btnNext = document.createElement('button');
+    btnNext.className = 'calendar-nav-btn';
+    btnNext.innerText = '›';
+    btnNext.onclick = function() { mudarMesAgenda(1); };
+
+    header.appendChild(btnPrev);
+    header.appendChild(label);
+    header.appendChild(btnNext);
+    lista.appendChild(header);
+
+    var weekdays = document.createElement('div');
+    weekdays.className = 'calendar-weekdays';
+    for (var w = 0; w < 7; w++) {
+        var sp = document.createElement('span');
+        sp.innerText = NOMES_DIAS_SEMANA[w];
+        weekdays.appendChild(sp);
+    }
+    lista.appendChild(weekdays);
+
+    var grid = document.createElement('div');
+    grid.className = 'calendar-grid';
+
+    var primeiroDiaSemana = new Date(agendaAno, agendaMes, 1).getDay();
+    var totalDias = new Date(agendaAno, agendaMes + 1, 0).getDate();
+
+    var hoje = new Date();
+    var hojeChave = agendaChaveData(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
+    for (var e = 0; e < primeiroDiaSemana; e++) {
+        var vazio = document.createElement('div');
+        vazio.className = 'calendar-day empty';
+        grid.appendChild(vazio);
+    }
+
+    for (var d = 1; d <= totalDias; d++) {
+        var chave = agendaChaveData(agendaAno, agendaMes, d);
+        var cel = document.createElement('div');
+        cel.className = 'calendar-day' + (chave === hojeChave ? ' today' : '');
+        cel.onclick = (function(k) { return function() { abrirDiaAgenda(k); }; })(chave);
+
+        var num = document.createElement('div');
+        num.className = 'cal-day-num';
+        num.innerText = d;
+        cel.appendChild(num);
+
+        if (compromissosCache[chave] && compromissosCache[chave].length > 0) {
+            var dot = document.createElement('div');
+            dot.className = 'cal-day-dot';
+            cel.appendChild(dot);
+        }
+
+        grid.appendChild(cel);
+    }
+
+    lista.appendChild(grid);
+}
+
+function mudarMesAgenda(delta) {
+    agendaMes += delta;
+    if (agendaMes < 0) { agendaMes = 11; agendaAno--; }
+    else if (agendaMes > 11) { agendaMes = 0; agendaAno++; }
+    montarCalendario();
+}
+
+function abrirDiaAgenda(chaveData) {
+    agendaDataSelecionada = chaveData;
+    var partes = chaveData.split('-');
+    document.getElementById('agendaDiaTitulo').innerText = partes[2] + ' de ' + NOMES_MESES[parseInt(partes[1], 10) - 1] + ' de ' + partes[0];
+    renderizarListaDiaAgenda();
+    trocarTela('agenda-day-screen');
+}
+
+function renderizarListaDiaAgenda() {
+    var lista = document.getElementById('agendaDiaLista');
+    lista.innerHTML = "";
+    var itens = compromissosCache[agendaDataSelecionada] || [];
+
+    if (itens.length === 0) {
+        lista.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px;'>Nenhum compromisso neste dia ainda.</p>";
+        return;
+    }
+
+    for (var i = 0; i < itens.length; i++) {
+        var c = itens[i];
+        var item = document.createElement('div');
+        item.className = 'product-item problema-item selected';
+
+        var icone = document.createElement('div');
+        icone.className = 'product-icon';
+        icone.innerText = '📅';
+
+        var info = document.createElement('div');
+        info.className = 'product-info';
+
+        var titulo = document.createElement('div');
+        titulo.className = 'product-name';
+        titulo.innerText = (c.horario ? c.horario + ' · ' : '') + c.titulo;
+        info.appendChild(titulo);
+
+        if (c.observacao) {
+            var obs = document.createElement('div');
+            obs.className = 'product-qty';
+            obs.style.display = 'block';
+            obs.innerText = c.observacao;
+            info.appendChild(obs);
+        }
+
+        item.appendChild(icone);
+        item.appendChild(info);
+
+        var acoes = document.createElement('div');
+        acoes.style.display = 'flex';
+        acoes.style.flexShrink = '0';
+
+        var delBtn = document.createElement('button');
+        delBtn.innerText = '✕';
+        delBtn.className = 'problema-del-btn';
+        delBtn.onclick = (function(id) { return function(e) { if (e) e.stopPropagation(); excluirCompromisso(id); }; })(c.id);
+        acoes.appendChild(delBtn);
+
+        item.appendChild(acoes);
+        lista.appendChild(item);
+    }
+}
+
+function abrirNovoCompromisso() {
+    document.getElementById('agendaTitulo').value = "";
+    document.getElementById('agendaHorario').value = "";
+    document.getElementById('agendaObservacao').value = "";
+    var partes = agendaDataSelecionada.split('-');
+    document.getElementById('agendaEditDataLabel').innerText = partes[2] + '/' + partes[1] + '/' + partes[0];
+    trocarTela('agenda-edit-screen');
+}
+
+function confirmarCompromisso() {
+    var titulo = document.getElementById('agendaTitulo').value.trim();
+    if (!titulo) { alert('Digite um título para o compromisso.'); return; }
+    var horario = document.getElementById('agendaHorario').value.trim();
+    var observacao = document.getElementById('agendaObservacao').value.trim();
+
+    var novoCompromisso = { id: 'local_' + Date.now(), titulo: titulo, horario: horario, observacao: observacao };
+
+    if (!compromissosCache[agendaDataSelecionada]) { compromissosCache[agendaDataSelecionada] = []; }
+    compromissosCache[agendaDataSelecionada].push(novoCompromisso);
+    salvarAgendaSegura(compromissosCache);
+
+    supabasePost('agenda', { data: agendaDataSelecionada, titulo: titulo, horario: horario, observacao: observacao }, function(err, dados) {
+        if (!err && dados && dados[0]) {
+            novoCompromisso.id = dados[0].id;
+            salvarAgendaSegura(compromissosCache);
+        }
+    });
+
+    renderizarListaDiaAgenda();
+    montarCalendario();
+    trocarTela('agenda-day-screen');
+}
+
+function excluirCompromisso(id) {
+    var confirmou = confirm('Excluir este compromisso?');
+    if (!confirmou) { return; }
+
+    var itens = compromissosCache[agendaDataSelecionada] || [];
+    var novaLista = [];
+    for (var i = 0; i < itens.length; i++) { if (itens[i].id !== id) { novaLista.push(itens[i]); } }
+    compromissosCache[agendaDataSelecionada] = novaLista;
+    salvarAgendaSegura(compromissosCache);
+
+    supabaseDelete('agenda', 'id=eq.' + encodeURIComponent(id), function(err) {
+        if (err) { console.warn('Não foi possível excluir no Supabase (removido localmente):', err); }
+    });
+
+    renderizarListaDiaAgenda();
+    montarCalendario();
 }
 
 function abrirNovoProblema() {
