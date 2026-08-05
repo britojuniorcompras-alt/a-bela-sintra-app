@@ -42,17 +42,26 @@
     /* Abas de Setores */
     .tabs-bar { display: flex; gap: 8px; padding: 12px 20px; overflow-x: auto; background: rgba(18,20,18,0.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); position: sticky; top: 70px; z-index: 99; border-bottom: 1px solid var(--line); scrollbar-width: none; }
     .tabs-bar::-webkit-scrollbar { display: none; }
+    /* Sombra discreta compartilhada por todos os botões do app, pra dar profundidade */
+    .tab-btn, .unit-btn, .bottom-bar button, .btn-confirm, .btn-cancel, .btn-whatsapp-link, .btn-email-link, .btn-copiar, .history-share-btn, .back-btn-inline {
+        box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+    .tab-btn:active, .unit-btn:active, .bottom-bar button:active, .btn-confirm:active, .btn-cancel:active, .btn-whatsapp-link:active, .btn-email-link:active, .btn-copiar:active, .history-share-btn:active, .back-btn-inline:active {
+        box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    }
+
     .tab-btn { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--surface); color: var(--text-dim); font-family: 'Inter', sans-serif; font-weight: 600; font-size: 12.5px; white-space: nowrap; cursor: pointer; transition: 0.2s; }
     .tab-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
     .tab-btn .tab-count { background: var(--surface-2); border-radius: 10px; padding: 1px 7px; font-size: 10.5px; font-family: 'Space Grotesk', sans-serif; }
     .tab-btn.active .tab-count { background: rgba(0,0,0,0.18); color: var(--accent-text); font-weight: 700; }
 
-    .setor-banner { width: calc(100% - 40px); margin: 14px 20px 0 20px; border-radius: var(--radius); overflow: hidden; position: relative; border: 1px solid var(--line); background: var(--surface); }
+    .setor-banner { width: calc(100% - 40px); margin: 14px 20px 0 20px; border-radius: 18px; overflow: hidden; position: relative; border: 1px solid var(--line); background: var(--surface); }
     .setor-banner img { width: 100%; height: auto; display: block; filter: saturate(0.9) brightness(0.85); }
-    .setor-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgba(18,20,18,0.85) 100%); pointer-events: none; }
+    .setor-banner::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, transparent 25%, rgba(9,10,10,0.9) 100%); pointer-events: none; }
+    .setor-banner-titulo { position: absolute; left: 14px; bottom: 12px; z-index: 2; color: #FFFFFF; font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; text-transform: lowercase; letter-spacing: 0.2px; }
 
     .search-bar { padding: 14px 20px 6px 20px; background: var(--bg); position: sticky; top: 128px; z-index: 98; }
-    .search-bar input { width: 100%; padding: 13px 16px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 15px; font-family: 'Inter', sans-serif; outline: none; transition: 0.2s; color: var(--text); }
+    .search-bar input { width: 100%; padding: 13px 18px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); font-size: 15px; font-family: 'Inter', sans-serif; outline: none; transition: 0.2s; color: var(--text); }
     .search-bar input:focus { border-color: var(--accent); }
     .search-bar input::placeholder { color: var(--text-dim); }
 
@@ -61,20 +70,20 @@
     .edit-obs { width: 100%; min-height: 90px; padding: 14px; font-size: 15px; font-family: 'Inter', sans-serif; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); box-sizing: border-box; margin-bottom: 24px; outline: none; resize: vertical; display: none; }
     .edit-obs:focus { border-color: var(--accent); }
     .edit-obs::placeholder { color: var(--text-dim); }
-    .product-item { padding: 15px 4px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; cursor: pointer; transition: 0.15s; border-radius: 10px; }
-    .product-item:active { background: var(--surface); }
+    .product-item { padding: 15px 12px; border: 1px solid var(--line); background: var(--surface); margin-bottom: 8px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: 0.15s; border-radius: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
+    .product-item:active { background: var(--surface-2); box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
 
-    .product-item.selected { position: relative; background: var(--accent-soft); border-radius: 10px; padding-left: 12px; border-bottom-color: transparent; }
+    .product-item.selected { position: relative; background: var(--accent-soft); border-radius: 16px; border-color: var(--accent); }
     .product-item.selected::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; background-color: var(--accent); border-radius: 4px;}
 
-    .product-icon { font-size: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; width: 42px; height: 42px; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+    .product-icon { font-size: 20px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; width: 42px; height: 42px; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
     .product-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
     .product-name { font-family: 'Inter', sans-serif; font-size: 14.5px; font-weight: 600; line-height: 1.3; color: var(--text); letter-spacing: 0.1px; }
     .product-qty { font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: var(--accent); font-size: 12px; margin-top: 0; display: none; letter-spacing: 0.3px; line-height: 1.5; }
     .product-qty-obs { font-family: 'Inter', sans-serif; font-weight: 500; color: var(--text-dim); font-size: 11.5px; letter-spacing: 0; }
 
     .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(18,20,18,0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 14px 20px calc(14px + env(safe-area-inset-bottom)) 20px; border-top: 1px solid var(--line); text-align: center; z-index: 100;}
-    .bottom-bar button { background: var(--accent); color: var(--accent-text); border: none; padding: 16px; width: 100%; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 12px; cursor: pointer; }
+    .bottom-bar button { background: var(--accent); color: var(--accent-text); border: none; padding: 16px; width: 100%; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 24px; cursor: pointer; }
 
     .screen { display: none; padding-bottom: 100px; }
     .screen.active { display: block; animation: fadeIn 0.15s ease-out; }
@@ -114,23 +123,23 @@
     .unit-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 
     .edit-actions { display: flex; gap: 12px; }
-    .btn-cancel { background: transparent; color: var(--text-dim); border: 1px solid var(--line); flex: 1; padding: 16px; border-radius: 12px; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; }
-    .btn-confirm { background: var(--accent); color: var(--accent-text); flex: 2; padding: 16px; border: none; border-radius: 12px; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; }
+    .btn-cancel { background: transparent; color: var(--text-dim); border: 1px solid var(--line); flex: 1; padding: 16px; border-radius: 22px; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; }
+    .btn-confirm { background: var(--accent); color: var(--accent-text); flex: 2; padding: 16px; border: none; border-radius: 22px; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; }
 
     .summary-list, .history-list { padding: 8px 20px; }
     .summary-item { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 15px;}
-    .summary-item-icon { font-size: 18px; margin-right: 14px; background: var(--surface); padding: 9px; border-radius: 10px; border: 1px solid var(--line); }
+    .summary-item-icon { font-size: 18px; margin-right: 14px; background: var(--surface); padding: 9px; border-radius: 12px; border: 1px solid var(--line); }
     .summary-item-info { flex: 1; display: flex; justify-content: space-between; align-items: center; font-family: 'Inter', sans-serif; }
     .summary-item-info span { font-weight: 500; color: var(--text); }
     .summary-item-info strong { font-weight: 700; color: var(--accent); font-size: 16px; font-family: 'Space Grotesk', sans-serif;}
 
     .summary-footer { padding: 24px 20px 40px 20px; text-align: center; background: transparent; display: flex; flex-direction: column; gap: 12px; }
-    .btn-whatsapp-link { display: block; box-sizing: border-box; text-decoration: none; background: #25D366; color: white; border: none; padding: 16px; width: 100%; font-size: 14px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 12px; cursor: pointer; }
-    .btn-copiar { background: transparent; color: var(--text); border: 1px solid var(--line); padding: 16px; width: 100%; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 12px; cursor: pointer; }
-    .btn-email-link { display: block; box-sizing: border-box; text-decoration: none; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); padding: 16px; width: 100%; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 12px; cursor: pointer; text-align: center; }
+    .btn-whatsapp-link { display: block; box-sizing: border-box; text-decoration: none; background: #25D366; color: white; border: none; padding: 16px; width: 100%; font-size: 14px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 24px; cursor: pointer; text-align: center; }
+    .btn-copiar { background: transparent; color: var(--text); border: 1px solid var(--line); padding: 16px; width: 100%; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 24px; cursor: pointer; }
+    .btn-email-link { display: block; box-sizing: border-box; text-decoration: none; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); padding: 16px; width: 100%; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 24px; cursor: pointer; text-align: center; }
 
     .history-card-actions { display: flex; gap: 8px; margin-top: 14px; }
-    .history-share-btn { flex: 1; text-decoration: none; text-align: center; background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--line); padding: 10px 6px; border-radius: 8px; font-size: 11px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; }
+    .history-share-btn { flex: 1; text-decoration: none; text-align: center; background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--line); padding: 10px 6px; border-radius: 16px; font-size: 11px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; }
     .history-share-btn.whats { color: #25D366; border-color: rgba(37,211,102,0.35); }
     .history-share-btn.del { color: #E85D5D; border-color: rgba(232,93,93,0.35); }
 
@@ -151,7 +160,7 @@
     .problema-del-btn { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 0 4px; flex-shrink: 0; }
     .problema-sanar-btn { background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.4); color: #4CAF50; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 8px; padding: 8px 10px; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; flex-shrink: 0; }
 
-    .history-card { background: var(--surface); padding: 20px; border-radius: var(--radius); border: 1px solid var(--line); margin-bottom: 16px; }
+    .history-card { background: var(--surface); padding: 20px; border-radius: 18px; border: 1px solid var(--line); margin-bottom: 16px; }
     .history-date { font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: var(--text); margin-bottom: 4px; font-size: 15px; }
     .history-setor { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
     .history-item { font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text-dim); padding: 6px 0; border-bottom: 1px dashed var(--line); display: flex; justify-content: space-between;}
@@ -219,6 +228,7 @@
     
     <div class="setor-banner" id="setorBanner" style="display:none;">
         <img id="setorBannerImg" src="" alt="">
+        <div class="setor-banner-titulo" id="setorBannerTitulo"></div>
     </div>
 
     <div class="grupo-nav-header" id="grupoNavHeader" style="display:none;">
@@ -1034,9 +1044,11 @@ function atualizarBannerSetor() {
     var setor = getSetorAtivo();
     var banner = document.getElementById('setorBanner');
     var img = document.getElementById('setorBannerImg');
+    var titulo = document.getElementById('setorBannerTitulo');
     if (setor.banner) {
         img.src = setor.banner;
         img.alt = setor.nome;
+        titulo.innerText = setor.nome;
         banner.style.display = "block";
     } else {
         banner.style.display = "none";
