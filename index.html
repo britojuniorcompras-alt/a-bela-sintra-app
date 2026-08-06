@@ -2472,16 +2472,16 @@ function tocarSomClique() {
 
         var osc = audioCtxClique.createOscillator();
         var ganho = audioCtxClique.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(760, audioCtxClique.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(420, audioCtxClique.currentTime + 0.05);
-        ganho.gain.setValueAtTime(0.09, audioCtxClique.currentTime);
-        ganho.gain.exponentialRampToValueAtTime(0.001, audioCtxClique.currentTime + 0.07);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(1000, audioCtxClique.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(150, audioCtxClique.currentTime + 0.045);
+        ganho.gain.setValueAtTime(0.13, audioCtxClique.currentTime);
+        ganho.gain.exponentialRampToValueAtTime(0.001, audioCtxClique.currentTime + 0.05);
 
         osc.connect(ganho);
         ganho.connect(audioCtxClique.destination);
         osc.start();
-        osc.stop(audioCtxClique.currentTime + 0.07);
+        osc.stop(audioCtxClique.currentTime + 0.05);
     } catch (erro) { /* dispositivos sem suporte a áudio simplesmente ficam em silêncio */ }
 }
 
