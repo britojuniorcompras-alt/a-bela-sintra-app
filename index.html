@@ -47,6 +47,22 @@
     .header-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; max-width: 62%; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
     .header-actions::-webkit-scrollbar { display: none; }
     .hist-btn-icon { width: 32px; height: 32px; padding: 0; border-radius: 50%; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+
+    .ficha-label { display: block; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 6px; }
+    .ficha-input { width: 100%; padding: 13px 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 15px; font-family: 'Inter', sans-serif; color: var(--text); outline: none; }
+    .ficha-ingrediente-linha { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .ficha-ingrediente-linha input { padding: 10px 8px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 12.5px; font-family: 'Inter', sans-serif; color: var(--text); outline: none; width: 100%; }
+    .ficha-remover-ingrediente { background: transparent; border: none; color: #E85D5D; font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0; }
+    .ficha-add-ingrediente-btn { width: 100%; padding: 12px; margin-top: 4px; background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+    .ficha-totais { background: var(--surface); border-radius: 14px; padding: 14px 16px; margin-top: 18px; }
+    .ficha-totais-linha { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-dim); }
+    .ficha-totais-linha strong { color: var(--accent); font-size: 15px; font-family: 'Space Grotesk', sans-serif; }
+    .ficha-totais-venda { background: var(--accent-soft); border: 1px solid var(--accent); }
+    .ficha-totais-venda .ficha-totais-linha span { color: var(--text); font-weight: 600; }
+    .ficha-totais-venda strong { font-size: 18px; }
+    .ficha-view-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--line); font-family: 'Inter', sans-serif; font-size: 13.5px; color: var(--text); }
+    .ficha-view-item span:last-child { color: var(--text-dim); }
+    .ficha-btn-excluir { color: #E85D5D; border-color: rgba(232,93,93,0.35); }
     .avatar-usuario { width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 9.5px; font-weight: 700; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.35); }
     .lista-secao-titulo { color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; padding: 10px 4px 10px 4px; }
 
@@ -241,6 +257,7 @@
         <div class="header-actions">
             <button class="hist-btn" id="btnAgendaTopo" onclick="abrirAgendaDireto()">📅 Agenda</button>
             <button class="hist-btn" id="btnCotacaoTopo" onclick="abrirCotacaoDireto()">💰 Cotação</button>
+            <button class="hist-btn" id="btnFichasTopo" onclick="abrirFichasDireto()">📝 Fichas</button>
             <button class="hist-btn" onclick="abrirHistorico()">📋 Histórico</button>
             <div class="avatar-usuario">AS</div>
         </div>
@@ -397,6 +414,72 @@
     <div class="history-list" id="historyList"></div>
 </div>
 
+<div id="fichas-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
+        <h2>Fichas Técnicas</h2>
+    </div>
+    <div class="product-list" id="fichasLista"></div>
+    <div class="bottom-bar">
+        <button onclick="abrirNovaFicha()">+ Nova Ficha</button>
+    </div>
+</div>
+
+<div id="ficha-edit-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="fecharEdicaoFicha()">←</button>
+        <h2 id="fichaEditTitulo">Nova Ficha</h2>
+    </div>
+    <div class="edit-container">
+        <label class="ficha-label">Nome do prato</label>
+        <input type="text" id="fichaNomePrato" class="ficha-input" placeholder="Ex: Bacalhau à Bela Sintra">
+
+        <label class="ficha-label">Rendimento (porções)</label>
+        <input type="number" id="fichaPorcoes" class="ficha-input" placeholder="Ex: 4" min="1" value="1" oninput="recalcularTotaisFicha()">
+
+        <label class="ficha-label">Ingredientes</label>
+        <div id="fichaIngredientesLista"></div>
+        <button class="ficha-add-ingrediente-btn" onclick="adicionarLinhaIngrediente()">+ Adicionar ingrediente</button>
+
+        <div class="ficha-totais">
+            <div class="ficha-totais-linha"><span>Custo total</span><strong id="fichaCustoTotalTxt">R$ 0,00</strong></div>
+            <div class="ficha-totais-linha"><span>Custo por porção</span><strong id="fichaCustoPorcaoTxt">R$ 0,00</strong></div>
+        </div>
+
+        <label class="ficha-label">Percentual de venda (markup)</label>
+        <input type="number" id="fichaPercentualCusto" class="ficha-input" placeholder="Ex: 300" min="1" step="any" oninput="recalcularTotaisFicha()">
+
+        <div class="ficha-totais ficha-totais-venda">
+            <div class="ficha-totais-linha"><span>Preço de venda sugerido</span><strong id="fichaPrecoVendaTxt">R$ 0,00</strong></div>
+        </div>
+
+        <label class="ficha-label">Modo de preparo (opcional)</label>
+        <textarea id="fichaModoPreparo" class="edit-obs" style="display:block; min-height:110px;" placeholder="Descreva o passo a passo..."></textarea>
+
+        <div class="edit-actions" style="margin-top:18px;">
+            <button class="btn-cancel" onclick="fecharEdicaoFicha()">Cancelar</button>
+            <button class="btn-confirm" onclick="salvarFicha()">Salvar Ficha</button>
+        </div>
+    </div>
+</div>
+
+<div id="ficha-view-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('fichas-screen')">←</button>
+        <h2 id="fichaViewTitulo">Prato</h2>
+    </div>
+    <div class="edit-container" id="fichaViewConteudo"></div>
+    <div class="summary-footer" id="fichaViewFooter">
+        <a id="fichaBtnWhatsApp" class="btn-whatsapp-link" href="#" target="_blank">Enviar via WhatsApp</a>
+        <a id="fichaBtnEmail" class="btn-email-link" href="#">Enviar por E-mail</a>
+        <button class="btn-copiar" onclick="copiarFichaAtual()">Copiar Texto</button>
+    </div>
+    <div class="edit-actions" style="padding: 0 20px 20px;">
+        <button class="btn-cancel" onclick="editarFichaAtual()">Editar</button>
+        <button class="btn-cancel ficha-btn-excluir" onclick="excluirFichaAtual()">Excluir</button>
+    </div>
+</div>
+
 <script>
 // ============================================================
 // SUPABASE — banco compartilhado entre todos os aparelhos
@@ -439,6 +522,16 @@ function supabaseDelete(tabela, filtroQuery, callback) {
         headers: supabaseHeaders()
     }).then(function(r) { if (!r.ok) throw new Error("status " + r.status); supabaseOnline = true; if (callback) callback(null); })
       .catch(function(err) { supabaseOnline = false; if (callback) callback(err); });
+}
+
+function supabasePatch(tabela, filtroQuery, registro, callback) {
+    fetch(SUPABASE_URL + "/rest/v1/" + tabela + "?" + filtroQuery, {
+        method: "PATCH",
+        headers: supabaseHeaders({ "Prefer": "return=representation" }),
+        body: JSON.stringify(registro)
+    }).then(function(r) { if (!r.ok) throw new Error("status " + r.status); return r.json(); })
+      .then(function(data) { supabaseOnline = true; if (callback) callback(null, data); })
+      .catch(function(err) { supabaseOnline = false; if (callback) callback(err, null); });
 }
 
 function gerarIdUnico() {
@@ -1038,6 +1131,11 @@ var agendaMes = hojeInicial.getMonth();
 var agendaDataSelecionada = null;
 var compromissosCache = lerAgendaSegura();
 
+var fichasCache = lerFichasSeguro(); // [{ id, nome, porcoes, ingredientes: [{nome,qtd,unidade,custo}], modoPreparo, custoTotal, custoPorcao }]
+var fichaEditandoId = null; // id da ficha sendo editada (null = criando uma nova)
+var fichaVisualizandoId = null; // id da ficha aberta na tela de visualização
+
+
 for (var s = 0; s < setores.length; s++) { pedidos[setores[s].id] = {}; }
 
 function getSetorAtivo() {
@@ -1142,6 +1240,316 @@ function abrirAgendaDireto() {
 function abrirCotacaoDireto() {
     trocarTela('main-screen');
     trocarSetor('cotacao');
+}
+
+// ---- Fichas Técnicas: cache local + Supabase (compartilhado com a equipe) ----
+function lerFichasSeguro() {
+    try {
+        var dados = localStorage.getItem('fichasTecnicasABS');
+        if (dados) return JSON.parse(dados);
+        return [];
+    } catch (erro) { return []; }
+}
+
+function salvarFichasSeguro(lista) {
+    try { localStorage.setItem('fichasTecnicasABS', JSON.stringify(lista)); } catch (erro) { }
+}
+
+function abrirFichasDireto() {
+    trocarTela('fichas-screen');
+    renderizarListaFichas();
+    sincronizarFichasSupabase();
+}
+
+function sincronizarFichasSupabase() {
+    supabaseGet('fichas_tecnicas', 'select=*&order=nome.asc', function(err, dados) {
+        if (err || !dados) { return; } // mantém o que já está localmente se der erro
+        fichasCache = dados.map(function(d) {
+            return {
+                id: d.id,
+                nome: d.nome,
+                porcoes: d.porcoes,
+                ingredientes: d.ingredientes || [],
+                modoPreparo: d.modo_preparo || '',
+                custoTotal: d.custo_total,
+                custoPorcao: d.custo_porcao,
+                percentualCusto: d.percentual_custo,
+                precoVenda: d.preco_venda_sugerido
+            };
+        });
+        salvarFichasSeguro(fichasCache);
+        var telaFichas = document.getElementById('fichas-screen');
+        if (telaFichas && telaFichas.classList.contains('active')) { renderizarListaFichas(); }
+    });
+}
+
+function formatarMoeda(valor) {
+    valor = valor || 0;
+    return 'R$ ' + valor.toFixed(2).replace('.', ',');
+}
+
+function renderizarListaFichas() {
+    var lista = document.getElementById('fichasLista');
+    lista.innerHTML = "";
+
+    if (fichasCache.length === 0) {
+        lista.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px;'>Nenhuma ficha técnica ainda. Toque em \"+ Nova Ficha\" pra criar a primeira.</p>";
+        return;
+    }
+
+    for (var i = 0; i < fichasCache.length; i++) {
+        (function(ficha) {
+            var item = document.createElement('div');
+            item.className = 'product-item';
+            item.onclick = function() { abrirDetalheFicha(ficha.id); };
+
+            var icone = document.createElement('div');
+            icone.className = 'product-icon';
+            icone.innerText = '🧾';
+
+            var info = document.createElement('div');
+            info.style.flex = '1';
+            info.innerHTML = '<div style="font-weight:600;">' + ficha.nome + '</div><div style="color:var(--text-dim); font-size:11.5px; margin-top:2px;">' +
+                (ficha.porcoes || 1) + ' porç' + ((ficha.porcoes || 1) == 1 ? 'ão' : 'ões') + ' · custo/porção ' + formatarMoeda(ficha.custoPorcao) + '</div>';
+
+            item.appendChild(icone);
+            item.appendChild(info);
+            lista.appendChild(item);
+        })(fichasCache[i]);
+    }
+}
+
+function abrirNovaFicha() {
+    fichaEditandoId = null;
+    document.getElementById('fichaEditTitulo').innerText = 'Nova Ficha';
+    document.getElementById('fichaNomePrato').value = '';
+    document.getElementById('fichaPorcoes').value = '1';
+    document.getElementById('fichaModoPreparo').value = '';
+    document.getElementById('fichaPercentualCusto').value = '';
+    document.getElementById('fichaIngredientesLista').innerHTML = '';
+    adicionarLinhaIngrediente();
+    recalcularTotaisFicha();
+    trocarTela('ficha-edit-screen');
+}
+
+function editarFichaAtual() {
+    var ficha = fichasCache.filter(function(f) { return f.id === fichaVisualizandoId; })[0];
+    if (!ficha) { return; }
+    fichaEditandoId = ficha.id;
+    document.getElementById('fichaEditTitulo').innerText = 'Editar Ficha';
+    document.getElementById('fichaNomePrato').value = ficha.nome;
+    document.getElementById('fichaPorcoes').value = ficha.porcoes || 1;
+    document.getElementById('fichaModoPreparo').value = ficha.modoPreparo || '';
+    document.getElementById('fichaPercentualCusto').value = ficha.percentualCusto || '';
+    var lista = document.getElementById('fichaIngredientesLista');
+    lista.innerHTML = '';
+    if (ficha.ingredientes && ficha.ingredientes.length > 0) {
+        for (var i = 0; i < ficha.ingredientes.length; i++) { adicionarLinhaIngrediente(ficha.ingredientes[i]); }
+    } else {
+        adicionarLinhaIngrediente();
+    }
+    recalcularTotaisFicha();
+    trocarTela('ficha-edit-screen');
+}
+
+function fecharEdicaoFicha() {
+    if (fichaEditandoId) { trocarTela('ficha-view-screen'); } else { trocarTela('fichas-screen'); }
+}
+
+function adicionarLinhaIngrediente(dadosExistentes) {
+    var lista = document.getElementById('fichaIngredientesLista');
+    var linha = document.createElement('div');
+    linha.className = 'ficha-ingrediente-linha';
+
+    var inputNome = document.createElement('input');
+    inputNome.type = 'text';
+    inputNome.placeholder = 'Ingrediente';
+    inputNome.className = 'ficha-ingrediente-nome';
+
+    var inputQtd = document.createElement('input');
+    inputQtd.type = 'number';
+    inputQtd.step = 'any';
+    inputQtd.placeholder = 'Qtd';
+    inputQtd.className = 'ficha-ingrediente-qtd';
+    inputQtd.oninput = recalcularTotaisFicha;
+
+    var inputUnidade = document.createElement('input');
+    inputUnidade.type = 'text';
+    inputUnidade.placeholder = 'Un.';
+    inputUnidade.className = 'ficha-ingrediente-unidade';
+
+    var inputCusto = document.createElement('input');
+    inputCusto.type = 'number';
+    inputCusto.step = 'any';
+    inputCusto.placeholder = 'Custo/un.';
+    inputCusto.className = 'ficha-ingrediente-custo';
+    inputCusto.oninput = recalcularTotaisFicha;
+
+    var btnRemover = document.createElement('button');
+    btnRemover.className = 'ficha-remover-ingrediente';
+    btnRemover.innerText = '×';
+    btnRemover.onclick = function() { linha.remove(); recalcularTotaisFicha(); };
+
+    if (dadosExistentes) {
+        inputNome.value = dadosExistentes.nome || '';
+        inputQtd.value = dadosExistentes.qtd || '';
+        inputUnidade.value = dadosExistentes.unidade || '';
+        inputCusto.value = dadosExistentes.custo || '';
+    }
+
+    linha.appendChild(inputNome);
+    linha.appendChild(inputQtd);
+    linha.appendChild(inputUnidade);
+    linha.appendChild(inputCusto);
+    linha.appendChild(btnRemover);
+    lista.appendChild(linha);
+}
+
+function lerIngredientesDoFormulario() {
+    var linhas = document.querySelectorAll('#fichaIngredientesLista .ficha-ingrediente-linha');
+    var ingredientes = [];
+    for (var i = 0; i < linhas.length; i++) {
+        var nome = linhas[i].querySelector('.ficha-ingrediente-nome').value.trim();
+        var qtd = parseFloat(linhas[i].querySelector('.ficha-ingrediente-qtd').value) || 0;
+        var unidade = linhas[i].querySelector('.ficha-ingrediente-unidade').value.trim();
+        var custo = parseFloat(linhas[i].querySelector('.ficha-ingrediente-custo').value) || 0;
+        if (nome) { ingredientes.push({ nome: nome, qtd: qtd, unidade: unidade, custo: custo }); }
+    }
+    return ingredientes;
+}
+
+function recalcularTotaisFicha() {
+    var ingredientes = lerIngredientesDoFormulario();
+    var total = 0;
+    for (var i = 0; i < ingredientes.length; i++) { total += ingredientes[i].qtd * ingredientes[i].custo; }
+    var porcoes = parseFloat(document.getElementById('fichaPorcoes').value) || 1;
+    var custoPorPorcao = total / porcoes;
+    document.getElementById('fichaCustoTotalTxt').innerText = formatarMoeda(total);
+    document.getElementById('fichaCustoPorcaoTxt').innerText = formatarMoeda(custoPorPorcao);
+
+    var percentual = parseFloat(document.getElementById('fichaPercentualCusto').value) || 0;
+    var precoVenda = 0;
+    if (percentual > 0) {
+        precoVenda = custoPorPorcao * (percentual / 100);
+    }
+    document.getElementById('fichaPrecoVendaTxt').innerText = precoVenda > 0 ? formatarMoeda(precoVenda) : '—';
+
+    return { total: total, porPorcao: custoPorPorcao, percentual: percentual, precoVenda: precoVenda };
+}
+
+function salvarFicha() {
+    var nome = document.getElementById('fichaNomePrato').value.trim();
+    if (!nome) { alert('Digite o nome do prato.'); return; }
+
+    var porcoes = parseFloat(document.getElementById('fichaPorcoes').value) || 1;
+    var ingredientes = lerIngredientesDoFormulario();
+    var modoPreparo = document.getElementById('fichaModoPreparo').value.trim();
+    var totais = recalcularTotaisFicha();
+
+    var registro = {
+        nome: nome,
+        porcoes: porcoes,
+        ingredientes: ingredientes,
+        modo_preparo: modoPreparo,
+        custo_total: totais.total,
+        custo_porcao: totais.porPorcao,
+        percentual_custo: totais.percentual,
+        preco_venda_sugerido: totais.precoVenda
+    };
+
+    function aoSalvarLocal(idFinal) {
+        var fichaLocal = { id: idFinal, nome: nome, porcoes: porcoes, ingredientes: ingredientes, modoPreparo: modoPreparo, custoTotal: totais.total, custoPorcao: totais.porPorcao, percentualCusto: totais.percentual, precoVenda: totais.precoVenda };
+        var jaExiste = false;
+        for (var i = 0; i < fichasCache.length; i++) {
+            if (fichasCache[i].id === idFinal) { fichasCache[i] = fichaLocal; jaExiste = true; break; }
+        }
+        if (!jaExiste) { fichasCache.push(fichaLocal); }
+        salvarFichasSeguro(fichasCache);
+        fichaVisualizandoId = idFinal;
+        renderizarListaFichas();
+        abrirDetalheFicha(idFinal);
+    }
+
+    if (fichaEditandoId) {
+        supabasePatch('fichas_tecnicas', 'id=eq.' + fichaEditandoId, registro, function(err, dados) {
+            aoSalvarLocal(fichaEditandoId);
+        });
+    } else {
+        supabasePost('fichas_tecnicas', registro, function(err, dados) {
+            var novoId = (dados && dados[0] && dados[0].id) ? dados[0].id : ('local_' + Date.now());
+            aoSalvarLocal(novoId);
+        });
+    }
+}
+
+function dadosTextoFicha(ficha) {
+    var texto = "*Ficha Técnica: " + ficha.nome + "*\n";
+    texto += "Rendimento: " + ficha.porcoes + " porç" + (ficha.porcoes == 1 ? 'ão' : 'ões') + "\n\n";
+    texto += "*Ingredientes:*\n";
+    for (var i = 0; i < ficha.ingredientes.length; i++) {
+        var ing = ficha.ingredientes[i];
+        texto += "- " + ing.qtd + " " + ing.unidade + " " + ing.nome + " (" + formatarMoeda(ing.qtd * ing.custo) + ")\n";
+    }
+    texto += "\n*Custo total:* " + formatarMoeda(ficha.custoTotal);
+    texto += "\n*Custo por porção:* " + formatarMoeda(ficha.custoPorcao);
+    if (ficha.precoVenda && ficha.precoVenda > 0) {
+        texto += "\n*Preço de venda sugerido (markup " + ficha.percentualCusto + "%):* " + formatarMoeda(ficha.precoVenda);
+    }
+    if (ficha.modoPreparo) { texto += "\n\n*Modo de preparo:*\n" + ficha.modoPreparo; }
+    return texto;
+}
+
+function abrirDetalheFicha(id) {
+    var ficha = fichasCache.filter(function(f) { return f.id === id; })[0];
+    if (!ficha) { return; }
+    fichaVisualizandoId = id;
+
+    document.getElementById('fichaViewTitulo').innerText = ficha.nome;
+    var conteudo = document.getElementById('fichaViewConteudo');
+    var html = '<div style="color:var(--text-dim); font-size:12.5px; margin-bottom:10px;">Rendimento: ' + ficha.porcoes + ' porç' + (ficha.porcoes == 1 ? 'ão' : 'ões') + '</div>';
+    for (var i = 0; i < ficha.ingredientes.length; i++) {
+        var ing = ficha.ingredientes[i];
+        html += '<div class="ficha-view-item"><span>' + ing.qtd + ' ' + ing.unidade + ' ' + ing.nome + '</span><span>' + formatarMoeda(ing.qtd * ing.custo) + '</span></div>';
+    }
+    html += '<div class="ficha-totais" style="margin-top:14px;">' +
+        '<div class="ficha-totais-linha"><span>Custo total</span><strong>' + formatarMoeda(ficha.custoTotal) + '</strong></div>' +
+        '<div class="ficha-totais-linha"><span>Custo por porção</span><strong>' + formatarMoeda(ficha.custoPorcao) + '</strong></div></div>';
+    if (ficha.precoVenda && ficha.precoVenda > 0) {
+        html += '<div class="ficha-totais ficha-totais-venda" style="margin-top:10px;">' +
+            '<div class="ficha-totais-linha"><span>Preço de venda sugerido (markup ' + ficha.percentualCusto + '%)</span><strong>' + formatarMoeda(ficha.precoVenda) + '</strong></div></div>';
+    }
+    if (ficha.modoPreparo) {
+        html += '<label class="ficha-label">Modo de preparo</label><div style="white-space:pre-wrap; font-family:Inter,sans-serif; font-size:13.5px; color:var(--text);">' + ficha.modoPreparo.replace(/</g,'&lt;') + '</div>';
+    }
+    conteudo.innerHTML = html;
+
+    var dados = dadosTextoFicha(ficha);
+    document.getElementById('fichaBtnWhatsApp').href = linkWhatsApp(dados);
+    document.getElementById('fichaBtnEmail').href = linkEmail('Ficha Técnica - ' + ficha.nome, dados);
+
+    trocarTela('ficha-view-screen');
+}
+
+function copiarFichaAtual() {
+    var ficha = fichasCache.filter(function(f) { return f.id === fichaVisualizandoId; })[0];
+    if (!ficha) { return; }
+    copiarTextoGenerico(dadosTextoFicha(ficha), "✅ Ficha técnica copiada!");
+}
+
+function excluirFichaAtual() {
+    if (!fichaVisualizandoId) { return; }
+    var confirmou = confirm("Excluir esta ficha técnica? Essa ação não pode ser desfeita.");
+    if (!confirmou) { return; }
+
+    var idAlvo = fichaVisualizandoId;
+    fichasCache = fichasCache.filter(function(f) { return f.id !== idAlvo; });
+    salvarFichasSeguro(fichasCache);
+    renderizarListaFichas();
+    trocarTela('fichas-screen');
+
+    supabaseDelete('fichas_tecnicas', 'id=eq.' + idAlvo, function(err) {
+        if (err) { console.warn('Não foi possível excluir do Supabase (pode reaparecer ao sincronizar):', err); }
+    });
 }
 
 function sincronizarProblemasSupabase() {
