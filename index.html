@@ -423,6 +423,15 @@
         <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
         <h2>Fichas Técnicas</h2>
     </div>
+    <div class="search-bar" style="position: static; padding: 14px 20px 6px 20px;">
+        <div style="position: relative;">
+            <span style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 15px; pointer-events: none;">🔍</span>
+            <input type="text" id="fichasSearchInput" placeholder="Buscar prato..." oninput="filtrarFichas()" style="width: 100%; padding: 13px 18px 13px 42px; box-sizing: border-box; border: none; border-radius: 24px; background: var(--surface); font-size: 15px; font-family: 'Inter', sans-serif; outline: none; color: var(--text);">
+        </div>
+    </div>
+    <div style="padding: 4px 20px 0 20px;">
+        <button id="fichasVerTodasBtn" class="ficha-add-ingrediente-btn" onclick="alternarListaCompletaFichas()">Ver lista completa</button>
+    </div>
     <div class="product-list" id="fichasLista"></div>
     <div class="bottom-bar">
         <button onclick="abrirNovaFicha()">+ Nova Ficha</button>
@@ -1259,10 +1268,35 @@ function salvarFichasSeguro(lista) {
     try { localStorage.setItem('fichasTecnicasABS', JSON.stringify(lista)); } catch (erro) { }
 }
 
+var fichasMostrarTodas = false;
+
 function abrirFichasDireto() {
     trocarTela('fichas-screen');
+    fichasMostrarTodas = false;
+    var campoBusca = document.getElementById('fichasSearchInput');
+    if (campoBusca) { campoBusca.value = ''; }
+    var btnVerTodas = document.getElementById('fichasVerTodasBtn');
+    if (btnVerTodas) { btnVerTodas.innerText = 'Ver lista completa'; }
     renderizarListaFichas();
     sincronizarFichasSupabase();
+}
+
+function filtrarFichas() {
+    fichasMostrarTodas = false;
+    var btnVerTodas = document.getElementById('fichasVerTodasBtn');
+    if (btnVerTodas) { btnVerTodas.innerText = 'Ver lista completa'; }
+    renderizarListaFichas();
+}
+
+function alternarListaCompletaFichas() {
+    fichasMostrarTodas = !fichasMostrarTodas;
+    if (fichasMostrarTodas) {
+        var campoBusca = document.getElementById('fichasSearchInput');
+        if (campoBusca) { campoBusca.value = ''; }
+    }
+    var btnVerTodas = document.getElementById('fichasVerTodasBtn');
+    if (btnVerTodas) { btnVerTodas.innerText = fichasMostrarTodas ? 'Ocultar lista completa' : 'Ver lista completa'; }
+    renderizarListaFichas();
 }
 
 function sincronizarFichasSupabase() {
@@ -1301,7 +1335,36 @@ function renderizarListaFichas() {
         return;
     }
 
-    for (var i = 0; i < fichasCache.length; i++) {
+    var campoBusca = document.getElementById('fichasSearchInput');
+    var termo = campoBusca ? campoBusca.value.trim().toLowerCase() : '';
+
+    var fichasExibir;
+    if (termo) {
+        fichasExibir = fichasCache.filter(function(f) {
+            if (f.nome && f.nome.toLowerCase().indexOf(termo) !== -1) { return true; }
+            if (f.ingredientes && f.ingredientes.length > 0) {
+                for (var j = 0; j < f.ingredientes.length; j++) {
+                    var nomeIng = f.ingredientes[j].nome || '';
+                    if (nomeIng.toLowerCase().indexOf(termo) !== -1) { return true; }
+                }
+            }
+            return false;
+        });
+    } else if (fichasMostrarTodas) {
+        fichasExibir = fichasCache;
+    } else {
+        fichasExibir = [];
+    }
+
+    if (fichasExibir.length === 0) {
+        var msg = termo
+            ? "Nenhum prato encontrado pra \"" + termo + "\"."
+            : "Use a busca acima ou toque em \"Ver lista completa\" pra ver todas as fichas.";
+        lista.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px;'>" + msg + "</p>";
+        return;
+    }
+
+    for (var i = 0; i < fichasExibir.length; i++) {
         (function(ficha) {
             var item = document.createElement('div');
             item.className = 'product-item';
@@ -1313,13 +1376,23 @@ function renderizarListaFichas() {
 
             var info = document.createElement('div');
             info.style.flex = '1';
+            var linhaDetalhe = (ficha.porcoes || 1) + ' porç' + ((ficha.porcoes || 1) == 1 ? 'ão' : 'ões') + ' · custo/porção ' + formatarMoeda(ficha.custoPorcao);
+            if (termo && (!ficha.nome || ficha.nome.toLowerCase().indexOf(termo) === -1) && ficha.ingredientes) {
+                for (var k = 0; k < ficha.ingredientes.length; k++) {
+                    var nomeIngK = ficha.ingredientes[k].nome || '';
+                    if (nomeIngK.toLowerCase().indexOf(termo) !== -1) {
+                        linhaDetalhe += ' · contém ' + nomeIngK;
+                        break;
+                    }
+                }
+            }
             info.innerHTML = '<div style="font-weight:600;">' + ficha.nome + '</div><div style="color:var(--text-dim); font-size:11.5px; margin-top:2px;">' +
-                (ficha.porcoes || 1) + ' porç' + ((ficha.porcoes || 1) == 1 ? 'ão' : 'ões') + ' · custo/porção ' + formatarMoeda(ficha.custoPorcao) + '</div>';
+                linhaDetalhe + '</div>';
 
             item.appendChild(icone);
             item.appendChild(info);
             lista.appendChild(item);
-        })(fichasCache[i]);
+        })(fichasExibir[i]);
     }
 }
 
