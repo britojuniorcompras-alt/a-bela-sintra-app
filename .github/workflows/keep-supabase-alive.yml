@@ -1,14 +1,11 @@
 name: Manter Supabase ativo
-
 on:
   schedule:
-      - cron: '0 12 * * *'
-        workflow_dispatch: {}
-
-        jobs:
-          ping-supabase:
-              runs-on: ubuntu-latest
-                  steps:
-                        - name: Ping no banco de dados do app A Bela Sintra
-                                run: |
-                                          curl -s -o /dev/null -w "%{http_code}" "https://kfgcqshhltemsochafid.supabase.co/rest/v1/manutencao_problemas?select=id&limit=1" -H "apikey: sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-" -H "Authorization: Bearer sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-"
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping no banco de dados
+        run: curl -s -o /dev/null -w "%{http_code}" "https://kfgcqshhltemsochafid.supabase.co/rest/v1/manutencao_problemas?select=id&limit=1" -H "apikey: sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-" -H "Authorization: Bearer sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-"
