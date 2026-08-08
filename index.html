@@ -314,7 +314,17 @@
         <div class="units" id="maturacaoContainer"></div>
 
         <textarea id="editObs" class="edit-obs" placeholder="Observação (opcional): o que foi pedido, horário previsto..."></textarea>
-        
+
+        <div id="editPrazoContainer" style="display:none; margin-top: -6px;">
+            <label style="display:block; font-family:'Inter',sans-serif; font-size:12.5px; color:var(--text-dim); margin-bottom:6px;">Previsão de chegada (opcional)</label>
+            <input type="datetime-local" id="editPrazo" style="width:100%; box-sizing:border-box; padding:12px 14px; border:none; border-radius:14px; background:var(--surface); color:var(--text); font-family:'Inter',sans-serif; font-size:14px; outline:none;">
+        </div>
+
+        <div id="editFornecedoresContainer" style="display:none;">
+            <div id="editFornecedoresLista"></div>
+            <button type="button" class="ficha-add-ingrediente-btn" onclick="adicionarCaixaFornecedor()" style="width:100%; box-sizing:border-box; margin-top: 6px;">+ Adicionar fornecedor</button>
+        </div>
+
         <div class="edit-actions">
             <button class="btn-cancel" onclick="fecharEdicao(true)">Zerar</button>
             <button class="btn-confirm" onclick="confirmarQuantidade()">Confirmar</button>
@@ -328,7 +338,11 @@
         <h2 id="summaryTitulo">Fechamento</h2>
     </div>
     <div class="summary-list" id="summaryList"></div>
-    
+    <div id="summaryPrazoContainer" style="display:none; padding: 0 20px 12px 20px;">
+        <label style="display:block; font-family:'Inter',sans-serif; font-size:12.5px; color:var(--text-dim); margin-bottom:6px;">Previsão de entrega padrão (opcional, só pra itens sem horário próprio)</label>
+        <input type="datetime-local" id="summaryPrazoEntrega" style="width:100%; box-sizing:border-box; padding:12px 14px; border:none; border-radius:14px; background:var(--surface); color:var(--text); font-family:'Inter',sans-serif; font-size:14px; outline:none;">
+    </div>
+
     <div class="summary-footer" id="summaryFooterContainer">
         <a id="btnWhatsAppLink" class="btn-whatsapp-link" href="#" target="_blank">Enviar via WhatsApp</a>
         <a id="btnEmailLink" class="btn-email-link" href="#">Enviar por E-mail</a>
@@ -601,6 +615,17 @@ function lerProblemasManutencaoSeguro() {
 
 function salvarProblemasManutencaoSeguro(lista) {
     try { localStorage.setItem('manutencaoAbertosABS', JSON.stringify(lista)); } catch (erro) { }
+}
+
+function lerPendentesFornecedorSeguro() {
+    try {
+        var dados = localStorage.getItem('fornecedoresPendentesABS');
+        return dados ? JSON.parse(dados) : [];
+    } catch (erro) { return []; }
+}
+
+function salvarPendentesFornecedorSeguro(lista) {
+    try { localStorage.setItem('fornecedoresPendentesABS', JSON.stringify(lista)); } catch (erro) { }
 }
 
 // ---- SETORES: cada setor tem id, nome, ícone, tipo (pedido | checklist), unidades e lista de produtos ----
@@ -1133,6 +1158,7 @@ var prioridadesInfo = {
 var ordemPrioridades = ["vermelho", "amarelo", "verde"];
 
 var problemasAtuais = lerProblemasManutencaoSeguro(); // { id, areaId, areaNome, areaIcone, descricao, prioridade } — pendentes, sincronizados via Supabase
+var pendentesFornecedor = lerPendentesFornecedorSeguro(); // { id, nome, icone, obs, prazo } — fornecedores aguardando entrega, sincronizados via Supabase
 var areaManutencaoAtiva = null;
 var prioridadeSelecionada = "vermelho";
 
@@ -1251,6 +1277,7 @@ function trocarSetor(setorId) {
     atualizarVisuaisDaLista();
 
     if (setorId === 'manutencao') { sincronizarProblemasSupabase(); }
+    if (setorId === 'fornecedores') { sincronizarPendentesFornecedorSupabase(); }
     if (setorId === 'agenda') { sincronizarAgendaSupabase(); }
 }
 
@@ -1665,6 +1692,28 @@ function sincronizarProblemasSupabase() {
     });
 }
 
+function sincronizarPendentesFornecedorSupabase() {
+    supabaseGet('fornecedores_pendentes', 'select=*&order=criado_em.asc', function(err, dados) {
+        if (err || !dados) { return; } // mantém o que já está localmente se der erro
+        var listaConvertida = [];
+        for (var i = 0; i < dados.length; i++) {
+            listaConvertida.push({
+                id: dados[i].id,
+                nome: dados[i].nome,
+                icone: dados[i].icone,
+                obs: dados[i].obs,
+                prazo: dados[i].prazo || null
+            });
+        }
+        pendentesFornecedor = listaConvertida;
+        salvarPendentesFornecedorSeguro(pendentesFornecedor);
+
+        if (setorAtivoId === 'fornecedores') {
+            montarListaInicial();
+        }
+    });
+}
+
 function atualizarBottomBarLabel() {
     var setor = getSetorAtivo();
     var label = document.getElementById('bottomBarLabel');
@@ -1853,6 +1902,65 @@ function montarListaInicial() {
     var grupoAtualInfo = null;
 
     if (setor.id === 'fornecedores') {
+        if (pendentesFornecedor.length > 0) {
+            var tituloPendentes = document.createElement('div');
+            tituloPendentes.className = 'lista-secao-titulo';
+            tituloPendentes.innerText = 'Aguardando entrega';
+            lista.appendChild(tituloPendentes);
+
+            for (var pf = 0; pf < pendentesFornecedor.length; pf++) {
+                var pend = pendentesFornecedor[pf];
+                var statusPrazoPend = statusDoPrazo(pend.prazo);
+
+                var itemPend = document.createElement('div');
+                itemPend.className = 'product-item problema-item selected';
+                if (statusPrazoPend === 'vencido') { itemPend.classList.add('problema-prazo-vencido'); }
+                else if (statusPrazoPend === 'proximo') { itemPend.classList.add('problema-prazo-proximo'); }
+
+                var iconePend = document.createElement('div');
+                iconePend.className = 'product-icon';
+                iconePend.innerText = pend.icone;
+
+                var infoPend = document.createElement('div');
+                infoPend.className = 'product-info';
+
+                var nomePend = document.createElement('div');
+                nomePend.className = 'product-name';
+                nomePend.innerText = pend.nome;
+                infoPend.appendChild(nomePend);
+
+                if (pend.obs) {
+                    var obsPend = document.createElement('div');
+                    obsPend.className = 'product-qty';
+                    obsPend.style.display = 'block';
+                    obsPend.innerText = pend.obs;
+                    infoPend.appendChild(obsPend);
+                }
+
+                if (pend.prazo) {
+                    var prazoPend = document.createElement('div');
+                    prazoPend.className = 'product-qty problema-prazo-texto';
+                    prazoPend.style.display = 'block';
+                    prazoPend.innerText = textoDoPrazo(pend.prazo, statusPrazoPend);
+                    if (statusPrazoPend === 'vencido') { prazoPend.style.color = '#E4483A'; }
+                    else if (statusPrazoPend === 'proximo') { prazoPend.style.color = '#F3703A'; }
+                    infoPend.appendChild(prazoPend);
+                }
+
+                itemPend.appendChild(iconePend);
+                itemPend.appendChild(infoPend);
+
+                var chegouBtn = document.createElement('button');
+                chegouBtn.innerText = '✓ Chegou';
+                chegouBtn.className = 'problema-sanar-btn';
+                chegouBtn.style.flexShrink = '0';
+                chegouBtn.onclick = (function(id) { return function(e) { if (e) e.stopPropagation(); marcarFornecedorChegou(id); }; })(pend.id);
+                itemPend.appendChild(chegouBtn);
+
+                lista.appendChild(itemPend);
+            }
+        }
+
         var tituloSecao = document.createElement('div');
         tituloSecao.className = 'lista-secao-titulo';
         tituloSecao.innerText = 'Meus fornecedores';
@@ -2017,6 +2125,7 @@ function iniciar() {
     atualizarVisuaisDaLista();
     sincronizarProblemasSupabase();
     sincronizarAgendaSupabase();
+    sincronizarPendentesFornecedorSupabase();
     
     document.getElementById('editQty').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -2089,6 +2198,93 @@ function trocarTela(idTela) {
     }
 }
 
+function montarCaixasFornecedor(entradas) {
+    var lista = document.getElementById('editFornecedoresLista');
+    lista.innerHTML = "";
+    for (var i = 0; i < entradas.length; i++) {
+        criarCaixaFornecedor(entradas[i].obs || "", entradas[i].prazo || null);
+    }
+}
+
+function criarCaixaFornecedor(obsValor, prazoIso) {
+    var lista = document.getElementById('editFornecedoresLista');
+    var bloco = document.createElement('div');
+    bloco.className = 'fornecedor-caixa';
+    bloco.style.background = 'var(--surface)';
+    bloco.style.borderRadius = '16px';
+    bloco.style.padding = '12px 14px';
+    bloco.style.marginBottom = '10px';
+
+    var linhaTopo = document.createElement('div');
+    linhaTopo.style.display = 'flex';
+    linhaTopo.style.justifyContent = 'flex-end';
+
+    var removerBtn = document.createElement('button');
+    removerBtn.type = 'button';
+    removerBtn.innerText = '✕';
+    removerBtn.className = 'problema-del-btn';
+    removerBtn.onclick = function() {
+        var lista = document.getElementById('editFornecedoresLista');
+        if (lista.children.length <= 1) { return; }
+        bloco.remove();
+    };
+    linhaTopo.appendChild(removerBtn);
+
+    var textarea = document.createElement('textarea');
+    textarea.className = 'edit-obs fornecedor-caixa-obs';
+    textarea.style.marginTop = '0';
+    textarea.placeholder = 'Nome do fornecedor / o que foi pedido...';
+    textarea.value = obsValor;
+
+    var prazoLabel = document.createElement('label');
+    prazoLabel.style.display = 'block';
+    prazoLabel.style.fontFamily = "'Inter', sans-serif";
+    prazoLabel.style.fontSize = '12.5px';
+    prazoLabel.style.color = 'var(--text-dim)';
+    prazoLabel.style.margin = '8px 0 6px 0';
+    prazoLabel.innerText = 'Previsão de chegada (opcional)';
+
+    var prazoInputEl = document.createElement('input');
+    prazoInputEl.type = 'datetime-local';
+    prazoInputEl.className = 'fornecedor-caixa-prazo';
+    prazoInputEl.style.width = '100%';
+    prazoInputEl.style.boxSizing = 'border-box';
+    prazoInputEl.style.padding = '12px 14px';
+    prazoInputEl.style.border = 'none';
+    prazoInputEl.style.borderRadius = '14px';
+    prazoInputEl.style.background = 'var(--surface-2)';
+    prazoInputEl.style.color = 'var(--text)';
+    prazoInputEl.style.fontFamily = "'Inter', sans-serif";
+    prazoInputEl.style.fontSize = '14px';
+    prazoInputEl.style.outline = 'none';
+    if (prazoIso) { prazoInputEl.value = isoParaDatetimeLocal(prazoIso); }
+
+    bloco.appendChild(linhaTopo);
+    bloco.appendChild(textarea);
+    bloco.appendChild(prazoLabel);
+    bloco.appendChild(prazoInputEl);
+    lista.appendChild(bloco);
+}
+
+function adicionarCaixaFornecedor() {
+    criarCaixaFornecedor("", null);
+}
+
+function lerCaixasFornecedor() {
+    var blocos = document.querySelectorAll('#editFornecedoresLista .fornecedor-caixa');
+    var entradas = [];
+    for (var i = 0; i < blocos.length; i++) {
+        var obsVal = blocos[i].querySelector('.fornecedor-caixa-obs').value.trim();
+        var prazoVal = blocos[i].querySelector('.fornecedor-caixa-prazo').value;
+        if (!obsVal && !prazoVal) { continue; }
+        entradas.push({
+            obs: obsVal,
+            prazo: prazoVal ? new Date(prazoVal).toISOString() : null
+        });
+    }
+    return entradas;
+}
+
 function abrirEdicao(nomeProduto, iconeProduto) {
     var setor = getSetorAtivo();
     var pedidoAtual = pedidos[setor.id];
@@ -2100,18 +2296,37 @@ function abrirEdicao(nomeProduto, iconeProduto) {
     var unitsContainer = document.getElementById('unitsContainer');
     var maturacaoContainer = document.getElementById('maturacaoContainer');
     var obsBox = document.getElementById('editObs');
+    var prazoContainer = document.getElementById('editPrazoContainer');
+    var prazoInput = document.getElementById('editPrazo');
+    var fornecedoresContainer = document.getElementById('editFornecedoresContainer');
     var registro = pedidoAtual[nomeProduto];
 
-    if (setor.tipo === 'checklist') {
+    if (setor.tipo === 'checklist' && setor.id === 'fornecedores') {
+        input.style.display = "none";
+        unitsContainer.style.display = "none";
+        maturacaoContainer.style.display = "none";
+        obsBox.style.display = "none";
+        prazoContainer.style.display = "none";
+        fornecedoresContainer.style.display = "block";
+
+        var entradasExistentes = (registro && registro.entradas && registro.entradas.length > 0) ? registro.entradas : [{ obs: "", prazo: null }];
+        montarCaixasFornecedor(entradasExistentes);
+    } else if (setor.tipo === 'checklist') {
         input.style.display = "none";
         unitsContainer.style.display = "none";
         maturacaoContainer.style.display = "none";
         obsBox.style.display = "block";
         obsBox.value = (registro && registro.obs) ? registro.obs : "";
+        prazoContainer.style.display = "none";
+        prazoInput.value = "";
+        fornecedoresContainer.style.display = "none";
     } else {
         input.style.display = "block";
         unitsContainer.style.display = "flex";
         obsBox.style.display = "none";
+        prazoContainer.style.display = "none";
+        prazoInput.value = "";
+        fornecedoresContainer.style.display = "none";
 
         unitsContainer.innerHTML = "";
         for (var i = 0; i < setor.unidades.length; i++) {
@@ -2195,7 +2410,14 @@ function destacarMaturacao(opcao) {
 function confirmarQuantidade() {
     var setor = getSetorAtivo();
 
-    if (setor.tipo === 'checklist') {
+    if (setor.tipo === 'checklist' && setor.id === 'fornecedores') {
+        var entradas = lerCaixasFornecedor();
+        if (entradas.length === 0) {
+            pedidos[setor.id][produtoSendoEditado] = null;
+        } else {
+            pedidos[setor.id][produtoSendoEditado] = { confirmado: true, entradas: entradas };
+        }
+    } else if (setor.tipo === 'checklist') {
         var obs = document.getElementById('editObs').value;
         pedidos[setor.id][produtoSendoEditado] = { confirmado: true, obs: obs };
     } else {
@@ -2276,6 +2498,14 @@ function verResumo() {
 
     var prefixoTitulo = setor.tipo === 'checklist' ? 'Cotação' : 'Fechamento';
     document.getElementById('summaryTitulo').innerText = grupoFiltro ? (prefixoTitulo + ' - ' + grupoFiltro) : (prefixoTitulo + ' - ' + setor.nome);
+
+    var prazoContainer = document.getElementById('summaryPrazoContainer');
+    if (setor.id === 'fornecedores') {
+        prazoContainer.style.display = 'block';
+        document.getElementById('summaryPrazoEntrega').value = '';
+    } else {
+        prazoContainer.style.display = 'none';
+    }
     
     lista.innerHTML = "";
     var temItens = false;
@@ -2303,7 +2533,10 @@ function verResumo() {
             
             var infoDiv = document.createElement('div');
             infoDiv.className = 'summary-item-info';
-            if (setor.tipo === 'checklist') {
+            if (setor.id === 'fornecedores' && registro.entradas && registro.entradas.length > 0) {
+                var resumoEntradas = registro.entradas.map(function(en) { return en.obs || '(sem nome)'; }).join(' · ');
+                infoDiv.innerHTML = '<span>' + k + '</span> <strong>' + resumoEntradas + '</strong>';
+            } else if (setor.tipo === 'checklist') {
                 infoDiv.innerHTML = '<span>' + k + '</span> <strong>' + (registro.obs ? registro.obs : '✓') + '</strong>';
             } else {
                 infoDiv.innerHTML = '<span>' + k + '</span> <strong>' + registro.qtd + ' ' + registro.unidade + (registro.maturacao ? ' · ' + registro.maturacao : '') + '</strong>';
@@ -2358,7 +2591,13 @@ function gerarTextoPedido() {
         if (itemEstaCompleto(setor, registro)) {
             temItens = true;
             var linha;
-            if (setor.tipo === 'checklist') {
+            if (setor.id === 'fornecedores' && registro.entradas && registro.entradas.length > 0) {
+                linha = "- " + k;
+                for (var e = 0; e < registro.entradas.length; e++) {
+                    var en = registro.entradas[e];
+                    linha += "\n  • " + (en.obs || '(sem nome)') + (en.prazo ? " (previsão: " + new Date(en.prazo).toLocaleDateString('pt-BR') + " às " + new Date(en.prazo).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) + ")" : "");
+                }
+            } else if (setor.tipo === 'checklist') {
                 linha = "- " + k + (registro.obs ? "\n  " + registro.obs : "");
             } else {
                 linha = "- " + registro.qtd + " " + registro.unidade + (registro.maturacao ? " (" + registro.maturacao + ")" : "") + " - " + k;
@@ -2371,7 +2610,52 @@ function gerarTextoPedido() {
     return { texto: texto, itens: itensParaHistorico, temItens: temItens, dataStr: dataStr, horaStr: horaStr, setorNome: setor.nome, setorId: setor.id, tipo: setor.tipo, grupoFiltro: grupoFiltro };
 }
 
+function criarPendentesFornecedorDoResumo(dados) {
+    if (dados.setorId !== 'fornecedores') { return; }
+    var setorObj = getSetorPorId('fornecedores');
+    var pedidoAtual = pedidos['fornecedores'];
+    var prazoGeralInput = document.getElementById('summaryPrazoEntrega').value;
+    var prazoGeralIso = prazoGeralInput ? new Date(prazoGeralInput).toISOString() : null;
+
+    for (var k in pedidoAtual) {
+        var registro = pedidoAtual[k];
+        if (!itemEstaCompleto(setorObj, registro)) { continue; }
+
+        var iconeTxt = "🚚";
+        for (var i = 0; i < setorObj.produtos.length; i++) {
+            if (setorObj.produtos[i].nome === k) { iconeTxt = setorObj.produtos[i].icone; break; }
+        }
+
+        var entradasDoItem = (registro.entradas && registro.entradas.length > 0) ? registro.entradas : [{ obs: registro.obs || '', prazo: registro.prazo || null }];
+
+        for (var e = 0; e < entradasDoItem.length; e++) {
+            var entrada = entradasDoItem[e];
+            var novoPendente = {
+                id: gerarIdUnico(),
+                nome: k,
+                icone: iconeTxt,
+                obs: entrada.obs || '',
+                prazo: entrada.prazo || prazoGeralIso
+            };
+            pendentesFornecedor.push(novoPendente);
+
+            supabasePost('fornecedores_pendentes', {
+                id: novoPendente.id,
+                nome: novoPendente.nome,
+                icone: novoPendente.icone,
+                obs: novoPendente.obs,
+                prazo: novoPendente.prazo
+            }, function(err) {
+                if (err) { console.warn('Não foi possível sincronizar pendente de fornecedor com o Supabase (salvo localmente):', err); }
+            });
+        }
+    }
+    salvarPendentesFornecedorSeguro(pendentesFornecedor);
+}
+
 function salvarEVoltarTela(dados) {
+    criarPendentesFornecedorDoResumo(dados);
+
     registrarNoHistoricoCompartilhado({
         data: dados.dataStr + " às " + dados.horaStr,
         setor: dados.grupoFiltro ? (dados.setorNome + ' · ' + dados.grupoFiltro) : dados.setorNome,
@@ -2418,6 +2702,17 @@ function prioridadesPresentesArea(areaId) {
     return presentes;
 }
 
+function statusPrazoMaisUrgenteArea(areaId) {
+    var maisUrgente = null;
+    for (var i = 0; i < problemasAtuais.length; i++) {
+        if (problemasAtuais[i].areaId !== areaId) { continue; }
+        var status = statusDoPrazo(problemasAtuais[i].prazo);
+        if (status === 'vencido') { return 'vencido'; }
+        if (status === 'proximo') { maisUrgente = 'proximo'; }
+    }
+    return maisUrgente;
+}
+
 function montarListaManutencao() {
     var lista = document.getElementById('productList');
     lista.innerHTML = "";
@@ -2454,6 +2749,10 @@ function montarListaManutencao() {
             statusDiv.innerHTML = dots + n + (n === 1 ? ' problema' : ' problemas');
             statusDiv.style.display = "block";
             item.className = 'product-item selected';
+
+            var statusPrazoArea = statusPrazoMaisUrgenteArea(area.id);
+            if (statusPrazoArea === 'vencido') { item.classList.add('problema-prazo-vencido'); }
+            else if (statusPrazoArea === 'proximo') { item.classList.add('problema-prazo-proximo'); }
         }
         info.appendChild(statusDiv);
 
@@ -2549,6 +2848,12 @@ function montarListaProblemasArea() {
     }
 }
 
+function isoParaDatetimeLocal(prazoIso) {
+    var d = new Date(prazoIso);
+    var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
 function statusDoPrazo(prazoIso) {
     if (!prazoIso) { return null; }
     var agora = new Date();
@@ -2578,6 +2883,34 @@ function removerProblema(id) {
         if (err) { console.warn('Não foi possível remover no Supabase (removido localmente):', err); }
     });
     montarListaProblemasArea();
+    atualizarVisuaisDaLista();
+}
+
+function marcarFornecedorChegou(id) {
+    var idx = -1;
+    for (var i = 0; i < pendentesFornecedor.length; i++) { if (pendentesFornecedor[i].id === id) { idx = i; break; } }
+    if (idx === -1) return;
+
+    var pend = pendentesFornecedor[idx];
+    pendentesFornecedor.splice(idx, 1);
+    salvarPendentesFornecedorSeguro(pendentesFornecedor);
+    supabaseDelete('fornecedores_pendentes', 'id=eq.' + encodeURIComponent(id), function(err) {
+        if (err) { console.warn('Não foi possível remover no Supabase (removido localmente):', err); }
+    });
+
+    var dataLocal = new Date();
+    var dataStr = dataLocal.toLocaleDateString('pt-BR');
+    var horaStr = dataLocal.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+    var linha = "✅ CHEGOU — " + pend.icone + " " + pend.nome;
+
+    registrarNoHistoricoCompartilhado({
+        data: dataStr + " às " + horaStr,
+        setor: "Fornecedores",
+        tipo: "checklist",
+        itens: [linha]
+    });
+
+    montarListaInicial();
     atualizarVisuaisDaLista();
 }
 
@@ -3224,6 +3557,12 @@ setInterval(function() {
     var telaArea = document.getElementById('manutencao-area-screen');
     if (telaArea && telaArea.classList.contains('active')) {
         montarListaProblemasArea();
+    }
+    if (setorAtivoId === 'manutencao' && document.getElementById('main-screen').classList.contains('active')) {
+        montarListaManutencao();
+    }
+    if (setorAtivoId === 'fornecedores' && document.getElementById('main-screen').classList.contains('active')) {
+        montarListaInicial();
     }
 }, 60000);
 if (document.readyState === "interactive" || document.readyState === "complete") { iniciar(); }
