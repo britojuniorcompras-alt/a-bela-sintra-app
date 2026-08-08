@@ -1744,10 +1744,59 @@ function renderizarListaChecklistDiaria() {
         nome.innerText = item.texto;
         info.appendChild(nome);
 
+        var acoes = document.createElement('div');
+        acoes.style.display = 'flex';
+        acoes.style.gap = '6px';
+        acoes.style.flexShrink = '0';
+
+        var editarBtn = document.createElement('button');
+        editarBtn.innerText = '✏️';
+        editarBtn.className = 'problema-del-btn';
+        editarBtn.onclick = (function(id, texto) { return function(e) { e.stopPropagation(); editarItemChecklistDiaria(id, texto); }; })(item.id, item.texto);
+        acoes.appendChild(editarBtn);
+
+        var excluirBtn = document.createElement('button');
+        excluirBtn.innerText = '🗑️';
+        excluirBtn.className = 'problema-del-btn';
+        excluirBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); excluirItemChecklistDiaria(id); }; })(item.id);
+        acoes.appendChild(excluirBtn);
+
         div.appendChild(icone);
         div.appendChild(info);
+        div.appendChild(acoes);
         lista.appendChild(div);
     }
+}
+
+function editarItemChecklistDiaria(itemId, textoAtual) {
+    var novoTexto = prompt('Editar item:', textoAtual);
+    if (novoTexto === null) { return; }
+    novoTexto = novoTexto.trim();
+    if (!novoTexto) { return; }
+
+    for (var i = 0; i < itensChecklistDiaria.length; i++) {
+        if (itensChecklistDiaria[i].id === itemId) { itensChecklistDiaria[i].texto = novoTexto; break; }
+    }
+    salvarItensChecklistDiariaSeguro(itensChecklistDiaria);
+    supabasePatch('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(itemId), { texto: novoTexto }, function(err) {
+        if (err) { console.warn('Não foi possível sincronizar edição do item (salvo localmente):', err); }
+    });
+    renderizarListaChecklistDiaria();
+}
+
+function excluirItemChecklistDiaria(itemId) {
+    itensChecklistDiaria = itensChecklistDiaria.filter(function(it) { return it.id !== itemId; });
+    salvarItensChecklistDiariaSeguro(itensChecklistDiaria);
+
+    delete marcacoesChecklistDiaria.marcados[itemId];
+    salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
+
+    supabaseDelete('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(itemId), function(err) {
+        if (err) { console.warn('Não foi possível sincronizar exclusão do item (removido localmente):', err); }
+    });
+    supabaseDelete('checklist_diaria_marcacoes', 'dia=eq.' + marcacoesChecklistDiaria.dia + '&item_id=eq.' + encodeURIComponent(itemId), function() {});
+
+    renderizarListaChecklistDiaria();
 }
 
 function alternarMarcacaoChecklistDiaria(itemId) {
