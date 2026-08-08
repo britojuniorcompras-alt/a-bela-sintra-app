@@ -43,7 +43,13 @@
     .logo-text > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .logo-subtitulo { font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.6px; }
     .hist-btn { background: var(--surface); color: var(--text); border: none; padding: 11px 16px; border-radius: 16px; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; letter-spacing: 0.1px; cursor: pointer; transition: 0.2s; white-space: nowrap; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.18); }
-    .hist-btn:active { color: var(--accent); }
+    .hist-btn:active { filter: brightness(0.9); }
+    .hist-btn-agenda { background: rgba(155,143,209,0.22); color: #C4BAF0; box-shadow: 0 2px 8px rgba(155,143,209,0.25); }
+    .hist-btn-cotacao { background: rgba(212,162,76,0.22); color: #E8BC72; box-shadow: 0 2px 8px rgba(212,162,76,0.25); }
+    .hist-btn-fichas { background: rgba(63,184,175,0.22); color: #5FD4C9; box-shadow: 0 2px 8px rgba(63,184,175,0.25); }
+    .hist-btn-historico { background: rgba(243,112,58,0.22); color: #F79868; box-shadow: 0 2px 8px rgba(243,112,58,0.25); }
+    .hist-btn-agenda.hist-btn-ativo { background: #9B8FD1; color: #1B1420; }
+    .hist-btn-cotacao.hist-btn-ativo { background: #D4A24C; color: #1B1420; }
     .problema-prazo-proximo { animation: piscarProximo 1.1s ease-in-out infinite; }
     .problema-prazo-vencido { animation: piscarVencido 0.9s ease-in-out infinite; }
     @keyframes piscarProximo { 0%, 100% { box-shadow: 0 0 0 rgba(243,112,58,0); } 50% { box-shadow: 0 0 0 3px rgba(243,112,58,0.55); } }
@@ -261,15 +267,15 @@
             </div>
         </div>
         <div class="header-actions">
-            <button class="hist-btn" onclick="abrirHistorico()">📋 Histórico</button>
+            <button class="hist-btn hist-btn-historico" onclick="abrirHistorico()">📋 Histórico</button>
             <div class="avatar-usuario">AS</div>
         </div>
     </header>
 
     <div class="ferramentas-extra-bar">
-        <button class="hist-btn" id="btnAgendaTopo" onclick="abrirAgendaDireto()">📅 Agenda</button>
-        <button class="hist-btn" id="btnCotacaoTopo" onclick="abrirCotacaoDireto()">💰 Cotação</button>
-        <button class="hist-btn" id="btnFichasTopo" onclick="abrirFichasDireto()">📝 Fichas</button>
+        <button class="hist-btn hist-btn-agenda" id="btnAgendaTopo" onclick="abrirAgendaDireto()">📅 Agenda</button>
+        <button class="hist-btn hist-btn-cotacao" id="btnCotacaoTopo" onclick="abrirCotacaoDireto()">💰 Cotação</button>
+        <button class="hist-btn hist-btn-fichas" id="btnFichasTopo" onclick="abrirFichasDireto()">📝 Fichas</button>
     </div>
 
     <div class="tabs-bar" id="tabsBar"></div>
@@ -364,7 +370,7 @@
 <div id="manutencao-edit-screen" class="screen">
     <div class="screen-header">
         <button class="back-btn" onclick="trocarTela('manutencao-area-screen')">←</button>
-        <h2>Novo problema</h2>
+        <h2 id="manutencaoEditTitulo">Novo problema</h2>
     </div>
     <div class="edit-container">
         <div class="edit-titulo-destaque">
@@ -377,6 +383,7 @@
             <input type="datetime-local" id="manutencaoPrazo" style="width:100%; box-sizing:border-box; padding:12px 14px; border:none; border-radius:14px; background:var(--surface); color:var(--text); font-family:'Inter',sans-serif; font-size:14px; outline:none;">
         </div>
         <div class="units" id="prioridadeContainer"></div>
+        <button id="manutencaoExcluirBtn" type="button" onclick="excluirProblemaDaEdicao()" style="display:none; width:100%; box-sizing:border-box; margin-top:14px; padding:13px; border:none; border-radius:16px; background:transparent; color:#E4483A; font-family:'Inter',sans-serif; font-weight:600; font-size:13.5px; cursor:pointer;">Excluir chamado</button>
         <div class="edit-actions">
             <button class="btn-cancel" onclick="trocarTela('manutencao-area-screen')">Cancelar</button>
             <button class="btn-confirm" onclick="confirmarProblema()">Salvar</button>
@@ -1161,6 +1168,7 @@ var problemasAtuais = lerProblemasManutencaoSeguro(); // { id, areaId, areaNome,
 var pendentesFornecedor = lerPendentesFornecedorSeguro(); // { id, nome, icone, obs, prazo } — fornecedores aguardando entrega, sincronizados via Supabase
 var areaManutencaoAtiva = null;
 var prioridadeSelecionada = "vermelho";
+var problemaSendoEditadoId = null;
 
 var setorAtivoId = setores[0].id;
 var pedidos = {};       // { setorId: { nomeProduto: {qtd, unidade} } }
@@ -1218,26 +1226,18 @@ function montarAbas() {
     var btnAgendaTopo = document.getElementById('btnAgendaTopo');
     if (btnAgendaTopo) {
         if (setorAtivoId === 'agenda') {
-            btnAgendaTopo.style.background = 'var(--accent)';
-            btnAgendaTopo.style.color = 'var(--accent-text)';
-            btnAgendaTopo.style.borderColor = 'var(--accent)';
+            btnAgendaTopo.classList.add('hist-btn-ativo');
         } else {
-            btnAgendaTopo.style.background = 'transparent';
-            btnAgendaTopo.style.color = 'var(--text-dim)';
-            btnAgendaTopo.style.borderColor = 'var(--line)';
+            btnAgendaTopo.classList.remove('hist-btn-ativo');
         }
     }
 
     var btnCotacaoTopo = document.getElementById('btnCotacaoTopo');
     if (btnCotacaoTopo) {
         if (setorAtivoId === 'cotacao') {
-            btnCotacaoTopo.style.background = 'var(--accent)';
-            btnCotacaoTopo.style.color = 'var(--accent-text)';
-            btnCotacaoTopo.style.borderColor = 'var(--accent)';
+            btnCotacaoTopo.classList.add('hist-btn-ativo');
         } else {
-            btnCotacaoTopo.style.background = 'transparent';
-            btnCotacaoTopo.style.color = 'var(--text-dim)';
-            btnCotacaoTopo.style.borderColor = 'var(--line)';
+            btnCotacaoTopo.classList.remove('hist-btn-ativo');
         }
     }
 
@@ -2790,6 +2790,7 @@ function montarListaProblemasArea() {
         var p = problemas[j];
         var item = document.createElement('div');
         item.className = 'product-item problema-item selected';
+        item.onclick = (function(id) { return function() { abrirEdicaoProblema(id); }; })(p.id);
 
         var statusPrazo = statusDoPrazo(p.prazo);
         if (statusPrazo === 'vencido') { item.classList.add('problema-prazo-vencido'); }
@@ -3184,11 +3185,14 @@ function excluirCompromisso(id) {
 }
 
 function abrirNovoProblema() {
+    problemaSendoEditadoId = null;
     var area = areaPorId(areaManutencaoAtiva);
+    document.getElementById('manutencaoEditTitulo').innerText = "Novo problema";
     document.getElementById('manutencaoEditIcone').innerText = area.icone;
     document.getElementById('manutencaoEditAreaNome').innerText = area.nome;
     document.getElementById('manutencaoDescricao').value = "";
     document.getElementById('manutencaoPrazo').value = "";
+    document.getElementById('manutencaoExcluirBtn').style.display = "none";
 
     var cont = document.getElementById('prioridadeContainer');
     cont.innerHTML = "";
@@ -3206,6 +3210,38 @@ function abrirNovoProblema() {
     trocarTela('manutencao-edit-screen');
 }
 
+function abrirEdicaoProblema(id) {
+    var problema = null;
+    for (var i = 0; i < problemasAtuais.length; i++) { if (problemasAtuais[i].id === id) { problema = problemasAtuais[i]; break; } }
+    if (!problema) { return; }
+
+    problemaSendoEditadoId = id;
+    var area = areaPorId(problema.areaId);
+    document.getElementById('manutencaoEditTitulo').innerText = "Editar problema";
+    document.getElementById('manutencaoEditIcone').innerText = area ? area.icone : problema.areaIcone;
+    document.getElementById('manutencaoEditAreaNome').innerText = area ? area.nome : problema.areaNome;
+    document.getElementById('manutencaoDescricao').value = problema.descricao;
+    document.getElementById('manutencaoPrazo').value = problema.prazo ? isoParaDatetimeLocal(problema.prazo) : "";
+    document.getElementById('manutencaoExcluirBtn').style.display = "block";
+
+    var cont = document.getElementById('prioridadeContainer');
+    cont.innerHTML = "";
+    var botaoDaPrioridadeAtual = null;
+    for (var i = 0; i < ordemPrioridades.length; i++) {
+        var chave = ordemPrioridades[i];
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'unit-btn prio-btn-' + chave;
+        btn.innerText = prioridadesInfo[chave].label;
+        btn.onclick = (function(b, ch) { return function() { selecionarPrioridade(b, ch); }; })(btn, chave);
+        cont.appendChild(btn);
+        if (chave === problema.prioridade) { botaoDaPrioridadeAtual = btn; }
+    }
+    selecionarPrioridade(botaoDaPrioridadeAtual || cont.children[0], problema.prioridade);
+
+    trocarTela('manutencao-edit-screen');
+}
+
 function selecionarPrioridade(btn, chave) {
     prioridadeSelecionada = chave;
     var botoes = document.querySelectorAll('#prioridadeContainer .unit-btn');
@@ -3216,9 +3252,36 @@ function selecionarPrioridade(btn, chave) {
 function confirmarProblema() {
     var desc = document.getElementById('manutencaoDescricao').value.trim();
     if (!desc) { alert("Descreva o problema antes de salvar."); return; }
-    var area = areaPorId(areaManutencaoAtiva);
     var prazoInput = document.getElementById('manutencaoPrazo').value;
     var prazoIso = prazoInput ? new Date(prazoInput).toISOString() : null;
+
+    if (problemaSendoEditadoId) {
+        var idx = -1;
+        for (var i = 0; i < problemasAtuais.length; i++) { if (problemasAtuais[i].id === problemaSendoEditadoId) { idx = i; break; } }
+        if (idx === -1) { return; }
+
+        problemasAtuais[idx].descricao = desc;
+        problemasAtuais[idx].prioridade = prioridadeSelecionada;
+        problemasAtuais[idx].prazo = prazoIso;
+        salvarProblemasManutencaoSeguro(problemasAtuais);
+
+        supabasePatch('manutencao_problemas', 'id=eq.' + encodeURIComponent(problemaSendoEditadoId), {
+            descricao: desc,
+            prioridade: prioridadeSelecionada,
+            prazo: prazoIso
+        }, function(err) {
+            if (err) { console.warn('Não foi possível sincronizar edição com o Supabase (salvo localmente):', err); }
+        });
+
+        problemaSendoEditadoId = null;
+        montarListaProblemasArea();
+        montarListaManutencao();
+        atualizarVisuaisDaLista();
+        trocarTela('manutencao-area-screen');
+        return;
+    }
+
+    var area = areaPorId(areaManutencaoAtiva);
     var novoProblema = {
         id: gerarIdUnico(),
         areaId: area.id,
@@ -3246,6 +3309,14 @@ function confirmarProblema() {
     montarListaProblemasArea();
     montarListaManutencao();
     atualizarVisuaisDaLista();
+    trocarTela('manutencao-area-screen');
+}
+
+function excluirProblemaDaEdicao() {
+    if (!problemaSendoEditadoId) { return; }
+    var id = problemaSendoEditadoId;
+    problemaSendoEditadoId = null;
+    removerProblema(id);
     trocarTela('manutencao-area-screen');
 }
 
