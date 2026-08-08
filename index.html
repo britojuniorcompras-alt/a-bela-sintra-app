@@ -47,6 +47,7 @@
     .hist-btn-agenda { background: rgba(155,143,209,0.22); color: #C4BAF0; box-shadow: 0 2px 8px rgba(155,143,209,0.25); }
     .hist-btn-cotacao { background: rgba(212,162,76,0.22); color: #E8BC72; box-shadow: 0 2px 8px rgba(212,162,76,0.25); }
     .hist-btn-fichas { background: rgba(63,184,175,0.22); color: #5FD4C9; box-shadow: 0 2px 8px rgba(63,184,175,0.25); }
+    .hist-btn-checklist { background: rgba(95,184,138,0.22); color: #7FD6A6; box-shadow: 0 2px 8px rgba(95,184,138,0.25); }
     .hist-btn-historico { background: rgba(243,112,58,0.22); color: #F79868; box-shadow: 0 2px 8px rgba(243,112,58,0.25); }
     .hist-btn-agenda.hist-btn-ativo { background: #9B8FD1; color: #1B1420; }
     .hist-btn-cotacao.hist-btn-ativo { background: #D4A24C; color: #1B1420; }
@@ -287,6 +288,7 @@
         <button class="hist-btn hist-btn-agenda" id="btnAgendaTopo" onclick="abrirAgendaDireto()">📅 Agenda</button>
         <button class="hist-btn hist-btn-cotacao" id="btnCotacaoTopo" onclick="abrirCotacaoDireto()">💰 Cotação</button>
         <button class="hist-btn hist-btn-fichas" id="btnFichasTopo" onclick="abrirFichasDireto()">📝 Fichas</button>
+        <button class="hist-btn hist-btn-checklist" id="btnChecklistTopo" onclick="abrirChecklistDireto()">✅ Checklist</button>
     </div>
 
     <div class="tabs-bar" id="tabsBar"></div>
@@ -509,6 +511,44 @@
     <div class="product-list" id="fichasLista"></div>
     <div class="bottom-bar">
         <button onclick="abrirNovaFicha()">+ Nova Ficha</button>
+    </div>
+</div>
+
+<div id="checklistdiaria-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
+        <h2>Checklist Diária</h2>
+    </div>
+    <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
+        <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirGerenciarChecklistDiaria()">✏️ Editar itens</button>
+        <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="verResumoChecklistDiaria()">Enviar resumo</button>
+    </div>
+    <div class="product-list" id="checklistDiariaLista"></div>
+</div>
+
+<div id="checklistdiaria-gerenciar-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('checklistdiaria-screen')">←</button>
+        <h2>Editar itens da checklist</h2>
+    </div>
+    <div class="edit-container">
+        <div id="checklistDiariaItensLista"></div>
+        <button type="button" class="ficha-add-ingrediente-btn" onclick="adicionarCaixaItemChecklist()" style="width:100%; box-sizing:border-box; margin-top: 6px;">+ Adicionar item</button>
+        <div class="edit-actions">
+            <button class="btn-confirm" style="width:100%;" onclick="salvarItensChecklistDiaria()">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<div id="checklistdiaria-summary-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('checklistdiaria-screen')">←</button>
+        <h2>Resumo da Checklist</h2>
+    </div>
+    <div class="summary-list" id="checklistDiariaSummaryList"></div>
+    <div class="summary-footer" id="checklistDiariaSummaryFooter">
+        <a id="checklistDiariaBtnWhatsApp" class="btn-whatsapp-link" href="#" target="_blank">Enviar via WhatsApp</a>
+        <a id="checklistDiariaBtnEmail" class="btn-email-link" href="#">Enviar por E-mail</a>
     </div>
 </div>
 
@@ -1291,6 +1331,13 @@ var setores = [
     icone: "🛠️",
     tipo: "manutencao",
     accent: "#E85D5D"
+  },
+  {
+    id: "checklistdiaria",
+    nome: "Checklist Diária",
+    icone: "✅",
+    tipo: "checklistdiaria",
+    accent: "#5FB88A"
   }
 ];
 
@@ -1537,10 +1584,9 @@ function montarAbas() {
             btnCotacaoTopo.classList.remove('hist-btn-ativo');
         }
     }
-
     for (var i = 0; i < setores.length; i++) {
         var setor = setores[i];
-        if (setor.id === 'agenda' || setor.id === 'cotacao') { continue; } // Agenda e Cotação têm acesso fixo no cabeçalho, não ficam na grade de abas
+        if (setor.id === 'agenda' || setor.id === 'cotacao' || setor.id === 'checklistdiaria') { continue; } // Agenda, Cotação e Checklist Diária têm acesso fixo no cabeçalho, não ficam na grade de abas
         var btn = document.createElement('button');
         var ehLarga = (setor.id === 'fornecedores' || setor.id === 'manutencao');
         var ehAtiva = (setor.id === setorAtivoId);
@@ -1602,6 +1648,258 @@ function salvarFichasSeguro(lista) {
 }
 
 var fichasMostrarTodas = false;
+
+// ============================================================
+// CHECKLIST DIÁRIA — itens editáveis pela equipe, marcações resetam todo dia
+// ============================================================
+function lerItensChecklistDiariaSeguro() {
+    try {
+        var dados = localStorage.getItem('checklistDiariaItensABS');
+        return dados ? JSON.parse(dados) : [];
+    } catch (erro) { return []; }
+}
+
+function salvarItensChecklistDiariaSeguro(lista) {
+    try { localStorage.setItem('checklistDiariaItensABS', JSON.stringify(lista)); } catch (erro) { }
+}
+
+function chaveDiaChecklist() {
+    var hoje = new Date();
+    return hoje.getFullYear() + '-' + (hoje.getMonth() + 1 < 10 ? '0' : '') + (hoje.getMonth() + 1) + '-' + (hoje.getDate() < 10 ? '0' : '') + hoje.getDate();
+}
+
+function lerMarcacoesChecklistDiariaSeguro() {
+    try {
+        var dados = localStorage.getItem('checklistDiariaMarcacoesABS');
+        var mapa = dados ? JSON.parse(dados) : {};
+        // Descarta marcações de dias anteriores: a checklist reseta sozinha todo dia
+        var hoje = chaveDiaChecklist();
+        if (mapa.dia !== hoje) { return { dia: hoje, marcados: {} }; }
+        return mapa;
+    } catch (erro) { return { dia: chaveDiaChecklist(), marcados: {} }; }
+}
+
+function salvarMarcacoesChecklistDiariaSeguro(mapa) {
+    try { localStorage.setItem('checklistDiariaMarcacoesABS', JSON.stringify(mapa)); } catch (erro) { }
+}
+
+var itensChecklistDiaria = lerItensChecklistDiariaSeguro();
+var marcacoesChecklistDiaria = lerMarcacoesChecklistDiariaSeguro();
+
+function abrirChecklistDireto() {
+    trocarTela('checklistdiaria-screen');
+    marcacoesChecklistDiaria = lerMarcacoesChecklistDiariaSeguro(); // garante reset se virou o dia
+    renderizarListaChecklistDiaria();
+    sincronizarChecklistDiariaSupabase();
+}
+
+function sincronizarChecklistDiariaSupabase() {
+    supabaseGet('checklist_diaria_itens', 'select=*&order=criado_em.asc', function(err, dados) {
+        if (err || !dados) { return; }
+        itensChecklistDiaria = dados.map(function(d) { return { id: d.id, texto: d.texto }; });
+        salvarItensChecklistDiariaSeguro(itensChecklistDiaria);
+        if (setorAtivoId === 'checklistdiaria' || document.getElementById('checklistdiaria-screen').classList.contains('active')) {
+            renderizarListaChecklistDiaria();
+        }
+    });
+
+    var hoje = chaveDiaChecklist();
+    supabaseGet('checklist_diaria_marcacoes', 'select=*&dia=eq.' + hoje, function(err, dados) {
+        if (err || !dados) { return; }
+        var marcados = {};
+        for (var i = 0; i < dados.length; i++) { marcados[dados[i].item_id] = true; }
+        marcacoesChecklistDiaria = { dia: hoje, marcados: marcados };
+        salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
+        if (document.getElementById('checklistdiaria-screen').classList.contains('active')) {
+            renderizarListaChecklistDiaria();
+        }
+    });
+}
+
+function renderizarListaChecklistDiaria() {
+    var lista = document.getElementById('checklistDiariaLista');
+    lista.innerHTML = "";
+
+    if (itensChecklistDiaria.length === 0) {
+        lista.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px;'>Nenhum item na checklist ainda. Toque em \"✏️ Editar itens\" pra montar a lista.</p>";
+        return;
+    }
+
+    for (var i = 0; i < itensChecklistDiaria.length; i++) {
+        var item = itensChecklistDiaria[i];
+        var marcado = !!marcacoesChecklistDiaria.marcados[item.id];
+
+        var div = document.createElement('div');
+        div.className = 'product-item' + (marcado ? ' selected' : '');
+        div.onclick = (function(id) { return function() { alternarMarcacaoChecklistDiaria(id); }; })(item.id);
+
+        var icone = document.createElement('div');
+        icone.className = 'product-icon';
+        icone.innerText = marcado ? '✅' : '⬜';
+
+        var info = document.createElement('div');
+        info.className = 'product-info';
+        var nome = document.createElement('div');
+        nome.className = 'product-name';
+        nome.innerText = item.texto;
+        info.appendChild(nome);
+
+        div.appendChild(icone);
+        div.appendChild(info);
+        lista.appendChild(div);
+    }
+}
+
+function alternarMarcacaoChecklistDiaria(itemId) {
+    var jaMarcado = !!marcacoesChecklistDiaria.marcados[itemId];
+    if (jaMarcado) {
+        delete marcacoesChecklistDiaria.marcados[itemId];
+        supabaseDelete('checklist_diaria_marcacoes', 'dia=eq.' + marcacoesChecklistDiaria.dia + '&item_id=eq.' + encodeURIComponent(itemId), function(err) {
+            if (err) { console.warn('Não foi possível sincronizar desmarcação (salvo localmente):', err); }
+        });
+    } else {
+        marcacoesChecklistDiaria.marcados[itemId] = true;
+        supabasePost('checklist_diaria_marcacoes', { dia: marcacoesChecklistDiaria.dia, item_id: itemId }, function(err) {
+            if (err) { console.warn('Não foi possível sincronizar marcação (salvo localmente):', err); }
+        });
+    }
+    salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
+    renderizarListaChecklistDiaria();
+}
+
+function abrirGerenciarChecklistDiaria() {
+    montarCaixasItensChecklist(itensChecklistDiaria.length > 0 ? itensChecklistDiaria : [{ texto: '' }]);
+    trocarTela('checklistdiaria-gerenciar-screen');
+}
+
+function montarCaixasItensChecklist(itens) {
+    var lista = document.getElementById('checklistDiariaItensLista');
+    lista.innerHTML = "";
+    for (var i = 0; i < itens.length; i++) {
+        criarCaixaItemChecklist(itens[i].texto || "");
+    }
+}
+
+function criarCaixaItemChecklist(textoValor) {
+    var lista = document.getElementById('checklistDiariaItensLista');
+    var bloco = document.createElement('div');
+    bloco.style.display = 'flex';
+    bloco.style.gap = '8px';
+    bloco.style.marginBottom = '8px';
+    bloco.style.alignItems = 'center';
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'checklist-item-texto';
+    input.value = textoValor;
+    input.placeholder = 'Ex: Gás verificado';
+    input.style.flex = '1';
+    input.style.padding = '12px 14px';
+    input.style.border = 'none';
+    input.style.borderRadius = '14px';
+    input.style.background = 'var(--surface)';
+    input.style.color = 'var(--text)';
+    input.style.fontFamily = "'Inter', sans-serif";
+    input.style.fontSize = '14px';
+    input.style.outline = 'none';
+    input.style.boxSizing = 'border-box';
+
+    var removerBtn = document.createElement('button');
+    removerBtn.type = 'button';
+    removerBtn.innerText = '✕';
+    removerBtn.className = 'problema-del-btn';
+    removerBtn.onclick = function() {
+        var lst = document.getElementById('checklistDiariaItensLista');
+        if (lst.children.length <= 1) { return; }
+        bloco.remove();
+    };
+
+    bloco.appendChild(input);
+    bloco.appendChild(removerBtn);
+    lista.appendChild(bloco);
+}
+
+function adicionarCaixaItemChecklist() {
+    criarCaixaItemChecklist("");
+}
+
+function salvarItensChecklistDiaria() {
+    var inputs = document.querySelectorAll('#checklistDiariaItensLista .checklist-item-texto');
+    var textos = [];
+    for (var i = 0; i < inputs.length; i++) {
+        var v = inputs[i].value.trim();
+        if (v) { textos.push(v); }
+    }
+
+    if (textos.length === 0) {
+        alert('Adicione ao menos um item antes de salvar.');
+        return;
+    }
+
+    // Remove do Supabase os itens que existiam antes e não estão mais na lista nova, e recria a lista inteira
+    // (mais simples e seguro do que tentar casar edições item a item)
+    var idsAntigos = itensChecklistDiaria.map(function(it) { return it.id; }).filter(Boolean);
+    for (var a = 0; a < idsAntigos.length; a++) {
+        supabaseDelete('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(idsAntigos[a]), function() {});
+    }
+
+    itensChecklistDiaria = textos.map(function(t) { return { id: gerarIdUnico(), texto: t }; });
+    salvarItensChecklistDiariaSeguro(itensChecklistDiaria);
+
+    for (var n = 0; n < itensChecklistDiaria.length; n++) {
+        var it = itensChecklistDiaria[n];
+        supabasePost('checklist_diaria_itens', { id: it.id, texto: it.texto }, function(err) {
+            if (err) { console.warn('Não foi possível sincronizar item da checklist (salvo localmente):', err); }
+        });
+    }
+
+    // Marcações antigas ficam órfãs de propósito (referem itens que não existem mais); começa zerado
+    marcacoesChecklistDiaria = { dia: chaveDiaChecklist(), marcados: {} };
+    salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
+
+    renderizarListaChecklistDiaria();
+    trocarTela('checklistdiaria-screen');
+}
+
+function verResumoChecklistDiaria() {
+    var lista = document.getElementById('checklistDiariaSummaryList');
+    lista.innerHTML = "";
+
+    if (itensChecklistDiaria.length === 0) {
+        lista.innerHTML = "<p style='text-align:center; color:#999; margin-top: 30px; font-family: Lato, sans-serif;'>Nenhum item na checklist.</p>";
+        trocarTela('checklistdiaria-summary-screen');
+        return;
+    }
+
+    var dataLocal = new Date();
+    var dataStr = dataLocal.toLocaleDateString('pt-BR');
+    var horaStr = dataLocal.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+    var texto = "*Checklist Diária - " + dataStr + " às " + horaStr + "*\n" + dadosFiscaisTexto() + "\n\n";
+
+    for (var i = 0; i < itensChecklistDiaria.length; i++) {
+        var item = itensChecklistDiaria[i];
+        var marcado = !!marcacoesChecklistDiaria.marcados[item.id];
+        var emoji = marcado ? '✅' : '⬜';
+        texto += emoji + ' ' + item.texto + "\n";
+
+        var div = document.createElement('div');
+        div.className = 'summary-item';
+        var iconDiv = document.createElement('div');
+        iconDiv.className = 'summary-item-icon';
+        iconDiv.innerText = emoji;
+        var infoDiv = document.createElement('div');
+        infoDiv.className = 'summary-item-info';
+        infoDiv.innerHTML = '<span>' + item.texto + '</span>';
+        div.appendChild(iconDiv);
+        div.appendChild(infoDiv);
+        lista.appendChild(div);
+    }
+
+    document.getElementById('checklistDiariaBtnWhatsApp').href = linkWhatsApp(texto);
+    document.getElementById('checklistDiariaBtnEmail').href = linkEmail('Checklist Diária - ' + dataStr, texto);
+
+    trocarTela('checklistdiaria-summary-screen');
+}
 
 function abrirFichasDireto() {
     trocarTela('fichas-screen');
