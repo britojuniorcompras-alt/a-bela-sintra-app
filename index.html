@@ -281,6 +281,8 @@
         </div>
     </header>
 
+    <div id="avisoOffline" style="display:none; align-items:center; justify-content:center; gap:6px; padding:8px 20px; margin:0 20px 4px 20px; border-radius:14px; background:rgba(212,162,76,0.18); color:#E8BC72; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; text-align:center;"></div>
+
     <div class="ferramentas-extra-bar">
         <button class="hist-btn hist-btn-agenda" id="btnAgendaTopo" onclick="abrirAgendaDireto()">📅 Agenda</button>
         <button class="hist-btn hist-btn-cotacao" id="btnCotacaoTopo" onclick="abrirCotacaoDireto()">💰 Cotação</button>
@@ -564,6 +566,89 @@ var SUPABASE_URL = "https://kfgcqshhltemsochafid.supabase.co";
 var SUPABASE_KEY = "sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
 var supabaseOnline = true; // vira false se alguma chamada falhar, pra avisar o usuário
 
+// ---- Fila de reenvio: guarda ações que falharam por falta de rede, pra tentar de novo quando a internet voltar ----
+function lerFilaReenvioSegura() {
+    try {
+        var dados = localStorage.getItem('filaReenvioABS');
+        return dados ? JSON.parse(dados) : [];
+    } catch (erro) { return []; }
+}
+
+function salvarFilaReenvioSegura(fila) {
+    try { localStorage.setItem('filaReenvioABS', JSON.stringify(fila)); } catch (erro) { }
+}
+
+function adicionarNaFilaReenvio(acao) {
+    var fila = lerFilaReenvioSegura();
+    fila.push(acao);
+    salvarFilaReenvioSegura(fila);
+    atualizarAvisoOffline();
+}
+
+function processarFilaReenvio() {
+    var fila = lerFilaReenvioSegura();
+    if (fila.length === 0) { return; }
+
+    var restante = fila.slice();
+    var proximaTentativa = restante.shift();
+    if (!proximaTentativa) { return; }
+
+    function aposEnvio(err) {
+        if (err) {
+            // ainda sem rede ou falhou de novo: mantém a fila como estava e tenta de novo mais tarde
+            return;
+        }
+        salvarFilaReenvioSegura(restante);
+        atualizarAvisoOffline();
+        // continua tentando o próximo item da fila, se houver
+        if (restante.length > 0) { processarFilaReenvio(); }
+    }
+
+    if (proximaTentativa.metodo === 'POST') {
+        fetch(SUPABASE_URL + "/rest/v1/" + proximaTentativa.tabela, {
+            method: "POST",
+            headers: supabaseHeaders({ "Prefer": "return=representation" }),
+            body: JSON.stringify(proximaTentativa.registro)
+        }).then(function(r) { if (!r.ok) throw new Error("status " + r.status); return r.json(); })
+          .then(function() { aposEnvio(null); })
+          .catch(function(err) { aposEnvio(err); });
+    } else if (proximaTentativa.metodo === 'PATCH') {
+        fetch(SUPABASE_URL + "/rest/v1/" + proximaTentativa.tabela + "?" + proximaTentativa.filtroQuery, {
+            method: "PATCH",
+            headers: supabaseHeaders({ "Prefer": "return=representation" }),
+            body: JSON.stringify(proximaTentativa.registro)
+        }).then(function(r) { if (!r.ok) throw new Error("status " + r.status); return r.json(); })
+          .then(function() { aposEnvio(null); })
+          .catch(function(err) { aposEnvio(err); });
+    } else if (proximaTentativa.metodo === 'DELETE') {
+        fetch(SUPABASE_URL + "/rest/v1/" + proximaTentativa.tabela + "?" + proximaTentativa.filtroQuery, {
+            method: "DELETE",
+            headers: supabaseHeaders()
+        }).then(function(r) { if (!r.ok) throw new Error("status " + r.status); })
+          .then(function() { aposEnvio(null); })
+          .catch(function(err) { aposEnvio(err); });
+    }
+}
+
+function atualizarAvisoOffline() {
+    var aviso = document.getElementById('avisoOffline');
+    if (!aviso) { return; }
+    var fila = lerFilaReenvioSegura();
+    var semRede = !supabaseOnline;
+
+    if (semRede) {
+        aviso.style.display = 'flex';
+        aviso.innerText = fila.length > 0
+            ? '📡 Sem conexão — ' + fila.length + (fila.length === 1 ? ' ação salva' : ' ações salvas') + ' aguardando internet'
+            : '📡 Sem conexão — trabalhando localmente';
+    } else if (fila.length > 0) {
+        aviso.style.display = 'flex';
+        aviso.innerText = '🔄 Sincronizando ' + fila.length + (fila.length === 1 ? ' ação pendente...' : ' ações pendentes...');
+    } else {
+        aviso.style.display = 'none';
+    }
+}
+
 function supabaseHeaders(extra) {
     var h = {
         "apikey": SUPABASE_KEY,
@@ -588,16 +673,29 @@ function supabasePost(tabela, registro, callback) {
         headers: supabaseHeaders({ "Prefer": "return=representation" }),
         body: JSON.stringify(registro)
     }).then(function(r) { if (!r.ok) throw new Error("status " + r.status); return r.json(); })
-      .then(function(data) { supabaseOnline = true; if (callback) callback(null, data); })
-      .catch(function(err) { supabaseOnline = false; if (callback) callback(err, null); });
+      .then(function(data) { supabaseOnline = true; atualizarAvisoOffline(); if (callback) callback(null, data); })
+      .catch(function(err) {
+          supabaseOnline = false;
+          // só reenfileira erros de rede de verdade (ex: "Failed to fetch"), não erros que o servidor respondeu de propósito (400, 403 etc)
+          if (err && err.message && err.message.indexOf('status') !== 0) {
+              adicionarNaFilaReenvio({ metodo: 'POST', tabela: tabela, registro: registro });
+          }
+          if (callback) callback(err, null);
+      });
 }
 
 function supabaseDelete(tabela, filtroQuery, callback) {
     fetch(SUPABASE_URL + "/rest/v1/" + tabela + "?" + filtroQuery, {
         method: "DELETE",
         headers: supabaseHeaders()
-    }).then(function(r) { if (!r.ok) throw new Error("status " + r.status); supabaseOnline = true; if (callback) callback(null); })
-      .catch(function(err) { supabaseOnline = false; if (callback) callback(err); });
+    }).then(function(r) { if (!r.ok) throw new Error("status " + r.status); supabaseOnline = true; atualizarAvisoOffline(); if (callback) callback(null); })
+      .catch(function(err) {
+          supabaseOnline = false;
+          if (err && err.message && err.message.indexOf('status') !== 0) {
+              adicionarNaFilaReenvio({ metodo: 'DELETE', tabela: tabela, filtroQuery: filtroQuery });
+          }
+          if (callback) callback(err);
+      });
 }
 
 function supabasePatch(tabela, filtroQuery, registro, callback) {
@@ -606,8 +704,14 @@ function supabasePatch(tabela, filtroQuery, registro, callback) {
         headers: supabaseHeaders({ "Prefer": "return=representation" }),
         body: JSON.stringify(registro)
     }).then(function(r) { if (!r.ok) throw new Error("status " + r.status); return r.json(); })
-      .then(function(data) { supabaseOnline = true; if (callback) callback(null, data); })
-      .catch(function(err) { supabaseOnline = false; if (callback) callback(err, null); });
+      .then(function(data) { supabaseOnline = true; atualizarAvisoOffline(); if (callback) callback(null, data); })
+      .catch(function(err) {
+          supabaseOnline = false;
+          if (err && err.message && err.message.indexOf('status') !== 0) {
+              adicionarNaFilaReenvio({ metodo: 'PATCH', tabela: tabela, filtroQuery: filtroQuery, registro: registro });
+          }
+          if (callback) callback(err, null);
+      });
 }
 
 function gerarIdUnico() {
@@ -2235,6 +2339,7 @@ function iniciar() {
     sincronizarProblemasSupabase();
     sincronizarAgendaSupabase();
     sincronizarPendentesFornecedorSupabase();
+    verificarNovasUrgencias();
     
     document.getElementById('editQty').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -3911,7 +4016,88 @@ function tocarSomClique() {
     } catch (erro) { /* dispositivos sem suporte a áudio simplesmente ficam em silêncio */ }
 }
 
+function tocarSomAlerta() {
+    try {
+        if (!audioCtxClique) {
+            audioCtxClique = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtxClique.state === 'suspended') { audioCtxClique.resume(); }
+
+        var tocarBip = function(atraso) {
+            var osc = audioCtxClique.createOscillator();
+            var ganho = audioCtxClique.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, audioCtxClique.currentTime + atraso);
+            ganho.gain.setValueAtTime(0.001, audioCtxClique.currentTime + atraso);
+            ganho.gain.linearRampToValueAtTime(0.18, audioCtxClique.currentTime + atraso + 0.02);
+            ganho.gain.exponentialRampToValueAtTime(0.001, audioCtxClique.currentTime + atraso + 0.22);
+            osc.connect(ganho);
+            ganho.connect(audioCtxClique.destination);
+            osc.start(audioCtxClique.currentTime + atraso);
+            osc.stop(audioCtxClique.currentTime + atraso + 0.22);
+        };
+        tocarBip(0);
+        tocarBip(0.28);
+    } catch (erro) { /* dispositivos sem suporte a áudio simplesmente ficam em silêncio */ }
+}
+
+function pedirPermissaoNotificacao() {
+    if (!('Notification' in window)) { return; }
+    if (Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+}
+
+function notificarUrgencia(titulo, corpo) {
+    tocarSomAlerta();
+    if (navigator.vibrate) { navigator.vibrate([80, 60, 80]); }
+    if ('Notification' in window && Notification.permission === 'granted') {
+        try { new Notification(titulo, { body: corpo, icon: undefined }); } catch (erro) { /* alguns navegadores restringem notificação fora de contexto seguro */ }
+    }
+}
+
+function lerAlertadosSeguro() {
+    try {
+        var dados = localStorage.getItem('urgenciasAlertadasABS');
+        return dados ? JSON.parse(dados) : {};
+    } catch (erro) { return {}; }
+}
+
+function salvarAlertadosSeguro(mapa) {
+    try { localStorage.setItem('urgenciasAlertadasABS', JSON.stringify(mapa)); } catch (erro) { }
+}
+
+function verificarNovasUrgencias() {
+    var alertados = lerAlertadosSeguro();
+    var houveNovoAlerta = false;
+
+    for (var i = 0; i < problemasAtuais.length; i++) {
+        var p = problemasAtuais[i];
+        var status = statusDoPrazo(p.prazo);
+        if ((status === 'vencido' || status === 'proximo') && alertados[p.id] !== status) {
+            alertados[p.id] = status;
+            houveNovoAlerta = true;
+            var msgP = status === 'vencido' ? 'Chamado de manutenção vencido' : 'Chamado de manutenção quase vencendo';
+            notificarUrgencia(msgP, p.areaNome + ': ' + p.descricao);
+        }
+    }
+
+    for (var j = 0; j < pendentesFornecedor.length; j++) {
+        var f = pendentesFornecedor[j];
+        var statusF = statusDoPrazo(f.prazo);
+        if ((statusF === 'vencido' || statusF === 'proximo') && alertados[f.id] !== statusF) {
+            alertados[f.id] = statusF;
+            houveNovoAlerta = true;
+            var msgF = statusF === 'vencido' ? 'Entrega de fornecedor atrasada' : 'Fornecedor chegando';
+            notificarUrgencia(msgF, f.nome + (f.obs ? ' — ' + f.obs : ''));
+        }
+    }
+
+    if (houveNovoAlerta) { salvarAlertadosSeguro(alertados); }
+}
+
 document.addEventListener('click', function(evento) {
+    pedirPermissaoNotificacao();
     var alvo = evento.target.closest('button, .tab-btn, .product-item, .unit-btn, .btn-whatsapp-link, .btn-email-link, .back-btn, .back-btn-inline, .history-share-btn, .folder-item');
     if (alvo) {
         tocarSomClique();
@@ -3932,8 +4118,22 @@ setInterval(function() {
     if (setorAtivoId === 'fornecedores' && document.getElementById('main-screen').classList.contains('active')) {
         montarListaInicial();
     }
+    verificarNovasUrgencias();
 }, 60000);
 if (document.readyState === "interactive" || document.readyState === "complete") { iniciar(); }
+
+// ---- Detecção de conexão: reprocessa a fila de ações pendentes assim que a internet voltar ----
+window.addEventListener('online', function() {
+    processarFilaReenvio();
+});
+window.addEventListener('offline', function() {
+    supabaseOnline = false;
+    atualizarAvisoOffline();
+});
+setInterval(function() {
+    if (navigator.onLine) { processarFilaReenvio(); }
+}, 30000);
+atualizarAvisoOffline();
 </script>
 </body>
 </html>
