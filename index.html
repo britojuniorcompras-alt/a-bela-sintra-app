@@ -75,7 +75,7 @@
     .ficha-view-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--line); font-family: 'Inter', sans-serif; font-size: 13.5px; color: var(--text); }
     .ficha-view-item span:last-child { color: var(--text-dim); }
     .ficha-btn-excluir { color: #E85D5D; border-color: rgba(232,93,93,0.35); }
-    .avatar-usuario { width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 9.5px; font-weight: 700; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.35); }
+    .avatar-usuario { width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 9.5px; font-weight: 700; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.35); cursor: pointer; }
     .lista-secao-titulo { color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; padding: 10px 4px 10px 4px; }
 
     /* Abas de Setores */
@@ -277,7 +277,7 @@
         </div>
         <div class="header-actions">
             <button class="hist-btn hist-btn-historico" onclick="abrirHistorico()">📋 Histórico</button>
-            <div class="avatar-usuario">AS</div>
+            <div class="avatar-usuario" id="avatarUsuario" onclick="abrirSeletorUsuario()">AS</div>
         </div>
     </header>
 
@@ -366,6 +366,16 @@
         <a id="btnWhatsAppLink" class="btn-whatsapp-link" href="#" target="_blank">Enviar via WhatsApp</a>
         <a id="btnEmailLink" class="btn-email-link" href="#">Enviar por E-mail</a>
         <button class="btn-copiar" onclick="copiarPedido()">Copiar Texto</button>
+    </div>
+</div>
+
+<div id="usuario-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
+        <h2>Quem está usando?</h2>
+    </div>
+    <div class="edit-container">
+        <div class="units" id="usuarioContainer" style="flex-direction: column;"></div>
     </div>
 </div>
 
@@ -734,6 +744,11 @@ function salvarHistoricoSeguro(historicoArray) {
 }
 
 function registrarNoHistoricoCompartilhado(entry) {
+    // Inclui quem fez a ação (se definido), sem precisar mexer na estrutura da tabela do Supabase
+    if (usuarioAtual) {
+        entry = Object.assign({}, entry, { setor: usuarioAtual + ' · ' + entry.setor });
+    }
+
     // Salva local (funciona offline) e envia pro Supabase (aparece nos outros celulares)
     var historicoLocal = lerHistoricoSeguro();
     historicoLocal.unshift(entry);
@@ -1313,6 +1328,54 @@ var produtoSendoEditado = "";
 var unidadeSelecionada = "";
 var maturacaoSelecionada = "";
 var appIniciado = false;
+
+// ---- Usuário atual: quem está usando o app neste aparelho (sem senha, só identificação) ----
+var nomesEquipe = ["Caique", "Vinicius", "Joelio", "Gerente"];
+
+function lerUsuarioAtualSeguro() {
+    try { return localStorage.getItem('usuarioAtualABS') || null; } catch (erro) { return null; }
+}
+
+function salvarUsuarioAtualSeguro(nome) {
+    try { localStorage.setItem('usuarioAtualABS', nome); } catch (erro) { }
+}
+
+var usuarioAtual = lerUsuarioAtualSeguro();
+
+function iniciaisDoNome(nome) {
+    if (!nome) { return 'AS'; }
+    var partes = nome.trim().split(' ');
+    if (partes.length === 1) { return partes[0].substring(0, 2).toUpperCase(); }
+    return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
+
+function atualizarAvatarUsuario() {
+    var avatar = document.getElementById('avatarUsuario');
+    if (avatar) { avatar.innerText = iniciaisDoNome(usuarioAtual); }
+}
+
+function abrirSeletorUsuario() {
+    var cont = document.getElementById('usuarioContainer');
+    cont.innerHTML = "";
+    for (var i = 0; i < nomesEquipe.length; i++) {
+        var nome = nomesEquipe[i];
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'unit-btn' + (usuarioAtual === nome ? ' active' : '');
+        btn.innerText = nome;
+        btn.style.width = '100%';
+        btn.onclick = (function(n) { return function() { selecionarUsuario(n); }; })(nome);
+        cont.appendChild(btn);
+    }
+    trocarTela('usuario-screen');
+}
+
+function selecionarUsuario(nome) {
+    usuarioAtual = nome;
+    salvarUsuarioAtualSeguro(nome);
+    atualizarAvatarUsuario();
+    trocarTela('main-screen');
+}
 
 // ---- Favoritos: itens marcados com estrela pra aparecer no topo de cada setor ----
 function lerFavoritosSeguro() {
@@ -2381,6 +2444,7 @@ function iniciar() {
     montarListaInicial();
     atualizarVisuaisDaLista();
     montarDashboardResumo();
+    atualizarAvatarUsuario();
     sincronizarProblemasSupabase();
     sincronizarAgendaSupabase();
     sincronizarPendentesFornecedorSupabase();
