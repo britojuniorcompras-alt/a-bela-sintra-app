@@ -2233,6 +2233,8 @@ function criarCaixaFornecedor(obsValor, prazoIso) {
     var textarea = document.createElement('textarea');
     textarea.className = 'edit-obs fornecedor-caixa-obs';
     textarea.style.marginTop = '0';
+    textarea.style.marginBottom = '0';
+    textarea.style.display = 'block';
     textarea.placeholder = 'Nome do fornecedor / o que foi pedido...';
     textarea.value = obsValor;
 
@@ -2883,6 +2885,7 @@ function removerProblema(id) {
         if (err) { console.warn('Não foi possível remover no Supabase (removido localmente):', err); }
     });
     montarListaProblemasArea();
+    montarListaManutencao();
     atualizarVisuaisDaLista();
 }
 
@@ -2939,6 +2942,7 @@ function marcarProblemaSanado(id) {
     });
 
     montarListaProblemasArea();
+    montarListaManutencao();
     atualizarVisuaisDaLista();
 }
 
@@ -3240,6 +3244,7 @@ function confirmarProblema() {
     });
 
     montarListaProblemasArea();
+    montarListaManutencao();
     atualizarVisuaisDaLista();
     trocarTela('manutencao-area-screen');
 }
