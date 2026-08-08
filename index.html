@@ -1680,6 +1680,19 @@ function sincronizarProblemasSupabase() {
                 prazo: dados[i].prazo || null
             });
         }
+
+        // Mescla com o que já existe localmente: nunca descarta um problema que
+        // ainda não voltou do servidor (ex: POST em andamento ou rede lenta) —
+        // só substitui/atualiza os que já vieram confirmados do Supabase.
+        var idsDoServidor = {};
+        for (var s = 0; s < listaConvertida.length; s++) { idsDoServidor[listaConvertida[s].id] = true; }
+        for (var l = 0; l < problemasAtuais.length; l++) {
+            var pendenteLocal = problemasAtuais[l];
+            if (!idsDoServidor[pendenteLocal.id] && pendenteLocal.aindaSincronizando) {
+                listaConvertida.push(pendenteLocal);
+            }
+        }
+
         problemasAtuais = listaConvertida;
         salvarProblemasManutencaoSeguro(problemasAtuais);
 
@@ -3289,7 +3302,8 @@ function confirmarProblema() {
         areaIcone: area.icone,
         descricao: desc,
         prioridade: prioridadeSelecionada,
-        prazo: prazoIso
+        prazo: prazoIso,
+        aindaSincronizando: true
     };
     problemasAtuais.push(novoProblema);
     salvarProblemasManutencaoSeguro(problemasAtuais);
@@ -3303,7 +3317,15 @@ function confirmarProblema() {
         prioridade: novoProblema.prioridade,
         prazo: novoProblema.prazo
     }, function(err) {
-        if (err) { console.warn('Não foi possível sincronizar novo problema com o Supabase (salvo localmente):', err); }
+        if (err) {
+            console.warn('Não foi possível sincronizar novo problema com o Supabase (salvo localmente):', err);
+            alert('Atenção: não consegui salvar este chamado no servidor compartilhado (sem internet ou Supabase fora do ar). Ele ficou salvo só neste aparelho por enquanto — tente novamente com internet antes de sair do app, senão ele pode não aparecer nos outros celulares.');
+        } else {
+            for (var pi = 0; pi < problemasAtuais.length; pi++) {
+                if (problemasAtuais[pi].id === novoProblema.id) { delete problemasAtuais[pi].aindaSincronizando; break; }
+            }
+            salvarProblemasManutencaoSeguro(problemasAtuais);
+        }
     });
 
     montarListaProblemasArea();
