@@ -456,7 +456,28 @@
         <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
         <h2>Histórico</h2>
     </div>
+    <div style="padding: 4px 20px 0 20px;">
+        <button type="button" class="ficha-add-ingrediente-btn" onclick="abrirRelatorioMensal()" style="width:100%; box-sizing:border-box;">📊 Gerar relatório mensal (PDF)</button>
+    </div>
     <div class="history-list" id="historyList"></div>
+</div>
+
+<div id="relatorio-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('history-screen')">←</button>
+        <h2>Relatório mensal</h2>
+    </div>
+    <div class="edit-container">
+        <div style="margin-top: 6px;">
+            <label style="display:block; font-family:'Inter',sans-serif; font-size:12.5px; color:var(--text-dim); margin-bottom:6px;">Mês e ano</label>
+            <input type="month" id="relatorioMesInput" style="width:100%; box-sizing:border-box; padding:12px 14px; border:none; border-radius:14px; background:var(--surface); color:var(--text); font-family:'Inter',sans-serif; font-size:14px; outline:none;">
+        </div>
+        <div id="relatorioResumoPreview" style="margin-top:16px; font-family:'Inter',sans-serif; font-size:13px; color:var(--text-dim);"></div>
+        <div class="edit-actions">
+            <button class="btn-cancel" onclick="trocarTela('history-screen')">Cancelar</button>
+            <button class="btn-confirm" onclick="gerarRelatorioPdf()">Gerar PDF</button>
+        </div>
+    </div>
 </div>
 
 <div id="fichas-screen" class="screen">
@@ -534,6 +555,7 @@
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 // ============================================================
 // SUPABASE — banco compartilhado entre todos os aparelhos
@@ -3670,6 +3692,178 @@ function renderizarListaHistorico(historico) {
             lista.appendChild(card);
         }
     }
+}
+
+function abrirRelatorioMensal() {
+    var hoje = new Date();
+    var mesInput = document.getElementById('relatorioMesInput');
+    mesInput.value = hoje.getFullYear() + '-' + (hoje.getMonth() + 1 < 10 ? '0' : '') + (hoje.getMonth() + 1);
+    mesInput.onchange = atualizarPreviewRelatorio;
+    atualizarPreviewRelatorio();
+    trocarTela('relatorio-screen');
+}
+
+function dataHistoricoParaDate(dataStr) {
+    // formato salvo: "08/08/2026 às 14:30"
+    var partes = dataStr.split(' às ')[0].split('/');
+    if (partes.length !== 3) { return null; }
+    return new Date(parseInt(partes[2], 10), parseInt(partes[1], 10) - 1, parseInt(partes[0], 10));
+}
+
+function itensDoHistoricoNoMes(anoMes) {
+    var historico = historicoCache && historicoCache.length > 0 ? historicoCache : lerHistoricoSeguro();
+    var partesAnoMes = anoMes.split('-');
+    var anoAlvo = parseInt(partesAnoMes[0], 10);
+    var mesAlvo = parseInt(partesAnoMes[1], 10) - 1;
+
+    return historico.filter(function(item) {
+        var d = dataHistoricoParaDate(item.data);
+        if (!d) { return false; }
+        return d.getFullYear() === anoAlvo && d.getMonth() === mesAlvo;
+    });
+}
+
+function resumoRelatorio(anoMes) {
+    var itens = itensDoHistoricoNoMes(anoMes);
+    var porSetor = {};
+    var sanados = 0;
+    var chegadas = 0;
+
+    for (var i = 0; i < itens.length; i++) {
+        var item = itens[i];
+        if (!porSetor[item.setor]) { porSetor[item.setor] = { registros: 0, itens: 0 }; }
+        porSetor[item.setor].registros++;
+        porSetor[item.setor].itens += (item.itens ? item.itens.length : 0);
+
+        if (item.itens) {
+            for (var j = 0; j < item.itens.length; j++) {
+                if (item.itens[j].indexOf('SANADO') !== -1) { sanados++; }
+                if (item.itens[j].indexOf('CHEGOU') !== -1) { chegadas++; }
+            }
+        }
+    }
+
+    return { itens: itens, porSetor: porSetor, sanados: sanados, chegadas: chegadas };
+}
+
+function atualizarPreviewRelatorio() {
+    var anoMes = document.getElementById('relatorioMesInput').value;
+    var preview = document.getElementById('relatorioResumoPreview');
+    if (!anoMes) { preview.innerHTML = ''; return; }
+
+    var resumo = resumoRelatorio(anoMes);
+    var setores = Object.keys(resumo.porSetor);
+
+    if (setores.length === 0) {
+        preview.innerHTML = 'Nenhum registro encontrado nesse mês.';
+        return;
+    }
+
+    var html = '<div style="font-weight:600; color:var(--text); margin-bottom:8px;">Prévia — ' + resumo.itens.length + ' registros no mês</div>';
+    for (var i = 0; i < setores.length; i++) {
+        var s = resumo.porSetor[setores[i]];
+        html += '<div style="margin-bottom:4px;">' + setores[i] + ': ' + s.registros + ' registros, ' + s.itens + ' itens</div>';
+    }
+    if (resumo.sanados > 0) { html += '<div style="margin-top:8px;">✅ ' + resumo.sanados + ' chamados de manutenção sanados</div>'; }
+    if (resumo.chegadas > 0) { html += '<div>✅ ' + resumo.chegadas + ' entregas de fornecedores confirmadas</div>'; }
+    preview.innerHTML = html;
+}
+
+function gerarRelatorioPdf() {
+    var anoMes = document.getElementById('relatorioMesInput').value;
+    if (!anoMes) { alert('Escolha o mês do relatório.'); return; }
+
+    var resumo = resumoRelatorio(anoMes);
+    if (resumo.itens.length === 0) {
+        alert('Não há registros no histórico para esse mês.');
+        return;
+    }
+
+    var partesAnoMes = anoMes.split('-');
+    var nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var tituloMes = nomesMeses[parseInt(partesAnoMes[1], 10) - 1] + ' de ' + partesAnoMes[0];
+
+    var jsPDFLib = window.jspdf ? window.jspdf.jsPDF : null;
+    if (!jsPDFLib) { alert('Não foi possível carregar o gerador de PDF. Verifique sua internet e tente novamente.'); return; }
+
+    var doc = new jsPDFLib();
+    var y = 20;
+    var larguraPagina = 210;
+    var margem = 15;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('A Bela Sintra', margem, y);
+    y += 8;
+    doc.setFontSize(13);
+    doc.setTextColor(120);
+    doc.text('Relatório de Gestão de Compras e Manutenção', margem, y);
+    y += 6;
+    doc.text(tituloMes, margem, y);
+    y += 12;
+
+    doc.setDrawColor(220);
+    doc.line(margem, y, larguraPagina - margem, y);
+    y += 10;
+
+    doc.setTextColor(30);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumo geral', margem, y);
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text('Total de registros no mês: ' + resumo.itens.length, margem, y);
+    y += 6;
+    if (resumo.sanados > 0) { doc.text('Chamados de manutenção sanados: ' + resumo.sanados, margem, y); y += 6; }
+    if (resumo.chegadas > 0) { doc.text('Entregas de fornecedores confirmadas: ' + resumo.chegadas, margem, y); y += 6; }
+    y += 6;
+
+    var setores = Object.keys(resumo.porSetor);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('Atividade por setor', margem, y);
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    for (var i = 0; i < setores.length; i++) {
+        if (y > 270) { doc.addPage(); y = 20; }
+        var s = resumo.porSetor[setores[i]];
+        doc.text('• ' + setores[i] + ': ' + s.registros + ' registros, ' + s.itens + ' itens', margem, y);
+        y += 6;
+    }
+    y += 8;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    if (y > 260) { doc.addPage(); y = 20; }
+    doc.text('Registros detalhados', margem, y);
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    for (var k = 0; k < resumo.itens.length; k++) {
+        var item = resumo.itens[k];
+        if (y > 275) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'bold');
+        doc.text(item.data + ' — ' + item.setor, margem, y);
+        y += 5;
+        doc.setFont('helvetica', 'normal');
+        if (item.itens) {
+            for (var m = 0; m < item.itens.length; m++) {
+                if (y > 280) { doc.addPage(); y = 20; }
+                var linhaTexto = item.itens[m].length > 100 ? item.itens[m].substring(0, 100) + '...' : item.itens[m];
+                doc.text(linhaTexto, margem + 4, y);
+                y += 4.5;
+            }
+        }
+        y += 3;
+    }
+
+    var nomeArquivo = 'relatorio-a-bela-sintra-' + anoMes + '.pdf';
+    doc.save(nomeArquivo);
 }
 
 function excluirItemHistorico(indice) {
