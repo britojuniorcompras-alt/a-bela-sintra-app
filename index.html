@@ -2517,6 +2517,31 @@ function sincronizarPendentesFornecedorSupabase() {
                 prazo: dados[i].prazo || null
             });
         }
+        // Itens que existem só neste aparelho (nunca chegaram ao banco) são enviados
+        // agora, em vez de apagados — senão o que foi lançado offline se perde.
+        var idsDoServidor = {};
+        for (var s = 0; s < listaConvertida.length; s++) { idsDoServidor[listaConvertida[s].id] = true; }
+        var servidorVazio = listaConvertida.length === 0;
+
+        for (var l = 0; l < pendentesFornecedor.length; l++) {
+            var soLocal = pendentesFornecedor[l];
+            if (idsDoServidor[soLocal.id]) { continue; }
+            if (!soLocal.aindaSincronizando && !servidorVazio) { continue; }
+
+            listaConvertida.push(soLocal);
+            (function(item) {
+                supabasePost('fornecedores_pendentes', {
+                    id: item.id, nome: item.nome, icone: item.icone, obs: item.obs, prazo: item.prazo
+                }, function(err) {
+                    if (err) { return; }
+                    for (var p = 0; p < pendentesFornecedor.length; p++) {
+                        if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; break; }
+                    }
+                    salvarPendentesFornecedorSeguro(pendentesFornecedor);
+                });
+            })(soLocal);
+        }
+
         pendentesFornecedor = listaConvertida;
         salvarPendentesFornecedorSeguro(pendentesFornecedor);
 
@@ -3470,7 +3495,8 @@ function criarPendentesFornecedorDoResumo(dados) {
                 nome: k,
                 icone: iconeTxt,
                 obs: entrada.obs || '',
-                prazo: entrada.prazo || prazoGeralIso
+                prazo: entrada.prazo || prazoGeralIso,
+                aindaSincronizando: true
             };
             pendentesFornecedor.push(novoPendente);
 
@@ -3480,9 +3506,13 @@ function criarPendentesFornecedorDoResumo(dados) {
                 icone: novoPendente.icone,
                 obs: novoPendente.obs,
                 prazo: novoPendente.prazo
-            }, function(err) {
-                if (err) { console.warn('Não foi possível sincronizar pendente de fornecedor com o Supabase (salvo localmente):', err); }
-            });
+            }, (function(item) { return function(err) {
+                if (err) { console.warn('Não foi possível sincronizar pendente de fornecedor com o Supabase (salvo localmente):', err); return; }
+                for (var p = 0; p < pendentesFornecedor.length; p++) {
+                    if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; break; }
+                }
+                salvarPendentesFornecedorSeguro(pendentesFornecedor);
+            }; })(novoPendente));
         }
     }
     salvarPendentesFornecedorSeguro(pendentesFornecedor);
