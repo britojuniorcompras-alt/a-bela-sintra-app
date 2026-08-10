@@ -655,7 +655,23 @@ function processarFilaReenvio() {
 
     function aposEnvio(err) {
         if (err) {
-            // ainda sem rede ou falhou de novo: mantém a fila como estava e tenta de novo mais tarde
+            var ehErroDoServidor = err.message && err.message.indexOf('status') === 0;
+            proximaTentativa.tentativas = (proximaTentativa.tentativas || 0) + 1;
+
+            // Erro do servidor (400/403/etc) nunca vai passar por repetição, e depois de muitas
+            // tentativas de rede o item também é descartado — senão ele trava a fila inteira
+            // e nada mais depois dele sincroniza.
+            if (ehErroDoServidor || proximaTentativa.tentativas >= 10) {
+                console.warn('Ação descartada da fila após falha definitiva:', proximaTentativa, err);
+                salvarFilaReenvioSegura(restante);
+                atualizarAvisoOffline();
+                if (restante.length > 0) { processarFilaReenvio(); }
+                return;
+            }
+
+            // Falha de rede: mantém na fila (com o contador atualizado) pra tentar de novo depois
+            var filaAtual = [proximaTentativa].concat(restante);
+            salvarFilaReenvioSegura(filaAtual);
             return;
         }
         salvarFilaReenvioSegura(restante);
@@ -1835,11 +1851,11 @@ function montarCaixasItensChecklist(itens) {
     var lista = document.getElementById('checklistDiariaItensLista');
     lista.innerHTML = "";
     for (var i = 0; i < itens.length; i++) {
-        criarCaixaItemChecklist(itens[i].texto || "");
+        criarCaixaItemChecklist(itens[i].texto || "", itens[i].id || "");
     }
 }
 
-function criarCaixaItemChecklist(textoValor) {
+function criarCaixaItemChecklist(textoValor, idExistente) {
     var lista = document.getElementById('checklistDiariaItensLista');
     var bloco = document.createElement('div');
     bloco.style.display = 'flex';
@@ -1850,6 +1866,7 @@ function criarCaixaItemChecklist(textoValor) {
     var input = document.createElement('input');
     input.type = 'text';
     input.className = 'checklist-item-texto';
+    input.setAttribute('data-item-id', idExistente || '');
     input.value = textoValor;
     input.placeholder = 'Ex: Gás verificado';
     input.style.flex = '1';
@@ -1879,7 +1896,7 @@ function criarCaixaItemChecklist(textoValor) {
 }
 
 function adicionarCaixaItemChecklist() {
-    criarCaixaItemChecklist("");
+    criarCaixaItemChecklist("", "");
 }
 
 function salvarItensChecklistDiaria() {
@@ -1895,25 +1912,48 @@ function salvarItensChecklistDiaria() {
         return;
     }
 
-    // Remove do Supabase os itens que existiam antes e não estão mais na lista nova, e recria a lista inteira
-    // (mais simples e seguro do que tentar casar edições item a item)
-    var idsAntigos = itensChecklistDiaria.map(function(it) { return it.id; }).filter(Boolean);
-    for (var a = 0; a < idsAntigos.length; a++) {
-        supabaseDelete('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(idsAntigos[a]), function() {});
+    // Mantém o id dos itens que já existiam (mesmo se o texto mudou), pra não perder
+    // as marcações do dia nem quebrar a lista nos outros celulares.
+    var novaLista = [];
+    for (var k = 0; k < inputs.length; k++) {
+        var texto = inputs[k].value.trim();
+        if (!texto) { continue; }
+        var idExistente = inputs[k].getAttribute('data-item-id');
+
+        if (idExistente) {
+            var textoAnterior = null;
+            for (var q = 0; q < itensChecklistDiaria.length; q++) {
+                if (itensChecklistDiaria[q].id === idExistente) { textoAnterior = itensChecklistDiaria[q].texto; break; }
+            }
+            if (textoAnterior !== null && textoAnterior !== texto) {
+                supabasePatch('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(idExistente), { texto: texto }, function(err) {
+                    if (err) { console.warn('Não foi possível sincronizar edição do item (salvo localmente):', err); }
+                });
+            }
+            novaLista.push({ id: idExistente, texto: texto });
+        } else {
+            var novoItem = { id: gerarIdUnico(), texto: texto };
+            novaLista.push(novoItem);
+            supabasePost('checklist_diaria_itens', { id: novoItem.id, texto: novoItem.texto }, function(err) {
+                if (err) { console.warn('Não foi possível sincronizar item da checklist (salvo localmente):', err); }
+            });
+        }
     }
 
-    itensChecklistDiaria = textos.map(function(t) { return { id: gerarIdUnico(), texto: t }; });
+    // Apaga só os que realmente saíram da lista
+    var idsNovos = {};
+    for (var n2 = 0; n2 < novaLista.length; n2++) { idsNovos[novaLista[n2].id] = true; }
+    for (var a = 0; a < itensChecklistDiaria.length; a++) {
+        var idAntigo = itensChecklistDiaria[a].id;
+        if (idAntigo && !idsNovos[idAntigo]) {
+            supabaseDelete('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(idAntigo), function() {});
+            supabaseDelete('checklist_diaria_marcacoes', 'dia=eq.' + marcacoesChecklistDiaria.dia + '&item_id=eq.' + encodeURIComponent(idAntigo), function() {});
+            delete marcacoesChecklistDiaria.marcados[idAntigo];
+        }
+    }
+
+    itensChecklistDiaria = novaLista;
     salvarItensChecklistDiariaSeguro(itensChecklistDiaria);
-
-    for (var n = 0; n < itensChecklistDiaria.length; n++) {
-        var it = itensChecklistDiaria[n];
-        supabasePost('checklist_diaria_itens', { id: it.id, texto: it.texto }, function(err) {
-            if (err) { console.warn('Não foi possível sincronizar item da checklist (salvo localmente):', err); }
-        });
-    }
-
-    // Marcações antigas ficam órfãs de propósito (referem itens que não existem mais); começa zerado
-    marcacoesChecklistDiaria = { dia: chaveDiaChecklist(), marcados: {} };
     salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
 
     renderizarListaChecklistDiaria();
@@ -4410,14 +4450,31 @@ function itensDoHistoricoNoMes(anoMes) {
 function resumoRelatorio(anoMes) {
     var itens = itensDoHistoricoNoMes(anoMes);
     var porSetor = {};
+    var porPessoa = {};
     var sanados = 0;
     var chegadas = 0;
 
     for (var i = 0; i < itens.length; i++) {
         var item = itens[i];
-        if (!porSetor[item.setor]) { porSetor[item.setor] = { registros: 0, itens: 0 }; }
-        porSetor[item.setor].registros++;
-        porSetor[item.setor].itens += (item.itens ? item.itens.length : 0);
+        // O nome de quem fez fica gravado como prefixo ("Caique · Hortifrúti").
+        // Aqui separa os dois pra não fragmentar o agrupamento por setor no relatório.
+        var setorNome = item.setor;
+        var pessoaNome = null;
+        var posSeparador = setorNome.indexOf(' · ');
+        if (posSeparador !== -1) {
+            pessoaNome = setorNome.substring(0, posSeparador);
+            setorNome = setorNome.substring(posSeparador + 3);
+        }
+
+        if (!porSetor[setorNome]) { porSetor[setorNome] = { registros: 0, itens: 0 }; }
+        porSetor[setorNome].registros++;
+        porSetor[setorNome].itens += (item.itens ? item.itens.length : 0);
+
+        if (pessoaNome) {
+            if (!porPessoa[pessoaNome]) { porPessoa[pessoaNome] = { registros: 0, itens: 0 }; }
+            porPessoa[pessoaNome].registros++;
+            porPessoa[pessoaNome].itens += (item.itens ? item.itens.length : 0);
+        }
 
         if (item.itens) {
             for (var j = 0; j < item.itens.length; j++) {
@@ -4444,7 +4501,7 @@ function resumoRelatorio(anoMes) {
     }
 
     return {
-        itens: itens, porSetor: porSetor, sanados: sanados, chegadas: chegadas,
+        itens: itens, porSetor: porSetor, porPessoa: porPessoa, sanados: sanados, chegadas: chegadas,
         indicadores: {
             manutencaoEmDia: manutencaoEmDia,
             manutencaoAtrasada: manutencaoAtrasada,
@@ -4571,6 +4628,25 @@ function gerarRelatorioPdf() {
         y += 6;
     }
     y += 8;
+
+    var pessoas = Object.keys(resumo.porPessoa);
+    if (pessoas.length > 0) {
+        if (y > 250) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('Atividade por pessoa', margem, y);
+        y += 8;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        for (var pp = 0; pp < pessoas.length; pp++) {
+            if (y > 270) { doc.addPage(); y = 20; }
+            var dadosPessoa = resumo.porPessoa[pessoas[pp]];
+            doc.text('• ' + pessoas[pp] + ': ' + dadosPessoa.registros + ' registros, ' + dadosPessoa.itens + ' itens', margem, y);
+            y += 6;
+        }
+        y += 8;
+    }
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
@@ -4722,6 +4798,15 @@ function verificarNovasUrgencias() {
             var msgF = statusF === 'vencido' ? 'Entrega de fornecedor atrasada' : 'Fornecedor chegando';
             notificarUrgencia(msgF, f.nome + (f.obs ? ' — ' + f.obs : ''));
         }
+    }
+
+    // Descarta o registro de alerta de itens que já foram resolvidos/removidos,
+    // senão essa lista cresce pra sempre na memória do celular
+    var idsVivos = {};
+    for (var a = 0; a < problemasAtuais.length; a++) { idsVivos[problemasAtuais[a].id] = true; }
+    for (var b = 0; b < pendentesFornecedor.length; b++) { idsVivos[pendentesFornecedor[b].id] = true; }
+    for (var chave in alertados) {
+        if (!idsVivos[chave]) { delete alertados[chave]; houveNovoAlerta = true; }
     }
 
     if (houveNovoAlerta) { salvarAlertadosSeguro(alertados); }
