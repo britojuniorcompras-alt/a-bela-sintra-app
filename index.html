@@ -4304,7 +4304,32 @@ function resumoRelatorio(anoMes) {
         }
     }
 
-    return { itens: itens, porSetor: porSetor, sanados: sanados, chegadas: chegadas };
+    // Indicadores de gestão — situação ATUAL dos itens em aberto (não é retroativo ao mês,
+    // é o retrato de agora: quantos chamados/entregas estão em dia vs atrasados neste momento)
+    var manutencaoEmDia = 0, manutencaoAtrasada = 0;
+    for (var m = 0; m < problemasAtuais.length; m++) {
+        var statusM = statusDoPrazo(problemasAtuais[m].prazo);
+        if (statusM === 'vencido') { manutencaoAtrasada++; } else { manutencaoEmDia++; }
+    }
+    var totalManutencaoAtiva = manutencaoEmDia + manutencaoAtrasada;
+    var taxaManutencaoEmDia = totalManutencaoAtiva > 0 ? Math.round((manutencaoEmDia / totalManutencaoAtiva) * 100) : null;
+
+    var fornecedorEmDia = 0, fornecedorAtrasado = 0;
+    for (var f = 0; f < pendentesFornecedor.length; f++) {
+        var statusF = statusDoPrazo(pendentesFornecedor[f].prazo);
+        if (statusF === 'vencido') { fornecedorAtrasado++; } else { fornecedorEmDia++; }
+    }
+
+    return {
+        itens: itens, porSetor: porSetor, sanados: sanados, chegadas: chegadas,
+        indicadores: {
+            manutencaoEmDia: manutencaoEmDia,
+            manutencaoAtrasada: manutencaoAtrasada,
+            taxaManutencaoEmDia: taxaManutencaoEmDia,
+            fornecedorEmDia: fornecedorEmDia,
+            fornecedorAtrasado: fornecedorAtrasado
+        }
+    };
 }
 
 function atualizarPreviewRelatorio() {
@@ -4327,6 +4352,9 @@ function atualizarPreviewRelatorio() {
     }
     if (resumo.sanados > 0) { html += '<div style="margin-top:8px;">✅ ' + resumo.sanados + ' chamados de manutenção sanados</div>'; }
     if (resumo.chegadas > 0) { html += '<div>✅ ' + resumo.chegadas + ' entregas de fornecedores confirmadas</div>'; }
+    if (resumo.indicadores.taxaManutencaoEmDia !== null) {
+        html += '<div style="margin-top:8px;">📊 Situação atual: ' + resumo.indicadores.taxaManutencaoEmDia + '% dos chamados de manutenção em dia</div>';
+    }
     preview.innerHTML = html;
 }
 
@@ -4380,6 +4408,30 @@ function gerarRelatorioPdf() {
     if (resumo.sanados > 0) { doc.text('Chamados de manutenção sanados: ' + resumo.sanados, margem, y); y += 6; }
     if (resumo.chegadas > 0) { doc.text('Entregas de fornecedores confirmadas: ' + resumo.chegadas, margem, y); y += 6; }
     y += 6;
+
+    var ind = resumo.indicadores;
+    if (ind.taxaManutencaoEmDia !== null || ind.fornecedorEmDia + ind.fornecedorAtrasado > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('Indicadores de gestão (situação atual)', margem, y);
+        y += 8;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        if (ind.taxaManutencaoEmDia !== null) {
+            doc.text('Manutenção em dia: ' + ind.taxaManutencaoEmDia + '% (' + ind.manutencaoEmDia + ' em dia, ' + ind.manutencaoAtrasada + ' atrasados)', margem, y);
+            y += 6;
+        }
+        if (ind.fornecedorEmDia + ind.fornecedorAtrasado > 0) {
+            doc.text('Entregas de fornecedores em aberto: ' + ind.fornecedorEmDia + ' em dia, ' + ind.fornecedorAtrasado + ' atrasadas', margem, y);
+            y += 6;
+        }
+        doc.setFontSize(9);
+        doc.setTextColor(140);
+        doc.text('(retrato do momento da geração do relatório, não retroativo ao mês)', margem, y);
+        doc.setTextColor(30);
+        y += 10;
+    }
 
     var setores = Object.keys(resumo.porSetor);
     doc.setFont('helvetica', 'bold');
