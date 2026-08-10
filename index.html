@@ -229,7 +229,24 @@
 </head>
 <body>
 
-<div id="main-screen" class="screen active">
+<div id="login-screen" class="screen active" style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:0 28px; box-sizing:border-box;">
+    <div style="font-family:'Space Grotesk',sans-serif; font-size:12px; color:var(--text-dim); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:4px;">Gestão de Compras</div>
+    <div style="font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:var(--text); margin-bottom:28px;">A Bela Sintra</div>
+
+    <div style="width:100%; max-width:340px;">
+        <label style="display:block; font-family:'Inter',sans-serif; font-size:12.5px; color:var(--text-dim); margin-bottom:8px;">Quem é você?</label>
+        <div id="loginNomesContainer" style="display:flex; flex-direction:column; gap:8px; margin-bottom:18px;"></div>
+
+        <label style="display:block; font-family:'Inter',sans-serif; font-size:12.5px; color:var(--text-dim); margin-bottom:8px;">Sua senha</label>
+        <input type="password" id="loginPinInput" inputmode="numeric" maxlength="8" placeholder="••••" style="width:100%; box-sizing:border-box; padding:14px 16px; border:none; border-radius:16px; background:var(--surface); color:var(--text); font-family:'Inter',sans-serif; font-size:18px; letter-spacing:4px; text-align:center; outline:none;">
+
+        <div id="loginErro" style="display:none; margin-top:10px; font-family:'Inter',sans-serif; font-size:12.5px; color:#E4483A; text-align:center;"></div>
+
+        <button type="button" onclick="tentarLogin()" style="width:100%; box-sizing:border-box; margin-top:18px; padding:15px; border:none; border-radius:18px; background:var(--accent); color:#1B1420; font-family:'Inter',sans-serif; font-size:15px; font-weight:700; cursor:pointer;">Entrar</button>
+    </div>
+</div>
+
+<div id="main-screen" class="screen">
     <header>
         <div class="logo-container">
             <svg width="28" height="28" viewBox="0 0 100 100">
@@ -374,10 +391,15 @@
 <div id="usuario-screen" class="screen">
     <div class="screen-header">
         <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
-        <h2>Quem está usando?</h2>
+        <h2>Conta</h2>
     </div>
     <div class="edit-container">
-        <div class="units" id="usuarioContainer" style="flex-direction: column;"></div>
+        <div class="edit-titulo-destaque">
+            <span>👤</span>
+            <span id="usuarioNomeAtual"></span>
+        </div>
+        <p style="font-family:'Inter',sans-serif; font-size:13px; color:var(--text-dim); line-height:1.5; margin-top:4px;">Pra usar o app como outra pessoa, saia e entre com o nome e a senha dela.</p>
+        <button type="button" onclick="fazerLogout()" style="width:100%; box-sizing:border-box; margin-top:18px; padding:14px; border:none; border-radius:16px; background:transparent; color:#E4483A; font-family:'Inter',sans-serif; font-weight:600; font-size:14px; cursor:pointer;">Sair</button>
     </div>
 </div>
 
@@ -1415,6 +1437,97 @@ function salvarUsuarioAtualSeguro(nome) {
 
 var usuarioAtual = lerUsuarioAtualSeguro();
 
+// ---- Login por PIN ----
+// Atenção: isto evita acesso acidental (celular destravado, link repassado sem querer),
+// mas NÃO é segurança de verdade — quem entende de código consegue contornar.
+var loginNomeSelecionado = null;
+
+function hashPin(texto) {
+    var h = 5381;
+    for (var i = 0; i < texto.length; i++) { h = ((h * 33) ^ texto.charCodeAt(i)) >>> 0; }
+    return h.toString(36);
+}
+
+var pinsEquipe = {
+    "Caique": hashPin("2468"),
+    "Vinicius": hashPin("1357"),
+    "Joelio": hashPin("3690"),
+    "Brito Junior": hashPin("7412")
+};
+
+function estaLogado() {
+    try { return localStorage.getItem('logadoABS') === 'sim' && !!lerUsuarioAtualSeguro(); }
+    catch (erro) { return false; }
+}
+
+function montarTelaLogin() {
+    var cont = document.getElementById('loginNomesContainer');
+    cont.innerHTML = "";
+    loginNomeSelecionado = lerUsuarioAtualSeguro();
+
+    for (var i = 0; i < nomesEquipe.length; i++) {
+        var nome = nomesEquipe[i];
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'unit-btn' + (loginNomeSelecionado === nome ? ' active' : '');
+        btn.innerText = nome;
+        btn.style.width = '100%';
+        btn.onclick = (function(n) {
+            return function() {
+                loginNomeSelecionado = n;
+                var botoes = document.querySelectorAll('#loginNomesContainer .unit-btn');
+                for (var b = 0; b < botoes.length; b++) { botoes[b].classList.remove('active'); }
+                this.classList.add('active');
+                document.getElementById('loginPinInput').focus();
+            };
+        })(nome);
+        cont.appendChild(btn);
+    }
+}
+
+function tentarLogin() {
+    var erro = document.getElementById('loginErro');
+    var campoPin = document.getElementById('loginPinInput');
+
+    if (!loginNomeSelecionado) {
+        erro.style.display = 'block';
+        erro.innerText = 'Escolha seu nome primeiro.';
+        return;
+    }
+
+    var pinDigitado = campoPin.value.trim();
+    if (!pinDigitado) {
+        erro.style.display = 'block';
+        erro.innerText = 'Digite sua senha.';
+        return;
+    }
+
+    if (pinsEquipe[loginNomeSelecionado] !== hashPin(pinDigitado)) {
+        erro.style.display = 'block';
+        erro.innerText = 'Senha incorreta.';
+        campoPin.value = '';
+        return;
+    }
+
+    erro.style.display = 'none';
+    campoPin.value = '';
+    usuarioAtual = loginNomeSelecionado;
+    salvarUsuarioAtualSeguro(usuarioAtual);
+    try { localStorage.setItem('logadoABS', 'sim'); } catch (e) { }
+
+    atualizarAvatarUsuario();
+    trocarTela('main-screen');
+}
+
+function fazerLogout() {
+    try { localStorage.removeItem('logadoABS'); } catch (e) { }
+    loginNomeSelecionado = null;
+    montarTelaLogin();
+    document.getElementById('loginPinInput').value = '';
+    document.getElementById('loginErro').style.display = 'none';
+    trocarTela('login-screen');
+}
+
 function iniciaisDoNome(nome) {
     if (!nome) { return 'AS'; }
     var partes = nome.trim().split(' ');
@@ -1428,18 +1541,7 @@ function atualizarAvatarUsuario() {
 }
 
 function abrirSeletorUsuario() {
-    var cont = document.getElementById('usuarioContainer');
-    cont.innerHTML = "";
-    for (var i = 0; i < nomesEquipe.length; i++) {
-        var nome = nomesEquipe[i];
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'unit-btn' + (usuarioAtual === nome ? ' active' : '');
-        btn.innerText = nome;
-        btn.style.width = '100%';
-        btn.onclick = (function(n) { return function() { selecionarUsuario(n); }; })(nome);
-        cont.appendChild(btn);
-    }
+    document.getElementById('usuarioNomeAtual').innerText = usuarioAtual || 'Ninguém identificado';
     trocarTela('usuario-screen');
 }
 
@@ -2843,6 +2945,15 @@ function iniciar() {
     atualizarVisuaisDaLista();
     montarDashboardResumo();
     atualizarAvatarUsuario();
+
+    // Se ninguém entrou ainda neste aparelho, pede o login antes de liberar o app
+    montarTelaLogin();
+    if (estaLogado()) {
+        trocarTela('main-screen');
+    } else {
+        trocarTela('login-screen');
+    }
+
     sincronizarProblemasSupabase();
     sincronizarAgendaSupabase();
     sincronizarPendentesFornecedorSupabase();
