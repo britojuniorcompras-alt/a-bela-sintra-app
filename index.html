@@ -407,6 +407,16 @@
             <label style="display:block; font-family:'Inter',sans-serif; font-size:12.5px; color:var(--text-dim); margin-bottom:6px;">Prazo para resolver (opcional)</label>
             <input type="datetime-local" id="manutencaoPrazo" style="width:100%; box-sizing:border-box; padding:12px 14px; border:none; border-radius:14px; background:var(--surface); color:var(--text); font-family:'Inter',sans-serif; font-size:14px; outline:none;">
         </div>
+        <div style="margin-top: 14px;">
+            <label style="display:block; font-family:'Inter',sans-serif; font-size:12.5px; color:var(--text-dim); margin-bottom:6px;">Foto do problema (opcional)</label>
+            <input type="file" id="manutencaoFotoInput" accept="image/*" capture="environment" style="display:none;" onchange="selecionarFotoManutencao(event)">
+            <button type="button" class="ficha-add-ingrediente-btn" style="width:100%; box-sizing:border-box;" onclick="document.getElementById('manutencaoFotoInput').click()">📷 Tirar foto / escolher da galeria</button>
+            <div id="manutencaoFotoPreview" style="display:none; margin-top:10px; position:relative;">
+                <img id="manutencaoFotoImg" style="width:100%; border-radius:16px; display:block;" alt="Foto do problema">
+                <button type="button" onclick="removerFotoManutencao()" style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.65); color:#fff; border:none; border-radius:14px; padding:7px 12px; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer;">✕ Remover</button>
+            </div>
+            <div id="manutencaoFotoStatus" style="display:none; margin-top:8px; font-family:'Inter',sans-serif; font-size:12px; color:var(--text-dim);"></div>
+        </div>
         <div class="units" id="prioridadeContainer"></div>
         <button id="manutencaoExcluirBtn" type="button" onclick="excluirProblemaDaEdicao()" style="display:none; width:100%; box-sizing:border-box; margin-top:14px; padding:13px; border:none; border-radius:16px; background:transparent; color:#E4483A; font-family:'Inter',sans-serif; font-weight:600; font-size:13.5px; cursor:pointer;">Excluir chamado</button>
         <div class="edit-actions">
@@ -2321,7 +2331,8 @@ function sincronizarProblemasSupabase() {
                 areaIcone: dados[i].area_icone,
                 descricao: dados[i].descricao,
                 prioridade: dados[i].prioridade,
-                prazo: dados[i].prazo || null
+                prazo: dados[i].prazo || null,
+                fotoUrl: dados[i].foto_url || null
             });
         }
 
@@ -3499,6 +3510,21 @@ function montarListaProblemasArea() {
         item.appendChild(dot);
         item.appendChild(info);
 
+        if (p.fotoUrl) {
+            var miniFoto = document.createElement('img');
+            miniFoto.src = p.fotoUrl;
+            miniFoto.loading = 'lazy';
+            miniFoto.alt = 'Foto do problema';
+            miniFoto.style.width = '46px';
+            miniFoto.style.height = '46px';
+            miniFoto.style.objectFit = 'cover';
+            miniFoto.style.borderRadius = '12px';
+            miniFoto.style.flexShrink = '0';
+            miniFoto.style.cursor = 'pointer';
+            miniFoto.onclick = (function(url) { return function(e) { e.stopPropagation(); window.open(url, '_blank'); }; })(p.fotoUrl);
+            item.appendChild(miniFoto);
+        }
+
         var acoesProblema = document.createElement('div');
         acoesProblema.style.display = 'flex';
         acoesProblema.style.gap = '6px';
@@ -3856,6 +3882,96 @@ function excluirCompromisso(id) {
     montarCalendario();
 }
 
+// ---- Fotos dos chamados de manutenção (comprimidas e guardadas no Supabase Storage) ----
+var fotoManutencaoAtual = null; // { url } ou null
+
+function comprimirImagem(arquivo, callback) {
+    var leitor = new FileReader();
+    leitor.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var maxLado = 1000;
+            var largura = img.width;
+            var altura = img.height;
+            if (largura > altura && largura > maxLado) {
+                altura = Math.round(altura * (maxLado / largura));
+                largura = maxLado;
+            } else if (altura > maxLado) {
+                largura = Math.round(largura * (maxLado / altura));
+                altura = maxLado;
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = largura;
+            canvas.height = altura;
+            canvas.getContext('2d').drawImage(img, 0, 0, largura, altura);
+            canvas.toBlob(function(blob) { callback(blob); }, 'image/jpeg', 0.6);
+        };
+        img.onerror = function() { callback(null); };
+        img.src = e.target.result;
+    };
+    leitor.onerror = function() { callback(null); };
+    leitor.readAsDataURL(arquivo);
+}
+
+function selecionarFotoManutencao(evento) {
+    var arquivo = evento.target.files && evento.target.files[0];
+    if (!arquivo) { return; }
+
+    var status = document.getElementById('manutencaoFotoStatus');
+    status.style.display = 'block';
+    status.innerText = 'Preparando a foto...';
+
+    comprimirImagem(arquivo, function(blob) {
+        if (!blob) {
+            status.innerText = 'Não consegui ler essa imagem. Tente outra.';
+            return;
+        }
+
+        status.innerText = 'Enviando foto...';
+        var nomeArquivo = 'chamado_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg';
+
+        fetch(SUPABASE_URL + '/storage/v1/object/manutencao-fotos/' + nomeArquivo, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                'Content-Type': 'image/jpeg'
+            },
+            body: blob
+        }).then(function(r) {
+            if (!r.ok) { throw new Error('status ' + r.status); }
+            var urlPublica = SUPABASE_URL + '/storage/v1/object/public/manutencao-fotos/' + nomeArquivo;
+            fotoManutencaoAtual = { url: urlPublica };
+            document.getElementById('manutencaoFotoImg').src = urlPublica;
+            document.getElementById('manutencaoFotoPreview').style.display = 'block';
+            status.style.display = 'none';
+        }).catch(function(err) {
+            console.warn('Falha ao enviar foto:', err);
+            status.innerText = 'Não consegui enviar a foto (sem internet ou armazenamento não configurado). O chamado pode ser salvo mesmo assim.';
+        });
+
+        evento.target.value = '';
+    });
+}
+
+function removerFotoManutencao() {
+    fotoManutencaoAtual = null;
+    document.getElementById('manutencaoFotoPreview').style.display = 'none';
+    document.getElementById('manutencaoFotoImg').src = '';
+    document.getElementById('manutencaoFotoStatus').style.display = 'none';
+}
+
+function mostrarFotoNaEdicao(url) {
+    if (url) {
+        fotoManutencaoAtual = { url: url };
+        document.getElementById('manutencaoFotoImg').src = url;
+        document.getElementById('manutencaoFotoPreview').style.display = 'block';
+    } else {
+        removerFotoManutencao();
+    }
+    document.getElementById('manutencaoFotoStatus').style.display = 'none';
+}
+
 function abrirNovoProblema() {
     problemaSendoEditadoId = null;
     var area = areaPorId(areaManutencaoAtiva);
@@ -3865,6 +3981,7 @@ function abrirNovoProblema() {
     document.getElementById('manutencaoDescricao').value = "";
     document.getElementById('manutencaoPrazo').value = "";
     document.getElementById('manutencaoExcluirBtn').style.display = "none";
+    mostrarFotoNaEdicao(null);
 
     var cont = document.getElementById('prioridadeContainer');
     cont.innerHTML = "";
@@ -3895,6 +4012,7 @@ function abrirEdicaoProblema(id) {
     document.getElementById('manutencaoDescricao').value = problema.descricao;
     document.getElementById('manutencaoPrazo').value = problema.prazo ? isoParaDatetimeLocal(problema.prazo) : "";
     document.getElementById('manutencaoExcluirBtn').style.display = "block";
+    mostrarFotoNaEdicao(problema.fotoUrl || null);
 
     var cont = document.getElementById('prioridadeContainer');
     cont.innerHTML = "";
@@ -3935,12 +4053,14 @@ function confirmarProblema() {
         problemasAtuais[idx].descricao = desc;
         problemasAtuais[idx].prioridade = prioridadeSelecionada;
         problemasAtuais[idx].prazo = prazoIso;
+        problemasAtuais[idx].fotoUrl = fotoManutencaoAtual ? fotoManutencaoAtual.url : null;
         salvarProblemasManutencaoSeguro(problemasAtuais);
 
         supabasePatch('manutencao_problemas', 'id=eq.' + encodeURIComponent(problemaSendoEditadoId), {
             descricao: desc,
             prioridade: prioridadeSelecionada,
-            prazo: prazoIso
+            prazo: prazoIso,
+            foto_url: fotoManutencaoAtual ? fotoManutencaoAtual.url : null
         }, function(err) {
             if (err) { console.warn('Não foi possível sincronizar edição com o Supabase (salvo localmente):', err); }
         });
@@ -3962,6 +4082,7 @@ function confirmarProblema() {
         descricao: desc,
         prioridade: prioridadeSelecionada,
         prazo: prazoIso,
+        fotoUrl: fotoManutencaoAtual ? fotoManutencaoAtual.url : null,
         aindaSincronizando: true
     };
     problemasAtuais.push(novoProblema);
@@ -3974,7 +4095,8 @@ function confirmarProblema() {
         area_icone: novoProblema.areaIcone,
         descricao: novoProblema.descricao,
         prioridade: novoProblema.prioridade,
-        prazo: novoProblema.prazo
+        prazo: novoProblema.prazo,
+        foto_url: novoProblema.fotoUrl
     }, function(err) {
         if (err) {
             console.warn('Não foi possível sincronizar novo problema com o Supabase (salvo localmente):', err);
@@ -4017,6 +4139,7 @@ function dadosResumoManutencao() {
         texto += "— " + prioridadesInfo[chave].emoji + " " + prioridadesInfo[chave].label.toUpperCase() + " —\n";
         for (var j = 0; j < doGrupo.length; j++) {
             var linha = "- " + prioridadesInfo[chave].emoji + " " + doGrupo[j].areaNome + ": " + doGrupo[j].descricao;
+            if (doGrupo[j].fotoUrl) { linha += "\n  Foto: " + doGrupo[j].fotoUrl; }
             texto += linha + "\n";
             itensParaHistorico.push(linha);
         }
