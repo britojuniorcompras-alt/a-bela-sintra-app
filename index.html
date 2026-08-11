@@ -678,6 +678,19 @@ function processarFilaReenvio() {
     var restante = fila.slice();
     var proximaTentativa = restante.shift();
     if (!proximaTentativa) { return; }
+    if (proximaTentativa.metodo === 'POST') {
+        var idPendente = proximaTentativa.registro && proximaTentativa.registro.id;
+        var listaLocal = proximaTentativa.tabela === 'fornecedores_pendentes' ? pendentesFornecedor : (proximaTentativa.tabela === 'manutencao_problemas' ? problemasAtuais : null);
+        if (listaLocal) {
+            var aindaValido = listaLocal.some(function(item) { return item.id === idPendente && item.aindaSincronizando; });
+            if (!aindaValido) {
+                salvarFilaReenvioSegura(restante);
+                atualizarAvisoOffline();
+                if (restante.length > 0) { processarFilaReenvio(); }
+                return;
+            }
+        }
+    }
 
     function aposEnvio(err) {
         if (err) {
@@ -2965,7 +2978,25 @@ function atualizarVisuaisDaLista() {
     montarAbas();
 }
 
-function iniciar() { 
+function limparFilaReenvioObsoleta() {
+    var fila = lerFilaReenvioSegura();
+    if (fila.length === 0) { return; }
+    
+    var filaLimpa = fila.filter(function(acao) {
+        if (acao.metodo !== 'POST') { return true; }
+        var idPendente = acao.registro && acao.registro.id;
+        var listaLocal = acao.tabela === 'fornecedores_pendentes' ? pendentesFornecedor : (acao.tabela === 'manutencao_problemas' ? problemasAtuais : null);
+        if (!listaLocal) { return true; }
+        return listaLocal.some(function(item) { return item.id === idPendente && item.aindaSincronizando; });
+    });
+    
+    if (filaLimpa.length !== fila.length) {
+        salvarFilaReenvioSegura(filaLimpa);
+        atualizarAvisoOffline();
+    }
+}
+    
+    function iniciar() { 
     if (appIniciado) return; 
     appIniciado = true;
     
@@ -2987,6 +3018,7 @@ function iniciar() {
     sincronizarAgendaSupabase();
     sincronizarPendentesFornecedorSupabase();
     verificarNovasUrgencias();
+        limparFilaReenvioObsoleta();
     
     document.getElementById('editQty').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
