@@ -293,7 +293,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras</div>
+                <div class="logo-subtitulo">Gestão de Compras · v10ago</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -2520,17 +2520,13 @@ function sincronizarPendentesFornecedorSupabase() {
                 prazo: dados[i].prazo || null
             });
         }
-        // Itens que existem só neste aparelho (nunca chegaram ao banco) são enviados
-        // agora, em vez de apagados — senão o que foi lançado offline se perde.
-        var idsDoServidor = {};
-        for (var s = 0; s < listaConvertida.length; s++) { idsDoServidor[listaConvertida[s].id] = true; }
-        var servidorVazio = listaConvertida.length === 0;
-
+        // Itens que existem só neste aparelho (nunca chegaram ao banco) são reenviados.
+        // Só entra aqui quem NÃO está no servidor (idsDoServidor já filtra os confirmados).
         for (var l = 0; l < pendentesFornecedor.length; l++) {
             var soLocal = pendentesFornecedor[l];
-            if (idsDoServidor[soLocal.id]) { continue; }
-            if (!soLocal.aindaSincronizando && !servidorVazio) { continue; }
+            if (idsDoServidor[soLocal.id]) { continue; } // já está no servidor, não precisa reenviar
 
+            // Item só local: inclui na lista final e tenta enviar pro servidor
             listaConvertida.push(soLocal);
             (function(item) {
                 supabasePost('fornecedores_pendentes', {
