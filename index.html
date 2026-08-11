@@ -2522,6 +2522,9 @@ function sincronizarPendentesFornecedorSupabase() {
         }
         // Itens que existem só neste aparelho (nunca chegaram ao banco) são reenviados.
         // Só entra aqui quem NÃO está no servidor (idsDoServidor já filtra os confirmados).
+        var idsDoServidor = {};
+            for (var s = 0; s < listaConvertida.length; s++) { idsDoServidor[listaConvertida[s].id] = true; }
+            
         for (var l = 0; l < pendentesFornecedor.length; l++) {
             var soLocal = pendentesFornecedor[l];
             if (idsDoServidor[soLocal.id]) { continue; } // já está no servidor, não precisa reenviar
