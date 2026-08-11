@@ -2550,10 +2550,14 @@ function sincronizarPendentesFornecedorSupabase() {
                     id: item.id, nome: item.nome, icone: item.icone, obs: item.obs, prazo: item.prazo
                 }, function(err) {
                     if (err) { return; }
-                    for (var p = 0; p < pendentesFornecedor.length; p++) {
-                        if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; break; }
-                    }
-                    salvarPendentesFornecedorSeguro(pendentesFornecedor);
+                        var aindaExisteLocal = false;
+                        for (var p = 0; p < pendentesFornecedor.length; p++) {
+                            if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; aindaExisteLocal = true; break; }
+        }
+                        salvarPendentesFornecedorSeguro(pendentesFornecedor);
+                                        if (!aindaExisteLocal) {
+                              supabaseDelete('fornecedores_pendentes', 'id=eq.' + encodeURIComponent(item.id), function() {});
+                                                  }
                 });
             })(soLocal);
         }
@@ -3543,10 +3547,14 @@ function criarPendentesFornecedorDoResumo(dados) {
                 prazo: novoPendente.prazo
             }, (function(item) { return function(err) {
                 if (err) { console.warn('Não foi possível sincronizar pendente de fornecedor com o Supabase (salvo localmente):', err); return; }
-                for (var p = 0; p < pendentesFornecedor.length; p++) {
-                    if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; break; }
-                }
-                salvarPendentesFornecedorSeguro(pendentesFornecedor);
+var aindaExisteLocal = false;
+                                for (var p = 0; p < pendentesFornecedor.length; p++) {
+                                                        if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; aindaExisteLocal = true; break; }
+                                }
+                                salvarPendentesFornecedorSeguro(pendentesFornecedor);
+                                if (!aindaExisteLocal) {
+                                                        supabaseDelete('fornecedores_pendentes', 'id=eq.' + encodeURIComponent(item.id), function() {});
+                                }
             }; })(novoPendente));
         }
     }
