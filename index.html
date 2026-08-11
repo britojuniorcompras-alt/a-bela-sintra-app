@@ -2528,6 +2528,7 @@ function sincronizarPendentesFornecedorSupabase() {
         for (var l = 0; l < pendentesFornecedor.length; l++) {
             var soLocal = pendentesFornecedor[l];
             if (idsDoServidor[soLocal.id]) { continue; } // já está no servidor, não precisa reenviar
+            if (!soLocal.aindaSincronizando) { continue; } // ja foi apagado por outro celular (ex: marcado como "Chegou") - nao recriar
 
             // Item só local: inclui na lista final e tenta enviar pro servidor
             listaConvertida.push(soLocal);
