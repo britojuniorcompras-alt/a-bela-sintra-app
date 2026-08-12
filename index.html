@@ -2156,6 +2156,7 @@ function sincronizarFichasSupabase() {
                 id: d.id,
                 nome: d.nome,
                 porcoes: d.porcoes,
+                unidadeRendimento: d.unidade_rendimento || 'porção',
                 ingredientes: d.ingredientes || [],
                 modoPreparo: d.modo_preparo || '',
                 custoTotal: d.custo_total,
@@ -2174,6 +2175,20 @@ function formatarMoeda(valor) {
     valor = valor || 0;
     return 'R$ ' + valor.toFixed(2).replace('.', ',');
 }
+
+    function textoRendimento(ficha) {
+            var qtd = ficha.porcoes || 1;
+            var un = ficha.unidadeRendimento || 'porção';
+            if (un === 'porção') {
+                        return qtd + ' porç' + (qtd == 1 ? 'ão' : 'ões');
+            }
+            return qtd + ' ' + un;
+    }
+
+    function textoCustoPorUnidade(ficha) {
+            var un = ficha.unidadeRendimento || 'porção';
+            return 'custo/' + un;
+    }
 
 function renderizarListaFichas() {
     var lista = document.getElementById('fichasLista');
@@ -2236,7 +2251,7 @@ function renderizarListaFichas() {
 
             var info = document.createElement('div');
             info.style.flex = '1';
-            var linhaDetalhe = (ficha.porcoes || 1) + ' porç' + ((ficha.porcoes || 1) == 1 ? 'ão' : 'ões') + ' · custo/porção ' + formatarMoeda(ficha.custoPorcao);
+                        var linhaDetalhe = textoRendimento(ficha) + ' · ' + textoCustoPorUnidade(ficha) + ' ' + formatarMoeda(ficha.custoPorcao);
             if (termo && (!ficha.nome || ficha.nome.toLowerCase().indexOf(termo) === -1) && ficha.ingredientes) {
                 for (var k = 0; k < ficha.ingredientes.length; k++) {
                     var nomeIngK = ficha.ingredientes[k].nome || '';
@@ -2421,14 +2436,14 @@ function salvarFicha() {
 
 function dadosTextoFicha(ficha) {
     var texto = "*Ficha Técnica: " + ficha.nome + "*\n";
-    texto += "Rendimento: " + ficha.porcoes + " porç" + (ficha.porcoes == 1 ? 'ão' : 'ões') + "\n\n";
+        texto += "Rendimento: " + textoRendimento(ficha) + "\n\n";
     texto += "*Ingredientes:*\n";
     for (var i = 0; i < ficha.ingredientes.length; i++) {
         var ing = ficha.ingredientes[i];
         texto += "- " + ing.qtd + " " + ing.unidade + " " + ing.nome + " (" + formatarMoeda(ing.qtd * ing.custo) + ")\n";
     }
     texto += "\n*Custo total:* " + formatarMoeda(ficha.custoTotal);
-    texto += "\n*Custo por porção:* " + formatarMoeda(ficha.custoPorcao);
+        texto += "\n*Custo por " + (ficha.unidadeRendimento || 'porção') + ":* " + formatarMoeda(ficha.custoPorcao);
     if (ficha.precoVenda && ficha.precoVenda > 0) {
         texto += "\n*Preço de venda sugerido (markup " + ficha.percentualCusto + "%):* " + formatarMoeda(ficha.precoVenda);
     }
@@ -2443,14 +2458,14 @@ function abrirDetalheFicha(id) {
 
     document.getElementById('fichaViewTitulo').innerText = ficha.nome;
     var conteudo = document.getElementById('fichaViewConteudo');
-    var html = '<div style="color:var(--text-dim); font-size:12.5px; margin-bottom:10px;">Rendimento: ' + ficha.porcoes + ' porç' + (ficha.porcoes == 1 ? 'ão' : 'ões') + '</div>';
+        var html = '<div style="color:var(--text-dim); font-size:12.5px; margin-bottom:10px;">Rendimento: ' + textoRendimento(ficha) + '</div>';
     for (var i = 0; i < ficha.ingredientes.length; i++) {
         var ing = ficha.ingredientes[i];
         html += '<div class="ficha-view-item"><span>' + ing.qtd + ' ' + ing.unidade + ' ' + ing.nome + '</span><span>' + formatarMoeda(ing.qtd * ing.custo) + '</span></div>';
     }
     html += '<div class="ficha-totais" style="margin-top:14px;">' +
         '<div class="ficha-totais-linha"><span>Custo total</span><strong>' + formatarMoeda(ficha.custoTotal) + '</strong></div>' +
-        '<div class="ficha-totais-linha"><span>Custo por porção</span><strong>' + formatarMoeda(ficha.custoPorcao) + '</strong></div></div>';
+                '<div class="ficha-totais-linha"><span>Custo por ' + (ficha.unidadeRendimento || 'porção') + '</span><strong>' + formatarMoeda(ficha.custoPorcao) + '</strong></div></div>';
     if (ficha.precoVenda && ficha.precoVenda > 0) {
         html += '<div class="ficha-totais ficha-totais-venda" style="margin-top:10px;">' +
             '<div class="ficha-totais-linha"><span>Preço de venda sugerido (markup ' + ficha.percentualCusto + '%)</span><strong>' + formatarMoeda(ficha.precoVenda) + '</strong></div></div>';
