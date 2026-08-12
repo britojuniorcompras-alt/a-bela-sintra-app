@@ -2199,6 +2199,17 @@ function renderizarListaFichas() {
             }
             return false;
         });
+        fichasExibir.sort(function(a, b) {
+            var pontuar = function(f) {
+                var nome = (f.nome || '').toLowerCase();
+                if (nome.indexOf(termo) === 0) { return 0; }
+                if (nome.indexOf(termo) !== -1) { return 1; }
+                return 2;
+            };
+            var pa = pontuar(a), pb = pontuar(b);
+            if (pa !== pb) { return pa - pb; }
+            return (a.nome || '').localeCompare(b.nome || '');
+        });
     } else if (fichasMostrarTodas) {
         fichasExibir = fichasCache;
     } else {
