@@ -678,6 +678,19 @@ function processarFilaReenvio() {
     var restante = fila.slice();
     var proximaTentativa = restante.shift();
     if (!proximaTentativa) { return; }
+    if (proximaTentativa.metodo === 'POST') {
+        var idPendente = proximaTentativa.registro && proximaTentativa.registro.id;
+        var listaLocal = proximaTentativa.tabela === 'fornecedores_pendentes' ? pendentesFornecedor : (proximaTentativa.tabela === 'manutencao_problemas' ? problemasAtuais : null);
+        if (listaLocal) {
+            var aindaValido = listaLocal.some(function(item) { return item.id === idPendente && item.aindaSincronizando; });
+            if (!aindaValido) {
+                salvarFilaReenvioSegura(restante);
+                atualizarAvisoOffline();
+                if (restante.length > 0) { processarFilaReenvio(); }
+                return;
+            }
+        }
+    }
 
     function aposEnvio(err) {
         if (err) {
@@ -2143,6 +2156,7 @@ function sincronizarFichasSupabase() {
                 id: d.id,
                 nome: d.nome,
                 porcoes: d.porcoes,
+                unidadeRendimento: d.unidade_rendimento || 'porção',
                 ingredientes: d.ingredientes || [],
                 modoPreparo: d.modo_preparo || '',
                 custoTotal: d.custo_total,
@@ -2161,6 +2175,20 @@ function formatarMoeda(valor) {
     valor = valor || 0;
     return 'R$ ' + valor.toFixed(2).replace('.', ',');
 }
+
+    function textoRendimento(ficha) {
+            var qtd = ficha.porcoes || 1;
+            var un = ficha.unidadeRendimento || 'porção';
+            if (un === 'porção') {
+                        return qtd + ' porç' + (qtd == 1 ? 'ão' : 'ões');
+            }
+            return qtd + ' ' + un;
+    }
+
+    function textoCustoPorUnidade(ficha) {
+            var un = ficha.unidadeRendimento || 'porção';
+            return 'custo/' + un;
+    }
 
 function renderizarListaFichas() {
     var lista = document.getElementById('fichasLista');
@@ -2185,6 +2213,17 @@ function renderizarListaFichas() {
                 }
             }
             return false;
+        });
+        fichasExibir.sort(function(a, b) {
+            var pontuar = function(f) {
+                var nome = (f.nome || '').toLowerCase();
+                if (nome.indexOf(termo) === 0) { return 0; }
+                if (nome.indexOf(termo) !== -1) { return 1; }
+                return 2;
+            };
+            var pa = pontuar(a), pb = pontuar(b);
+            if (pa !== pb) { return pa - pb; }
+            return (a.nome || '').localeCompare(b.nome || '');
         });
     } else if (fichasMostrarTodas) {
         fichasExibir = fichasCache;
@@ -2212,7 +2251,7 @@ function renderizarListaFichas() {
 
             var info = document.createElement('div');
             info.style.flex = '1';
-            var linhaDetalhe = (ficha.porcoes || 1) + ' porç' + ((ficha.porcoes || 1) == 1 ? 'ão' : 'ões') + ' · custo/porção ' + formatarMoeda(ficha.custoPorcao);
+                        var linhaDetalhe = textoRendimento(ficha) + ' · ' + textoCustoPorUnidade(ficha) + ' ' + formatarMoeda(ficha.custoPorcao);
             if (termo && (!ficha.nome || ficha.nome.toLowerCase().indexOf(termo) === -1) && ficha.ingredientes) {
                 for (var k = 0; k < ficha.ingredientes.length; k++) {
                     var nomeIngK = ficha.ingredientes[k].nome || '';
@@ -2397,14 +2436,14 @@ function salvarFicha() {
 
 function dadosTextoFicha(ficha) {
     var texto = "*Ficha Técnica: " + ficha.nome + "*\n";
-    texto += "Rendimento: " + ficha.porcoes + " porç" + (ficha.porcoes == 1 ? 'ão' : 'ões') + "\n\n";
+        texto += "Rendimento: " + textoRendimento(ficha) + "\n\n";
     texto += "*Ingredientes:*\n";
     for (var i = 0; i < ficha.ingredientes.length; i++) {
         var ing = ficha.ingredientes[i];
         texto += "- " + ing.qtd + " " + ing.unidade + " " + ing.nome + " (" + formatarMoeda(ing.qtd * ing.custo) + ")\n";
     }
     texto += "\n*Custo total:* " + formatarMoeda(ficha.custoTotal);
-    texto += "\n*Custo por porção:* " + formatarMoeda(ficha.custoPorcao);
+        texto += "\n*Custo por " + (ficha.unidadeRendimento || 'porção') + ":* " + formatarMoeda(ficha.custoPorcao);
     if (ficha.precoVenda && ficha.precoVenda > 0) {
         texto += "\n*Preço de venda sugerido (markup " + ficha.percentualCusto + "%):* " + formatarMoeda(ficha.precoVenda);
     }
@@ -2419,14 +2458,14 @@ function abrirDetalheFicha(id) {
 
     document.getElementById('fichaViewTitulo').innerText = ficha.nome;
     var conteudo = document.getElementById('fichaViewConteudo');
-    var html = '<div style="color:var(--text-dim); font-size:12.5px; margin-bottom:10px;">Rendimento: ' + ficha.porcoes + ' porç' + (ficha.porcoes == 1 ? 'ão' : 'ões') + '</div>';
+        var html = '<div style="color:var(--text-dim); font-size:12.5px; margin-bottom:10px;">Rendimento: ' + textoRendimento(ficha) + '</div>';
     for (var i = 0; i < ficha.ingredientes.length; i++) {
         var ing = ficha.ingredientes[i];
         html += '<div class="ficha-view-item"><span>' + ing.qtd + ' ' + ing.unidade + ' ' + ing.nome + '</span><span>' + formatarMoeda(ing.qtd * ing.custo) + '</span></div>';
     }
     html += '<div class="ficha-totais" style="margin-top:14px;">' +
         '<div class="ficha-totais-linha"><span>Custo total</span><strong>' + formatarMoeda(ficha.custoTotal) + '</strong></div>' +
-        '<div class="ficha-totais-linha"><span>Custo por porção</span><strong>' + formatarMoeda(ficha.custoPorcao) + '</strong></div></div>';
+                '<div class="ficha-totais-linha"><span>Custo por ' + (ficha.unidadeRendimento || 'porção') + '</span><strong>' + formatarMoeda(ficha.custoPorcao) + '</strong></div></div>';
     if (ficha.precoVenda && ficha.precoVenda > 0) {
         html += '<div class="ficha-totais ficha-totais-venda" style="margin-top:10px;">' +
             '<div class="ficha-totais-linha"><span>Preço de venda sugerido (markup ' + ficha.percentualCusto + '%)</span><strong>' + formatarMoeda(ficha.precoVenda) + '</strong></div></div>';
@@ -2528,6 +2567,7 @@ function sincronizarPendentesFornecedorSupabase() {
         for (var l = 0; l < pendentesFornecedor.length; l++) {
             var soLocal = pendentesFornecedor[l];
             if (idsDoServidor[soLocal.id]) { continue; } // já está no servidor, não precisa reenviar
+            if (!soLocal.aindaSincronizando) { continue; } // ja foi apagado por outro celular (ex: marcado como "Chegou") - nao recriar
 
             // Item só local: inclui na lista final e tenta enviar pro servidor
             listaConvertida.push(soLocal);
@@ -2536,10 +2576,14 @@ function sincronizarPendentesFornecedorSupabase() {
                     id: item.id, nome: item.nome, icone: item.icone, obs: item.obs, prazo: item.prazo
                 }, function(err) {
                     if (err) { return; }
-                    for (var p = 0; p < pendentesFornecedor.length; p++) {
-                        if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; break; }
-                    }
-                    salvarPendentesFornecedorSeguro(pendentesFornecedor);
+                        var aindaExisteLocal = false;
+                        for (var p = 0; p < pendentesFornecedor.length; p++) {
+                            if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; aindaExisteLocal = true; break; }
+        }
+                        salvarPendentesFornecedorSeguro(pendentesFornecedor);
+                                        if (!aindaExisteLocal) {
+                              supabaseDelete('fornecedores_pendentes', 'id=eq.' + encodeURIComponent(item.id), function() {});
+                                                  }
                 });
             })(soLocal);
         }
@@ -2964,7 +3008,25 @@ function atualizarVisuaisDaLista() {
     montarAbas();
 }
 
-function iniciar() { 
+function limparFilaReenvioObsoleta() {
+    var fila = lerFilaReenvioSegura();
+    if (fila.length === 0) { return; }
+    
+    var filaLimpa = fila.filter(function(acao) {
+        if (acao.metodo !== 'POST') { return true; }
+        var idPendente = acao.registro && acao.registro.id;
+        var listaLocal = acao.tabela === 'fornecedores_pendentes' ? pendentesFornecedor : (acao.tabela === 'manutencao_problemas' ? problemasAtuais : null);
+        if (!listaLocal) { return true; }
+        return listaLocal.some(function(item) { return item.id === idPendente && item.aindaSincronizando; });
+    });
+    
+    if (filaLimpa.length !== fila.length) {
+        salvarFilaReenvioSegura(filaLimpa);
+        atualizarAvisoOffline();
+    }
+}
+    
+    function iniciar() { 
     if (appIniciado) return; 
     appIniciado = true;
     
@@ -2986,6 +3048,7 @@ function iniciar() {
     sincronizarAgendaSupabase();
     sincronizarPendentesFornecedorSupabase();
     verificarNovasUrgencias();
+        limparFilaReenvioObsoleta();
     
     document.getElementById('editQty').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -3510,10 +3573,14 @@ function criarPendentesFornecedorDoResumo(dados) {
                 prazo: novoPendente.prazo
             }, (function(item) { return function(err) {
                 if (err) { console.warn('Não foi possível sincronizar pendente de fornecedor com o Supabase (salvo localmente):', err); return; }
-                for (var p = 0; p < pendentesFornecedor.length; p++) {
-                    if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; break; }
-                }
-                salvarPendentesFornecedorSeguro(pendentesFornecedor);
+var aindaExisteLocal = false;
+                                for (var p = 0; p < pendentesFornecedor.length; p++) {
+                                                        if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; aindaExisteLocal = true; break; }
+                                }
+                                salvarPendentesFornecedorSeguro(pendentesFornecedor);
+                                if (!aindaExisteLocal) {
+                                                        supabaseDelete('fornecedores_pendentes', 'id=eq.' + encodeURIComponent(item.id), function() {});
+                                }
             }; })(novoPendente));
         }
     }
