@@ -644,6 +644,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 // ============================================================
 // SUPABASE — banco compartilhado entre todos os aparelhos
@@ -678,19 +679,6 @@ function processarFilaReenvio() {
     var restante = fila.slice();
     var proximaTentativa = restante.shift();
     if (!proximaTentativa) { return; }
-    if (proximaTentativa.metodo === 'POST') {
-        var idPendente = proximaTentativa.registro && proximaTentativa.registro.id;
-        var listaLocal = proximaTentativa.tabela === 'fornecedores_pendentes' ? pendentesFornecedor : (proximaTentativa.tabela === 'manutencao_problemas' ? problemasAtuais : null);
-        if (listaLocal) {
-            var aindaValido = listaLocal.some(function(item) { return item.id === idPendente && item.aindaSincronizando; });
-            if (!aindaValido) {
-                salvarFilaReenvioSegura(restante);
-                atualizarAvisoOffline();
-                if (restante.length > 0) { processarFilaReenvio(); }
-                return;
-            }
-        }
-    }
 
     function aposEnvio(err) {
         if (err) {
@@ -2156,7 +2144,6 @@ function sincronizarFichasSupabase() {
                 id: d.id,
                 nome: d.nome,
                 porcoes: d.porcoes,
-                unidadeRendimento: d.unidade_rendimento || 'porção',
                 ingredientes: d.ingredientes || [],
                 modoPreparo: d.modo_preparo || '',
                 custoTotal: d.custo_total,
@@ -2175,20 +2162,6 @@ function formatarMoeda(valor) {
     valor = valor || 0;
     return 'R$ ' + valor.toFixed(2).replace('.', ',');
 }
-
-    function textoRendimento(ficha) {
-            var qtd = ficha.porcoes || 1;
-            var un = ficha.unidadeRendimento || 'porção';
-            if (un === 'porção') {
-                        return qtd + ' porç' + (qtd == 1 ? 'ão' : 'ões');
-            }
-            return qtd + ' ' + un;
-    }
-
-    function textoCustoPorUnidade(ficha) {
-            var un = ficha.unidadeRendimento || 'porção';
-            return 'custo/' + un;
-    }
 
 function renderizarListaFichas() {
     var lista = document.getElementById('fichasLista');
@@ -2213,17 +2186,6 @@ function renderizarListaFichas() {
                 }
             }
             return false;
-        });
-        fichasExibir.sort(function(a, b) {
-            var pontuar = function(f) {
-                var nome = (f.nome || '').toLowerCase();
-                if (nome.indexOf(termo) === 0) { return 0; }
-                if (nome.indexOf(termo) !== -1) { return 1; }
-                return 2;
-            };
-            var pa = pontuar(a), pb = pontuar(b);
-            if (pa !== pb) { return pa - pb; }
-            return (a.nome || '').localeCompare(b.nome || '');
         });
     } else if (fichasMostrarTodas) {
         fichasExibir = fichasCache;
@@ -2251,7 +2213,7 @@ function renderizarListaFichas() {
 
             var info = document.createElement('div');
             info.style.flex = '1';
-                        var linhaDetalhe = textoRendimento(ficha) + ' · ' + textoCustoPorUnidade(ficha) + ' ' + formatarMoeda(ficha.custoPorcao);
+            var linhaDetalhe = (ficha.porcoes || 1) + ' porç' + ((ficha.porcoes || 1) == 1 ? 'ão' : 'ões') + ' · custo/porção ' + formatarMoeda(ficha.custoPorcao);
             if (termo && (!ficha.nome || ficha.nome.toLowerCase().indexOf(termo) === -1) && ficha.ingredientes) {
                 for (var k = 0; k < ficha.ingredientes.length; k++) {
                     var nomeIngK = ficha.ingredientes[k].nome || '';
@@ -2436,14 +2398,14 @@ function salvarFicha() {
 
 function dadosTextoFicha(ficha) {
     var texto = "*Ficha Técnica: " + ficha.nome + "*\n";
-        texto += "Rendimento: " + textoRendimento(ficha) + "\n\n";
+    texto += "Rendimento: " + ficha.porcoes + " porç" + (ficha.porcoes == 1 ? 'ão' : 'ões') + "\n\n";
     texto += "*Ingredientes:*\n";
     for (var i = 0; i < ficha.ingredientes.length; i++) {
         var ing = ficha.ingredientes[i];
         texto += "- " + ing.qtd + " " + ing.unidade + " " + ing.nome + " (" + formatarMoeda(ing.qtd * ing.custo) + ")\n";
     }
     texto += "\n*Custo total:* " + formatarMoeda(ficha.custoTotal);
-        texto += "\n*Custo por " + (ficha.unidadeRendimento || 'porção') + ":* " + formatarMoeda(ficha.custoPorcao);
+    texto += "\n*Custo por porção:* " + formatarMoeda(ficha.custoPorcao);
     if (ficha.precoVenda && ficha.precoVenda > 0) {
         texto += "\n*Preço de venda sugerido (markup " + ficha.percentualCusto + "%):* " + formatarMoeda(ficha.precoVenda);
     }
@@ -2458,14 +2420,14 @@ function abrirDetalheFicha(id) {
 
     document.getElementById('fichaViewTitulo').innerText = ficha.nome;
     var conteudo = document.getElementById('fichaViewConteudo');
-        var html = '<div style="color:var(--text-dim); font-size:12.5px; margin-bottom:10px;">Rendimento: ' + textoRendimento(ficha) + '</div>';
+    var html = '<div style="color:var(--text-dim); font-size:12.5px; margin-bottom:10px;">Rendimento: ' + ficha.porcoes + ' porç' + (ficha.porcoes == 1 ? 'ão' : 'ões') + '</div>';
     for (var i = 0; i < ficha.ingredientes.length; i++) {
         var ing = ficha.ingredientes[i];
         html += '<div class="ficha-view-item"><span>' + ing.qtd + ' ' + ing.unidade + ' ' + ing.nome + '</span><span>' + formatarMoeda(ing.qtd * ing.custo) + '</span></div>';
     }
     html += '<div class="ficha-totais" style="margin-top:14px;">' +
         '<div class="ficha-totais-linha"><span>Custo total</span><strong>' + formatarMoeda(ficha.custoTotal) + '</strong></div>' +
-                '<div class="ficha-totais-linha"><span>Custo por ' + (ficha.unidadeRendimento || 'porção') + '</span><strong>' + formatarMoeda(ficha.custoPorcao) + '</strong></div></div>';
+        '<div class="ficha-totais-linha"><span>Custo por porção</span><strong>' + formatarMoeda(ficha.custoPorcao) + '</strong></div></div>';
     if (ficha.precoVenda && ficha.precoVenda > 0) {
         html += '<div class="ficha-totais ficha-totais-venda" style="margin-top:10px;">' +
             '<div class="ficha-totais-linha"><span>Preço de venda sugerido (markup ' + ficha.percentualCusto + '%)</span><strong>' + formatarMoeda(ficha.precoVenda) + '</strong></div></div>';
@@ -2567,7 +2529,6 @@ function sincronizarPendentesFornecedorSupabase() {
         for (var l = 0; l < pendentesFornecedor.length; l++) {
             var soLocal = pendentesFornecedor[l];
             if (idsDoServidor[soLocal.id]) { continue; } // já está no servidor, não precisa reenviar
-            if (!soLocal.aindaSincronizando) { continue; } // ja foi apagado por outro celular (ex: marcado como "Chegou") - nao recriar
 
             // Item só local: inclui na lista final e tenta enviar pro servidor
             listaConvertida.push(soLocal);
@@ -2576,14 +2537,10 @@ function sincronizarPendentesFornecedorSupabase() {
                     id: item.id, nome: item.nome, icone: item.icone, obs: item.obs, prazo: item.prazo
                 }, function(err) {
                     if (err) { return; }
-                        var aindaExisteLocal = false;
-                        for (var p = 0; p < pendentesFornecedor.length; p++) {
-                            if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; aindaExisteLocal = true; break; }
-        }
-                        salvarPendentesFornecedorSeguro(pendentesFornecedor);
-                                        if (!aindaExisteLocal) {
-                              supabaseDelete('fornecedores_pendentes', 'id=eq.' + encodeURIComponent(item.id), function() {});
-                                                  }
+                    for (var p = 0; p < pendentesFornecedor.length; p++) {
+                        if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; break; }
+                    }
+                    salvarPendentesFornecedorSeguro(pendentesFornecedor);
                 });
             })(soLocal);
         }
@@ -3008,25 +2965,7 @@ function atualizarVisuaisDaLista() {
     montarAbas();
 }
 
-function limparFilaReenvioObsoleta() {
-    var fila = lerFilaReenvioSegura();
-    if (fila.length === 0) { return; }
-    
-    var filaLimpa = fila.filter(function(acao) {
-        if (acao.metodo !== 'POST') { return true; }
-        var idPendente = acao.registro && acao.registro.id;
-        var listaLocal = acao.tabela === 'fornecedores_pendentes' ? pendentesFornecedor : (acao.tabela === 'manutencao_problemas' ? problemasAtuais : null);
-        if (!listaLocal) { return true; }
-        return listaLocal.some(function(item) { return item.id === idPendente && item.aindaSincronizando; });
-    });
-    
-    if (filaLimpa.length !== fila.length) {
-        salvarFilaReenvioSegura(filaLimpa);
-        atualizarAvisoOffline();
-    }
-}
-    
-    function iniciar() { 
+function iniciar() { 
     if (appIniciado) return; 
     appIniciado = true;
     
@@ -3048,7 +2987,7 @@ function limparFilaReenvioObsoleta() {
     sincronizarAgendaSupabase();
     sincronizarPendentesFornecedorSupabase();
     verificarNovasUrgencias();
-        limparFilaReenvioObsoleta();
+    iniciarRealtime();
     
     document.getElementById('editQty').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -3573,14 +3512,10 @@ function criarPendentesFornecedorDoResumo(dados) {
                 prazo: novoPendente.prazo
             }, (function(item) { return function(err) {
                 if (err) { console.warn('Não foi possível sincronizar pendente de fornecedor com o Supabase (salvo localmente):', err); return; }
-var aindaExisteLocal = false;
-                                for (var p = 0; p < pendentesFornecedor.length; p++) {
-                                                        if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; aindaExisteLocal = true; break; }
-                                }
-                                salvarPendentesFornecedorSeguro(pendentesFornecedor);
-                                if (!aindaExisteLocal) {
-                                                        supabaseDelete('fornecedores_pendentes', 'id=eq.' + encodeURIComponent(item.id), function() {});
-                                }
+                for (var p = 0; p < pendentesFornecedor.length; p++) {
+                    if (pendentesFornecedor[p].id === item.id) { delete pendentesFornecedor[p].aindaSincronizando; break; }
+                }
+                salvarPendentesFornecedorSeguro(pendentesFornecedor);
             }; })(novoPendente));
         }
     }
@@ -5059,6 +4994,233 @@ setInterval(function() {
     if (navigator.onLine) { processarFilaReenvio(); }
 }, 30000);
 atualizarAvisoOffline();
+
+// ============================================================
+// SUPABASE REALTIME — sincronização automática entre aparelhos
+// ============================================================
+function iniciarRealtime() {
+    if (typeof window.supabase === 'undefined') {
+        console.warn('[Realtime] Supabase JS client não carregado. Realtime desativado.');
+        return;
+    }
+
+    var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ---- manutencao_problemas ----
+    client.channel('rt_manutencao')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'manutencao_problemas' }, function(payload) {
+            var ev = payload.eventType;
+
+            if (ev === 'INSERT') {
+                var d = payload.new;
+                // Só adiciona se ainda não existir localmente (evita duplicata da própria ação)
+                var jaExiste = problemasAtuais.some(function(p) { return p.id === d.id; });
+                if (!jaExiste) {
+                    problemasAtuais.push({
+                        id: d.id, areaId: d.area_id, areaNome: d.area_nome, areaIcone: d.area_icone,
+                        descricao: d.descricao, prioridade: d.prioridade,
+                        prazo: d.prazo || null, fotoUrl: d.foto_url || null
+                    });
+                    salvarProblemasManutencaoSeguro(problemasAtuais);
+                }
+            } else if (ev === 'UPDATE') {
+                var d = payload.new;
+                for (var i = 0; i < problemasAtuais.length; i++) {
+                    if (problemasAtuais[i].id === d.id) {
+                        problemasAtuais[i].descricao = d.descricao;
+                        problemasAtuais[i].prioridade = d.prioridade;
+                        problemasAtuais[i].prazo = d.prazo || null;
+                        problemasAtuais[i].fotoUrl = d.foto_url || null;
+                        break;
+                    }
+                }
+                salvarProblemasManutencaoSeguro(problemasAtuais);
+            } else if (ev === 'DELETE') {
+                problemasAtuais = problemasAtuais.filter(function(p) { return p.id !== payload.old.id; });
+                salvarProblemasManutencaoSeguro(problemasAtuais);
+            }
+
+            // Atualiza UI se alguma tela de manutenção estiver aberta
+            if (setorAtivoId === 'manutencao') { montarListaManutencao(); atualizarVisuaisDaLista(); }
+            var telaArea = document.getElementById('manutencao-area-screen');
+            if (areaManutencaoAtiva && telaArea && telaArea.classList.contains('active')) { montarListaProblemasArea(); }
+            montarDashboardResumo();
+        })
+        .subscribe();
+
+    // ---- checklist_diaria_marcacoes ----
+    client.channel('rt_checklist_marcacoes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_diaria_marcacoes' }, function(payload) {
+            var hoje = chaveDiaChecklist();
+            var ev = payload.eventType;
+            if (!marcacoesChecklistDiaria.marcados) marcacoesChecklistDiaria.marcados = {};
+
+            if (ev === 'INSERT') {
+                var d = payload.new;
+                if (d.dia !== hoje) return; // ignorar marcações de outros dias
+                if (marcacoesChecklistDiaria.marcados[d.item_id]) return; // já marcado localmente
+                marcacoesChecklistDiaria.marcados[d.item_id] = true;
+                salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
+            } else if (ev === 'DELETE') {
+                var d = payload.old;
+                if (d.dia !== hoje) return;
+                if (!marcacoesChecklistDiaria.marcados[d.item_id]) return; // já desmarcado localmente
+                delete marcacoesChecklistDiaria.marcados[d.item_id];
+                salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
+            }
+
+            var telaChecklist = document.getElementById('checklistdiaria-screen');
+            if (telaChecklist && telaChecklist.classList.contains('active')) { renderizarListaChecklistDiaria(); }
+        })
+        .subscribe();
+
+    // ---- checklist_diaria_itens ----
+    client.channel('rt_checklist_itens')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_diaria_itens' }, function(payload) {
+            var ev = payload.eventType;
+            if (ev === 'INSERT') {
+                var d = payload.new;
+                var jaExiste = itensChecklistDiaria.some(function(it) { return it.id === d.id; });
+                if (!jaExiste) { itensChecklistDiaria.push({ id: d.id, texto: d.texto }); }
+            } else if (ev === 'UPDATE') {
+                var d = payload.new;
+                for (var i = 0; i < itensChecklistDiaria.length; i++) {
+                    if (itensChecklistDiaria[i].id === d.id) { itensChecklistDiaria[i].texto = d.texto; break; }
+                }
+            } else if (ev === 'DELETE') {
+                itensChecklistDiaria = itensChecklistDiaria.filter(function(it) { return it.id !== payload.old.id; });
+            }
+            salvarItensChecklistDiariaSeguro(itensChecklistDiaria);
+            var telaChecklist = document.getElementById('checklistdiaria-screen');
+            if (telaChecklist && telaChecklist.classList.contains('active')) { renderizarListaChecklistDiaria(); }
+        })
+        .subscribe();
+
+    // ---- agenda ----
+    client.channel('rt_agenda')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'agenda' }, function(payload) {
+            var ev = payload.eventType;
+
+            if (ev === 'INSERT') {
+                var d = payload.new;
+                if (!compromissosCache[d.data]) compromissosCache[d.data] = [];
+                var jaExiste = compromissosCache[d.data].some(function(c) { return c.id === d.id; });
+                if (!jaExiste) {
+                    compromissosCache[d.data].push({ id: d.id, titulo: d.titulo, horario: d.horario, observacao: d.observacao });
+                    salvarAgendaSegura(compromissosCache);
+                }
+            } else if (ev === 'DELETE') {
+                var d = payload.old;
+                if (compromissosCache[d.data]) {
+                    compromissosCache[d.data] = compromissosCache[d.data].filter(function(c) { return c.id !== d.id; });
+                    if (compromissosCache[d.data].length === 0) delete compromissosCache[d.data];
+                    salvarAgendaSegura(compromissosCache);
+                }
+            } else if (ev === 'UPDATE') {
+                var d = payload.new;
+                if (compromissosCache[d.data]) {
+                    for (var i = 0; i < compromissosCache[d.data].length; i++) {
+                        if (compromissosCache[d.data][i].id === d.id) {
+                            compromissosCache[d.data][i] = { id: d.id, titulo: d.titulo, horario: d.horario, observacao: d.observacao };
+                            break;
+                        }
+                    }
+                    salvarAgendaSegura(compromissosCache);
+                }
+            }
+
+            if (setorAtivoId === 'agenda') { montarCalendario(); }
+            var telaDia = document.getElementById('agenda-day-screen');
+            if (telaDia && telaDia.classList.contains('active') && agendaDataSelecionada) { renderizarListaDiaAgenda(); }
+            montarDashboardResumo();
+        })
+        .subscribe();
+
+    // ---- fornecedores_pendentes ----
+    client.channel('rt_fornecedores')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fornecedores_pendentes' }, function(payload) {
+            var ev = payload.eventType;
+
+            if (ev === 'INSERT') {
+                var d = payload.new;
+                var jaExiste = pendentesFornecedor.some(function(f) { return f.id === d.id; });
+                if (!jaExiste) {
+                    pendentesFornecedor.push({ id: d.id, nome: d.nome, icone: d.icone, obs: d.obs, prazo: d.prazo || null });
+                    salvarPendentesFornecedorSeguro(pendentesFornecedor);
+                }
+            } else if (ev === 'DELETE') {
+                pendentesFornecedor = pendentesFornecedor.filter(function(f) { return f.id !== payload.old.id; });
+                salvarPendentesFornecedorSeguro(pendentesFornecedor);
+            }
+
+            if (setorAtivoId === 'fornecedores') { montarListaInicial(); }
+            montarDashboardResumo();
+        })
+        .subscribe();
+
+    // ---- fichas_tecnicas ----
+    client.channel('rt_fichas')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fichas_tecnicas' }, function(payload) {
+            var ev = payload.eventType;
+
+            function mapearFicha(d) {
+                return {
+                    id: d.id, nome: d.nome, porcoes: d.porcoes,
+                    ingredientes: d.ingredientes || [], modoPreparo: d.modo_preparo || '',
+                    percentualCusto: d.percentual_custo || null,
+                    custoTotal: d.custo_total || 0, custoPorcao: d.custo_porcao || 0,
+                    precoVenda: d.preco_venda_sugerido || 0
+                };
+            }
+
+            if (ev === 'INSERT') {
+                var d = payload.new;
+                var jaExiste = fichasCache.some(function(f) { return f.id === d.id; });
+                if (!jaExiste) { fichasCache.push(mapearFicha(d)); salvarFichasSeguro(fichasCache); }
+            } else if (ev === 'UPDATE') {
+                var d = payload.new;
+                for (var i = 0; i < fichasCache.length; i++) {
+                    if (fichasCache[i].id === d.id) { fichasCache[i] = mapearFicha(d); break; }
+                }
+                salvarFichasSeguro(fichasCache);
+            } else if (ev === 'DELETE') {
+                fichasCache = fichasCache.filter(function(f) { return f.id !== payload.old.id; });
+                salvarFichasSeguro(fichasCache);
+            }
+
+            var telaFichas = document.getElementById('fichas-screen');
+            if (telaFichas && telaFichas.classList.contains('active')) { renderizarListaFichas(); }
+        })
+        .subscribe();
+
+    // ---- historico ----
+    client.channel('rt_historico')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'historico' }, function(payload) {
+            var ev = payload.eventType;
+
+            if (ev === 'INSERT') {
+                var d = payload.new;
+                var jaExiste = historicoCache.some(function(h) { return h.id === d.id; });
+                if (!jaExiste) {
+                    var entrada = { id: d.id, data: d.data_texto, setor: d.setor, tipo: d.tipo, itens: d.itens };
+                    historicoCache.unshift(entrada);
+                    var hl = lerHistoricoSeguro();
+                    hl.unshift(entrada);
+                    salvarHistoricoSeguro(hl);
+                }
+            } else if (ev === 'DELETE') {
+                historicoCache = historicoCache.filter(function(h) { return h.id !== payload.old.id; });
+                var hl = lerHistoricoSeguro().filter(function(h) { return h.id !== payload.old.id; });
+                salvarHistoricoSeguro(hl);
+            }
+
+            var telaHist = document.getElementById('history-screen');
+            if (telaHist && telaHist.classList.contains('active')) { renderizarListaHistorico(historicoCache); }
+        })
+        .subscribe();
+
+    console.log('[Realtime] Subscriptions ativas: manutencao, checklist (marcacoes + itens), agenda, fornecedores, fichas, historico.');
+}
 </script>
 </body>
 </html>
