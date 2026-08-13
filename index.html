@@ -355,7 +355,7 @@
 
         <div class="units" id="maturacaoContainer"></div>
 
-        <textarea id="editObs" class="edit-obs" placeholder="Observação (opcional): o que foi pedido, horário previsto..."></textarea>
+        <textarea id="editObs" class="edit-obs" placeholder="Observação (opcional): ex. sem cabeça, cortado em postas, horário previsto..."></textarea>
 
         <div id="editPrazoContainer" style="display:none; margin-top: -6px;">
             <label style="display:block; font-family:'Inter',sans-serif; font-size:12.5px; color:var(--text-dim); margin-bottom:6px;">Previsão de chegada (opcional)</label>
@@ -2986,7 +2986,7 @@ function atualizarVisuaisDaLista() {
                 var textoMarcado = (setor.id === 'cotacao') ? '✓ Na lista de cotação' : '✓ Pedido feito';
                 divQtd.innerHTML = textoMarcado + (registro.obs ? '<br><span class="product-qty-obs">' + registro.obs.replace(/</g,'&lt;') + '</span>' : '');
             } else {
-                divQtd.innerText = registro.qtd + ' ' + registro.unidade + (registro.maturacao ? ' · ' + registro.maturacao : '');
+                                divQtd.innerHTML = registro.qtd + ' ' + registro.unidade + (registro.maturacao ? ' · ' + registro.maturacao : '') + (registro.obs ? '<br><span class="product-qty-obs">' + registro.obs.replace(/</g,'&lt;') + '</span>' : '');
             }
             divQtd.style.display = "block";
             contador++;
@@ -3250,7 +3250,8 @@ function abrirEdicao(nomeProduto, iconeProduto) {
     } else {
         input.style.display = "block";
         unitsContainer.style.display = "flex";
-        obsBox.style.display = "none";
+                obsBox.style.display = "block";
+                obsBox.value = (registro && registro.obs) ? registro.obs : "";
         prazoContainer.style.display = "none";
         prazoInput.value = "";
         fornecedoresContainer.style.display = "none";
@@ -3354,7 +3355,9 @@ function confirmarQuantidade() {
         if (val > 0) { 
             var registroNovo = { qtd: val, unidade: unidadeSelecionada };
             if (setor.maturacao && setor.maturacao.length > 0) { registroNovo.maturacao = maturacaoSelecionada; }
-            pedidos[setor.id][produtoSendoEditado] = registroNovo; 
+            var obsPedido = document.getElementById('editObs').value;
+                            if (obsPedido) { registroNovo.obs = obsPedido; }
+                            pedidos[setor.id][produtoSendoEditado] = registroNovo; 
         } else { 
             pedidos[setor.id][produtoSendoEditado] = null; 
         }
@@ -3466,7 +3469,7 @@ function verResumo() {
             } else if (setor.tipo === 'checklist') {
                 infoDiv.innerHTML = '<span>' + k + '</span> <strong>' + (registro.obs ? registro.obs : '✓') + '</strong>';
             } else {
-                infoDiv.innerHTML = '<span>' + k + '</span> <strong>' + registro.qtd + ' ' + registro.unidade + (registro.maturacao ? ' · ' + registro.maturacao : '') + '</strong>';
+                                infoDiv.innerHTML = '<span>' + k + '</span> <strong>' + registro.qtd + ' ' + registro.unidade + (registro.maturacao ? ' · ' + registro.maturacao : '') + '</strong>' + (registro.obs ? '<br><span class="product-qty-obs">' + registro.obs.replace(/</g,'&lt;') + '</span>' : '');
             }
             
             div.appendChild(iconDiv);
@@ -3527,7 +3530,7 @@ function gerarTextoPedido() {
             } else if (setor.tipo === 'checklist') {
                 linha = "- " + k + (registro.obs ? "\n  " + registro.obs : "");
             } else {
-                linha = "- " + registro.qtd + " " + registro.unidade + (registro.maturacao ? " (" + registro.maturacao + ")" : "") + " - " + k;
+                                linha = "- " + registro.qtd + " " + registro.unidade + (registro.maturacao ? " (" + registro.maturacao + ")" : "") + " - " + k + (registro.obs ? "\n  obs: " + registro.obs : "");
             }
             texto += linha + "\n";
             itensParaHistorico.push(linha);
