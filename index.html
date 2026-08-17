@@ -51,12 +51,10 @@
     .hist-btn-cotacao { background: rgba(212,162,76,0.22); color: #E8BC72; box-shadow: 0 2px 8px rgba(212,162,76,0.25); }
     .hist-btn-fichas { background: rgba(63,184,175,0.22); color: #5FD4C9; box-shadow: 0 2px 8px rgba(63,184,175,0.25); }
     .hist-btn-eventos { background: rgba(180,90,220,0.22); color: #C87EE8; box-shadow: 0 2px 8px rgba(180,90,220,0.25); }
-    .hist-btn-eventos { background: rgba(180,90,220,0.22); color: #C87EE8; box-shadow: 0 2px 8px rgba(180,90,220,0.25); }
     .hist-btn-checklist { background: rgba(95,184,138,0.22); color: #7FD6A6; box-shadow: 0 2px 8px rgba(95,184,138,0.25); }
     .hist-btn-historico { background: rgba(243,112,58,0.22); color: #F79868; box-shadow: 0 2px 8px rgba(243,112,58,0.25); }
     .hist-btn-agenda.hist-btn-ativo { background: #9B8FD1; color: #1B1420; }
     .hist-btn-cotacao.hist-btn-ativo { background: #D4A24C; color: #1B1420; }
-    .hist-btn-eventos.hist-btn-ativo { background: #B45ADC; color: #ffffff; }
     .hist-btn-eventos.hist-btn-ativo { background: #B45ADC; color: #ffffff; }
     .problema-prazo-proximo { animation: piscarProximo 1.1s ease-in-out infinite; }
     .problema-prazo-vencido { animation: piscarVencido 0.9s ease-in-out infinite; }
@@ -536,21 +534,6 @@
 </div>
 
 <!-- ========== TELA: COTAÇÃO DE EVENTOS ========== -->
-<div id="eventos-screen" class="screen">
-    <div class="screen-header">
-        <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
-        <h2>🎉 Cotação de Eventos</h2>
-        <button onclick="abrirNovoOrcamento()" style="background: var(--accent); color: var(--accent-text); border: none; border-radius: 20px; padding: 8px 18px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; margin-left: auto;">+ Novo</button>
-    </div>
-
-    <div id="eventos-lista" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;">
-        <!-- lista de orçamentos carregada dinamicamente -->
-        <div id="eventos-loading" style="text-align: center; color: var(--text-dim); padding: 40px; font-size: 15px;">
-            Carregando orçamentos...
-        </div>
-    </div>
-</div>
-
 <div id="eventos-screen" class="screen">
     <div class="screen-header">
         <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
@@ -2162,136 +2145,51 @@ function verResumoChecklistDiaria() {
 }
 
 // ======== COTAÇÃO DE EVENTOS ========
-
 var orcamentosCache = [];
-
 function abrirEventosDireto() {
     trocarTela('eventos-screen');
-    // Marca botão ativo
-    document.querySelectorAll('.hist-btn').forEach(function(b) { b.classList.remove('hist-btn-ativo'); });
-    var btn = document.getElementById('btnEventosTopo');
-    if (btn) btn.classList.add('hist-btn-ativo');
+    document.querySelectorAll('.hist-btn').forEach(function(b){b.classList.remove('hist-btn-ativo');});
+    var btn=document.getElementById('btnEventosTopo');
+    if(btn)btn.classList.add('hist-btn-ativo');
     carregarOrcamentos();
 }
-
 async function carregarOrcamentos() {
-    var loading = document.getElementById('eventos-loading');
-    var lista = document.getElementById('eventos-lista');
-    if (loading) loading.style.display = 'block';
-
-    var U = "https://kfgcqshhltemsochafid.supabase.co";
-    var K = "sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
-    var H = { apikey: K, Authorization: "Bearer " + K };
-
+    var loading=document.getElementById('eventos-loading');
+    if(loading)loading.style.display='block';
+    var U="https://kfgcqshhltemsochafid.supabase.co",K="sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
+    var H={apikey:K,Authorization:"Bearer "+K};
     try {
-        var r = await fetch(U + "/rest/v1/orcamentos_eventos?select=*&order=criado_em.desc&limit=50", { headers: H });
-        orcamentosCache = await r.json();
+        var r=await fetch(U+"/rest/v1/orcamentos_eventos?select=*&order=criado_em.desc&limit=50",{headers:H});
+        orcamentosCache=await r.json();
         renderizarListaOrcamentos();
-    } catch(e) {
-        if (loading) loading.innerText = 'Erro ao carregar. Verifique a conexão.';
-    }
+    } catch(e){if(loading)loading.innerText='Erro ao carregar.';}
 }
-
 function renderizarListaOrcamentos() {
-    var lista = document.getElementById('eventos-lista');
-    var loading = document.getElementById('eventos-loading');
-    if (loading) loading.style.display = 'none';
-
-    // Remove cards antigos, mantém só o loading
-    var filhos = Array.from(lista.children);
-    filhos.forEach(function(f) { if (f.id !== 'eventos-loading') lista.removeChild(f); });
-
-    if (!orcamentosCache || orcamentosCache.length === 0) {
-        var vazio = document.createElement('div');
-        vazio.style.cssText = 'text-align:center; color:var(--text-dim); padding:50px 20px; font-size:15px; line-height:1.6;';
-        vazio.innerHTML = '🎉<br><br>Nenhum orçamento ainda.<br>Toque em <strong>+ Novo</strong> para criar o primeiro.';
-        lista.appendChild(vazio);
-        return;
+    var lista=document.getElementById('eventos-lista');
+    var loading=document.getElementById('eventos-loading');
+    if(loading)loading.style.display='none';
+    Array.from(lista.children).forEach(function(f){if(f.id!=='eventos-loading')lista.removeChild(f);});
+    if(!orcamentosCache||!orcamentosCache.length){
+        var v=document.createElement('div');
+        v.style.cssText='text-align:center;color:var(--text-dim);padding:50px 20px;font-size:15px;line-height:1.6;';
+        v.innerHTML='🎉<br><br>Nenhum orçamento ainda.<br>Toque em <strong>+ Novo</strong> para criar o primeiro.';
+        lista.appendChild(v);return;
     }
-
-    var statusCor = { rascunho: '#A0A0B0', enviado: '#E8BC72', aprovado: '#5FD4C9', cancelado: '#E07070' };
-    var statusLabel = { rascunho: 'Rascunho', enviado: 'Enviado', aprovado: 'Aprovado', cancelado: 'Cancelado' };
-
-    orcamentosCache.forEach(function(orc) {
-        var card = document.createElement('div');
-        card.style.cssText = 'background:var(--surface); border-radius:14px; padding:16px 18px; cursor:pointer; display:flex; flex-direction:column; gap:6px; border-left:4px solid ' + (statusCor[orc.status] || '#A0A0B0') + ';';
-        card.onclick = function() { abrirOrcamento(orc.id); };
-
-        var dataEvento = orc.evento_data ? new Date(orc.evento_data + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
-        var precoTotal = orc.preco_total ? 'R$ ' + Number(orc.preco_total).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
-
-        card.innerHTML =
-            '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
-                '<div style="font-weight:700; font-size:16px; color:var(--text);">' + (orc.cliente_nome || 'Cliente não informado') + '</div>' +
-                '<span style="font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; background:' + (statusCor[orc.status] || '#A0A0B0') + '33; color:' + (statusCor[orc.status] || '#A0A0B0') + ';">' + (statusLabel[orc.status] || orc.status) + '</span>' +
-            '</div>' +
-            '<div style="font-size:13px; color:var(--text-dim);">' + (orc.evento_nome || 'Evento sem nome') + ' · ' + dataEvento + '</div>' +
-            '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">' +
-                '<span style="font-size:13px; color:var(--text-dim);">' + (orc.num_pessoas || 0) + ' pessoas</span>' +
-                '<span style="font-size:15px; font-weight:700; color:var(--accent);">' + precoTotal + '</span>' +
-            '</div>';
-
+    var sC={rascunho:'#A0A0B0',enviado:'#E8BC72',aprovado:'#5FD4C9',cancelado:'#E07070'};
+    var sL={rascunho:'Rascunho',enviado:'Enviado',aprovado:'Aprovado',cancelado:'Cancelado'};
+    orcamentosCache.forEach(function(orc){
+        var card=document.createElement('div');
+        card.style.cssText='background:var(--surface);border-radius:14px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;border-left:4px solid '+(sC[orc.status]||'#A0A0B0')+';';
+        card.onclick=function(){abrirOrcamento(orc.id);};
+        var d=orc.evento_data?new Date(orc.evento_data+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+        var p=orc.preco_total?'R$ '+Number(orc.preco_total).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—';
+        card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;"><div style="font-weight:700;font-size:16px;color:var(--text);">'+(orc.cliente_nome||'Cliente não informado')+'</div><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+(sC[orc.status]||'#A0A0B0')+'33;color:'+(sC[orc.status]||'#A0A0B0')+'">'+(sL[orc.status]||orc.status)+'</span></div><div style="font-size:13px;color:var(--text-dim);">'+(orc.evento_nome||'Evento sem nome')+' · '+d+'</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;"><span style="font-size:13px;color:var(--text-dim);">'+(orc.num_pessoas||0)+' pessoas</span><span style="font-size:15px;font-weight:700;color:var(--accent);">'+p+'</span></div>';
         lista.appendChild(card);
     });
 }
-
-function abrirNovoOrcamento() {
-    // Será implementado na Etapa 2
-    alert('Em breve: formulário de novo orçamento! (Etapa 2)');
-}
-
-function abrirOrcamento(id) {
-    // Será implementado nas etapas seguintes
-    alert('Em breve: edição do orçamento #' + id + '!');
-}
-
+function abrirNovoOrcamento(){alert('Em breve: Etapa 2!');}
+function abrirOrcamento(id){alert('Em breve: #'+id);}
 // ======== FIM COTAÇÃO DE EVENTOS ========
-
-var orcamentosCache = [];
-function abrirEventosDireto() {
-    trocarTela('eventos-screen');
-    document.querySelectorAll('.hist-btn').forEach(function(b) { b.classList.remove('hist-btn-ativo'); });
-    var btn = document.getElementById('btnEventosTopo');
-    if (btn) btn.classList.add('hist-btn-ativo');
-    carregarOrcamentos();
-}
-async function carregarOrcamentos() {
-    var loading = document.getElementById('eventos-loading');
-    if (loading) loading.style.display = 'block';
-    var U = "https://kfgcqshhltemsochafid.supabase.co";
-    var K = "sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
-    var H = { apikey: K, Authorization: "Bearer " + K };
-    try {
-        var r = await fetch(U + "/rest/v1/orcamentos_eventos?select=*&order=criado_em.desc&limit=50", { headers: H });
-        orcamentosCache = await r.json();
-        renderizarListaOrcamentos();
-    } catch(e) { if (loading) loading.innerText = 'Erro ao carregar.'; }
-}
-function renderizarListaOrcamentos() {
-    var lista = document.getElementById('eventos-lista');
-    var loading = document.getElementById('eventos-loading');
-    if (loading) loading.style.display = 'none';
-    Array.from(lista.children).forEach(function(f) { if (f.id !== 'eventos-loading') lista.removeChild(f); });
-    if (!orcamentosCache || !orcamentosCache.length) {
-        var v = document.createElement('div');
-        v.style.cssText = 'text-align:center;color:var(--text-dim);padding:50px 20px;font-size:15px;line-height:1.6;';
-        v.innerHTML = '🎉<br><br>Nenhum orçamento ainda.<br>Toque em <strong>+ Novo</strong> para criar o primeiro.';
-        lista.appendChild(v); return;
-    }
-    var sC = { rascunho:'#A0A0B0', enviado:'#E8BC72', aprovado:'#5FD4C9', cancelado:'#E07070' };
-    var sL = { rascunho:'Rascunho', enviado:'Enviado', aprovado:'Aprovado', cancelado:'Cancelado' };
-    orcamentosCache.forEach(function(orc) {
-        var card = document.createElement('div');
-        card.style.cssText = 'background:var(--surface);border-radius:14px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;border-left:4px solid '+(sC[orc.status]||'#A0A0B0')+';';
-        card.onclick = function() { abrirOrcamento(orc.id); };
-        var d = orc.evento_data ? new Date(orc.evento_data+'T12:00:00').toLocaleDateString('pt-BR') : '—';
-        var p = orc.preco_total ? 'R$ '+Number(orc.preco_total).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
-        card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;"><div style="font-weight:700;font-size:16px;color:var(--text);">'+(orc.cliente_nome||'Cliente não informado')+'</div><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+(sC[orc.status]||'#A0A0B0')+'33;color:'+(sC[orc.status]||'#A0A0B0')+'">'+(sL[orc.status]||orc.status)+'</span></div><div style="font-size:13px;color:var(--text-dim);">'+(orc.evento_nome||'Evento sem nome')+' · '+d+'</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;"><span style="font-size:13px;color:var(--text-dim);">'+(orc.num_pessoas||0)+' pessoas</span><span style="font-size:15px;font-weight:700;color:var(--accent);">'+p+'</span></div>';
-        lista.appendChild(card);
-    });
-}
-function abrirNovoOrcamento() { alert('Em breve: Etapa 2!'); }
-function abrirOrcamento(id) { alert('Em breve: orçamento #'+id); }
 
 function abrirFichasDireto() {
     trocarTela('fichas-screen');
