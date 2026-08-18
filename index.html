@@ -2276,6 +2276,102 @@ function verResumoChecklistDiaria() {
 var orcamentosCache = [];
 
 // ---- WIZARD NOVO ORÇAMENTO ----
+
+var GRUPOS_CARDAPIO = [
+    {
+        id: 'coquetel', label: '🥂 Coquetel', cat: ['entrada','peixe','acomp'],
+        sugestoes: [
+            {id:301,nome:'PORCAO MISTO DE SALGADOS',cat:'entrada',custo_porcao:19.63,preco_venda_sugerido:86},
+            {id:329,nome:'RISSOIS CAMARAO',cat:'peixe',custo_porcao:17.80,preco_venda_sugerido:82},
+            {id:286,nome:'PASTEIS DE QUEIJO',cat:'entrada',custo_porcao:2.51,preco_venda_sugerido:78},
+            {id:285,nome:'PASTEIS DE CARNE',cat:'entrada',custo_porcao:20.14,preco_venda_sugerido:78},
+            {id:191,nome:'DL BOLINHO DE BAC 10 UNI',cat:'peixe',custo_porcao:43.18,preco_venda_sugerido:80},
+            {id:299,nome:'POLVO APERITIVO',cat:'peixe',custo_porcao:7.63,preco_venda_sugerido:126},
+            {id:255,nome:'LULA APERITIVO',cat:'peixe',custo_porcao:11.79,preco_venda_sugerido:95},
+            {id:307,nome:'QUEIJO QUENTE',cat:'entrada',custo_porcao:9.24,preco_venda_sugerido:84},
+            {id:39,nome:'ALHEIRA ENTRADA',cat:'entrada',custo_porcao:14.4,preco_venda_sugerido:87},
+            {id:139,nome:'CARPACCIO DE OJO DE BIFE',cat:'carne',custo_porcao:20.04,preco_venda_sugerido:92}
+        ]
+    },
+    {
+        id: 'entrada', label: '🥗 Entrada', cat: ['entrada','acomp'],
+        sugestoes: [
+            {id:337,nome:'SALADA GAMBAS C SHITAKE',cat:'acomp',custo_porcao:28.99,preco_venda_sugerido:91},
+            {id:338,nome:'SALADA MISTA',cat:'acomp',custo_porcao:9.52,preco_venda_sugerido:80},
+            {id:334,nome:'SALADA CAPRESE',cat:'acomp',custo_porcao:22.49,preco_venda_sugerido:80},
+            {id:335,nome:'SALADA DE CITRICOS A BELA SINTRA',cat:'acomp',custo_porcao:9.61,preco_venda_sugerido:68},
+            {id:336,nome:'SALADA DE PATO C VERDURINHAS',cat:'ave',custo_porcao:15.71,preco_venda_sugerido:80},
+            {id:307,nome:'QUEIJO QUENTE',cat:'entrada',custo_porcao:9.24,preco_venda_sugerido:84},
+            {id:286,nome:'PASTEIS DE QUEIJO',cat:'entrada',custo_porcao:2.51,preco_venda_sugerido:78},
+            {id:285,nome:'PASTEIS DE CARNE',cat:'entrada',custo_porcao:20.14,preco_venda_sugerido:78},
+            {id:139,nome:'CARPACCIO DE OJO DE BIFE',cat:'carne',custo_porcao:20.04,preco_venda_sugerido:92},
+            {id:346,nome:'SIRI GRATINADO',cat:'peixe',custo_porcao:0.83,preco_venda_sugerido:68}
+        ]
+    },
+    {
+        id: 'principal', label: '🍽 Prato Principal', cat: ['peixe','carne','ave'],
+        sugestoes: [
+            {id:290,nome:'PERNA CORDEIRO COM FEIJAO BRANCO',cat:'carne',custo_porcao:88.72,preco_venda_sugerido:226},
+            {id:328,nome:'RIBEYE CAP STEAK GRELHADO',cat:'carne',custo_porcao:70.89,preco_venda_sugerido:225},
+            {id:294,nome:'PICADINHO DE FILE A COPACABANA',cat:'carne',custo_porcao:39.98,preco_venda_sugerido:221},
+            {id:119,nome:'BIFE A BELA SINTRA',cat:'carne',custo_porcao:45.85,preco_venda_sugerido:217},
+            {id:298,nome:'POLVO A LAGAREIRO',cat:'peixe',custo_porcao:75.76,preco_venda_sugerido:231},
+            {id:246,nome:'LAGOSTA AO THERMIDOR',cat:'peixe',custo_porcao:148.75,preco_venda_sugerido:448},
+            {id:130,nome:'CAMARAO A BELA SINTRA',cat:'peixe',custo_porcao:87.96,preco_venda_sugerido:260},
+            {id:107,nome:'BAC C QUEIJO LUSITANO',cat:'peixe',custo_porcao:130.76,preco_venda_sugerido:314},
+            {id:98,nome:'ARROZ DE PATO A NOSSA MODA',cat:'carne',custo_porcao:51.63,preco_venda_sugerido:187},
+            {id:268,nome:'MOQUECA DE PEIXE FRESCO C CAMARAO',cat:'peixe',custo_porcao:53.17,preco_venda_sugerido:228}
+        ]
+    },
+    {
+        id: 'sobremesa', label: '🍮 Sobremesa', cat: ['sobremesa'],
+        sugestoes: [
+            {id:344,nome:'SERICAIA DO ALENTEJO',cat:'sobremesa',custo_porcao:0.84,preco_venda_sugerido:51},
+            {id:281,nome:'OVOS NEVADOS CARAMELO',cat:'sobremesa',custo_porcao:5.37,preco_venda_sugerido:58},
+            {id:279,nome:'OVOS MOLES AMENDOAS',cat:'sobremesa',custo_porcao:5.08,preco_venda_sugerido:53},
+            {id:272,nome:'MOUSSE GOIABA CALDA BAUNILHA',cat:'sobremesa',custo_porcao:3.83,preco_venda_sugerido:48},
+            {id:221,nome:'FAROFIAS',cat:'sobremesa',custo_porcao:2.65,preco_venda_sugerido:43},
+            {id:282,nome:'PANACOTA DE BAUNILHA',cat:'sobremesa',custo_porcao:3.85,preco_venda_sugerido:43},
+            {id:287,nome:'PASTEL DE NATA',cat:'sobremesa',custo_porcao:2.27,preco_venda_sugerido:42},
+            {id:345,nome:'SERICAIA INTEIRA',cat:'sobremesa',custo_porcao:8.42,preco_venda_sugerido:238},
+            {id:67,nome:'PASTEL DE QUEIJO',cat:'sobremesa',custo_porcao:2.51,preco_venda_sugerido:76},
+            {id:287,nome:'BISCOITO FINO PORTUGUES',cat:'sobremesa',custo_porcao:1.5,preco_venda_sugerido:18}
+        ]
+    },
+    {
+        id: 'cafe', label: '☕ Café & Digestivos', cat: ['bebida'],
+        sugestoes: [
+            {id:127,nome:'CAFE',cat:'bebida',custo_porcao:2.25,preco_venda_sugerido:17},
+            {id:128,nome:'CAFE DUPLO',cat:'bebida',custo_porcao:4.5,preco_venda_sugerido:19},
+            {id:137,nome:'CAPUCCINO',cat:'bebida',custo_porcao:2.25,preco_venda_sugerido:15},
+            {id:156,nome:'CHA NATURAL',cat:'bebida',custo_porcao:0,preco_venda_sugerido:15},
+            {id:239,nome:'I GRAHAM S FINE TAWNY',cat:'vinho',custo_porcao:18.50,preco_venda_sugerido:46},
+            {id:238,nome:'I GRAHAM S FINE RUBY',cat:'vinho',custo_porcao:19.13,preco_venda_sugerido:50},
+            {id:236,nome:'I GRAHAM S 20 YEARS TAWNY',cat:'vinho',custo_porcao:84.62,preco_venda_sugerido:138},
+            {id:232,nome:'I CHANDON RESERVA BRUT 187ML',cat:'vinho',custo_porcao:15.10,preco_venda_sugerido:55},
+            {id:102,nome:'AVERNA DOSE',cat:'vinho',custo_porcao:117.69,preco_venda_sugerido:36},
+            {id:213,nome:'DOSE HENNESSY X.O',cat:'vinho',custo_porcao:1686.56,preco_venda_sugerido:401}
+        ]
+    },
+    {
+        id: 'bebidas', label: '🍷 Bebidas & Vinhos', cat: ['bebida','vinho'],
+        sugestoes: [
+            {id:263,nome:'MOET CHANDON BRUT IMPERIAL 750ML',cat:'bebida',custo_porcao:329.08,preco_venda_sugerido:810},
+            {id:264,nome:'MOET CHANDON ROSE BRUT 750ML',cat:'vinho',custo_porcao:459.9,preco_venda_sugerido:910},
+            {id:159,nome:'CHANDON RESERVE BRUT 750ML',cat:'vinho',custo_porcao:100.68,preco_venda_sugerido:260},
+            {id:122,nome:'BOLLINGER SPECIAL CUVEE BRUT 750ML',cat:'vinho',custo_porcao:748.94,preco_venda_sugerido:1401},
+            {id:166,nome:'COELHEIROS TTO 750ML',cat:'vinho',custo_porcao:165.22,preco_venda_sugerido:360},
+            {id:297,nome:'PLANALTO RESERVA DOURO BCO',cat:'vinho',custo_porcao:78.22,preco_venda_sugerido:320},
+            {id:89,nome:'ALVARINHO SOALHEIRO BCO 750ML',cat:'vinho',custo_porcao:216.69,preco_venda_sugerido:620},
+            {id:230,nome:'AGUA DAS PEDRAS',cat:'bebida',custo_porcao:10.84,preco_venda_sugerido:28},
+            {id:348,nome:'SODA ITALIANA',cat:'bebida',custo_porcao:0,preco_venda_sugerido:32},
+            {id:231,nome:'GUARANA DIET ANTARCTICA',cat:'bebida',custo_porcao:3.39,preco_venda_sugerido:14}
+        ]
+    }
+];
+
+var wizGrupoAtivo = 'coquetel';
+var wizModoExpandido = {}; // { grupoId: true/false }
 var wizPassoAtual = 1;
 var wizPratosSelecionados = {};
 var wizEquipe = [];
@@ -2442,23 +2538,135 @@ function renderizarPratosWizard() {
     atualizarBarraSelecionados();
 }
 
+function renderizarGruposWizard() {
+    var cats = document.getElementById('wiz-cats');
+    if (cats) {
+        cats.innerHTML = '';
+        GRUPOS_CARDAPIO.forEach(function(g) {
+            var btn = document.createElement('button');
+            btn.className = 'wiz-cat-btn' + (g.id === wizGrupoAtivo ? ' ativo' : '');
+            btn.innerText = g.label;
+            btn.onclick = function() { wizGrupoAtivo = g.id; renderizarGruposWizard(); };
+            cats.appendChild(btn);
+        });
+    }
+    var busca = (document.getElementById('wiz-busca-prato')||{}).value || '';
+    if (busca.trim().length >= 2) {
+        clearTimeout(window._wizBuscaTimer);
+        window._wizBuscaTimer = setTimeout(function(){ buscarPratosNoBanco(busca.trim()); }, 400);
+        return;
+    }
+    var grupo = GRUPOS_CARDAPIO.find(function(g){return g.id===wizGrupoAtivo;});
+    if (!grupo) return;
+    var lista = document.getElementById('wiz-pratos-lista');
+    if (!lista) return;
+    lista.innerHTML = '';
+    var h = document.createElement('div');
+    h.style.cssText = 'font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 8px 0;';
+    h.innerText = 'Sugestões · ' + grupo.label;
+    lista.appendChild(h);
+    grupo.sugestoes.forEach(function(ficha) { lista.appendChild(criarCardPrato(ficha)); });
+    var btnMais = document.createElement('button');
+    btnMais.style.cssText = 'width:100%;background:var(--surface);border:none;border-radius:12px;padding:12px;color:var(--text-dim);font-size:13px;cursor:pointer;font-family:\'Inter\',sans-serif;margin-top:4px;';
+    btnMais.innerText = '🔍 Buscar mais pratos deste grupo no banco...';
+    btnMais.onclick = function() { buscarPratosPorGrupo(grupo); };
+    lista.appendChild(btnMais);
+    atualizarBarraSelecionados();
+}
+
+function criarCardPrato(ficha) {
+    var sel = wizPratosSelecionados[ficha.id];
+    var card = document.createElement('div');
+    card.className = 'wiz-prato-card' + (sel ? ' selecionado' : '');
+    var custo = ficha.custo_porcao ? 'R$ '+Number(ficha.custo_porcao).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
+    var preco = ficha.preco_venda_sugerido ? 'R$ '+Number(ficha.preco_venda_sugerido).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
+    var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+        +'<div style="font-weight:700;font-size:15px;color:var(--text);flex:1;margin-right:8px;">'+escHtml(ficha.nome)+'</div>'
+        +'<span style="font-size:11px;background:var(--bg);color:var(--text-dim);padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(CATS_LABEL[ficha.cat]||ficha.cat||'')+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:16px;font-size:12px;color:var(--text-dim);">'
+        +'<span>Custo/pax: <strong style="color:var(--text);">'+custo+'</strong></span>'
+        +'<span>Venda: <strong style="color:var(--accent);">'+preco+'</strong></span>'
+        +'</div>';
+    if (sel) {
+        html += '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;"><span style="font-size:12px;color:var(--text-dim);">Porções/pax:</span>';
+        PORCOES_OPCOES.forEach(function(p,i) {
+            html += '<button class="wiz-porcao-btn'+(sel.porcoes===p?' ativo':'')+'" onclick="definirPorcaoWizard('+ficha.id+','+p+',event)">'+PORCOES_LABEL[i]+'</button>';
+        });
+        html += '</div>';
+    }
+    html += '<div style="display:flex;gap:8px;margin-top:6px;">'
+        +'<button onclick="verDetalheFichaWizard('+ficha.id+',event)" style="background:transparent;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;padding:0;font-family:\'Inter\',sans-serif;">📋 Ver ingredientes</button>'
+        +(sel
+            ? '<button onclick="removerPratoWizard('+ficha.id+',event)" style="background:transparent;border:none;color:#E07070;font-size:12px;cursor:pointer;padding:0;font-family:\'Inter\',sans-serif;margin-left:auto;">✕ Remover</button>'
+            : '<button onclick="selecionarPratoWizardFicha('+ficha.id+',\''+JSON.stringify(ficha).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="background:transparent;border:none;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;padding:0;font-family:\'Inter\',sans-serif;margin-left:auto;">+ Selecionar</button>')
+        +'</div>';
+    card.innerHTML = html;
+    return card;
+}
+
+async function buscarPratosPorGrupo(grupo) {
+    var lista = document.getElementById('wiz-pratos-lista');
+    lista.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;">Buscando...</div>';
+    var U="https://kfgcqshhltemsochafid.supabase.co",K="sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
+    var catFiltro = grupo.cat.map(function(c){return 'cat.eq.'+c;}).join(',');
+    try {
+        var r = await fetch(U+"/rest/v1/fichas_tecnicas?select=id,nome,cat,custo_porcao,preco_venda_sugerido,porcoes,unidade_rendimento&disponivel=eq.true&cat=neq.prod&or=("+catFiltro+")&order=preco_venda_sugerido.desc&limit=40",{headers:{apikey:K,Authorization:"Bearer "+K}});
+        var fichas = await r.json();
+        lista.innerHTML = '';
+        if (!fichas.length) { lista.innerHTML='<div style="text-align:center;color:var(--text-dim);padding:20px;">Nenhum prato encontrado.</div>'; return; }
+        var h=document.createElement('div');h.style.cssText='font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 8px 0;';
+        h.innerText=fichas.length+' pratos · '+grupo.label;lista.appendChild(h);
+        fichas.forEach(function(f){lista.appendChild(criarCardPrato(f));});
+        atualizarBarraSelecionados();
+    } catch(e) { lista.innerHTML='<div style="text-align:center;color:#E07070;padding:20px;">Erro ao buscar.</div>'; }
+}
+
+async function buscarPratosNoBanco(termo) {
+    var lista = document.getElementById('wiz-pratos-lista');
+    if (!lista) return;
+    lista.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;">Buscando...</div>';
+    var U="https://kfgcqshhltemsochafid.supabase.co",K="sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
+    try {
+        var r = await fetch(U+"/rest/v1/fichas_tecnicas?select=id,nome,cat,custo_porcao,preco_venda_sugerido,porcoes,unidade_rendimento&disponivel=eq.true&cat=neq.prod&nome=ilike.*"+encodeURIComponent(termo)+"*&order=preco_venda_sugerido.desc&limit=30",{headers:{apikey:K,Authorization:"Bearer "+K}});
+        var fichas = await r.json();
+        lista.innerHTML = '';
+        if (!fichas.length) { lista.innerHTML='<div style="text-align:center;color:var(--text-dim);padding:20px;">Nenhum prato para "'+escHtml(termo)+'".</div>'; return; }
+        var h=document.createElement('div');h.style.cssText='font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 8px 0;';
+        h.innerText=fichas.length+' resultado(s) para "'+termo+'"';lista.appendChild(h);
+        fichas.forEach(function(f){lista.appendChild(criarCardPrato(f));});
+        atualizarBarraSelecionados();
+    } catch(e) { lista.innerHTML='<div style="text-align:center;color:#E07070;padding:20px;">Erro ao buscar.</div>'; }
+}
+
 function selecionarPratoWizard(id, ev) {
     if (ev) ev.stopPropagation();
-    var ficha = wizPratosCache.find(function(f) { return f.id === id; });
+    var ficha = wizPratosCache.find(function(f){return f.id===id;});
+    if (!ficha) { // tenta buscar nas sugestões dos grupos
+        GRUPOS_CARDAPIO.forEach(function(g){g.sugestoes.forEach(function(s){if(s.id===id)ficha=s;});});
+    }
     if (!ficha) return;
     wizPratosSelecionados[id] = { ficha: ficha, porcoes: 1 };
-    renderizarPratosWizard();
+    renderizarGruposWizard();
+}
+
+function selecionarPratoWizardFicha(id, fichaStr, ev) {
+    if (ev) ev.stopPropagation();
+    var ficha = fichaStr;
+    if (typeof fichaStr === 'string') { try { ficha = JSON.parse(fichaStr.replace(/'/g,'"')); } catch(e){return;} }
+    wizPratosSelecionados[id] = { ficha: ficha, porcoes: 1 };
+    renderizarGruposWizard();
 }
 
 function removerPratoWizard(id, ev) {
     if (ev) ev.stopPropagation();
     delete wizPratosSelecionados[id];
-    renderizarPratosWizard();
+    renderizarGruposWizard();
 }
 
 function definirPorcaoWizard(id, porcoes, ev) {
     if (ev) ev.stopPropagation();
-    if (wizPratosSelecionados[id]) { wizPratosSelecionados[id].porcoes = porcoes; renderizarPratosWizard(); }
+    if (wizPratosSelecionados[id]) { wizPratosSelecionados[id].porcoes = porcoes; renderizarGruposWizard(); }
 }
 
 async function verDetalheFichaWizard(id, ev) {
@@ -2614,54 +2822,94 @@ function renderizarListaOrcamentos() {
     var lista = document.getElementById('eventos-lista');
     var loading = document.getElementById('eventos-loading');
     if (loading) loading.style.display = 'none';
-
-    // Remove cards antigos, mantém só o loading
-    var filhos = Array.from(lista.children);
-    filhos.forEach(function(f) { if (f.id !== 'eventos-loading') lista.removeChild(f); });
-
-    if (!orcamentosCache || orcamentosCache.length === 0) {
-        var vazio = document.createElement('div');
-        vazio.style.cssText = 'text-align:center; color:var(--text-dim); padding:50px 20px; font-size:15px; line-height:1.6;';
-        vazio.innerHTML = '🎉<br><br>Nenhum orçamento ainda.<br>Toque em <strong>+ Novo</strong> para criar o primeiro.';
-        lista.appendChild(vazio);
-        return;
+    Array.from(lista.children).forEach(function(f) { if (f.id !== 'eventos-loading') lista.removeChild(f); });
+    if (!orcamentosCache || !orcamentosCache.length) {
+        var v = document.createElement('div');
+        v.style.cssText = 'text-align:center;color:var(--text-dim);padding:50px 20px;font-size:15px;line-height:1.6;';
+        v.innerHTML = '🎉<br><br>Nenhum orçamento ainda.<br>Toque em <strong>+ Novo</strong> para criar o primeiro.';
+        lista.appendChild(v); return;
     }
-
-    var statusCor = { rascunho: '#A0A0B0', enviado: '#E8BC72', aprovado: '#5FD4C9', cancelado: '#E07070' };
-    var statusLabel = { rascunho: 'Rascunho', enviado: 'Enviado', aprovado: 'Aprovado', cancelado: 'Cancelado' };
-
+    var sC = { rascunho:'#A0A0B0', enviado:'#E8BC72', aprovado:'#5FD4C9', confirmado:'#5FA0D4', cancelado:'#E07070' };
+    var sL = { rascunho:'Rascunho', enviado:'Enviado', aprovado:'Aprovado', confirmado:'Confirmado', cancelado:'Cancelado' };
     orcamentosCache.forEach(function(orc) {
+        var cor = sC[orc.status] || '#A0A0B0';
         var card = document.createElement('div');
-        card.style.cssText = 'background:var(--surface); border-radius:14px; padding:16px 18px; cursor:pointer; display:flex; flex-direction:column; gap:6px; border-left:4px solid ' + (statusCor[orc.status] || '#A0A0B0') + ';';
-        card.onclick = function() { abrirOrcamento(orc.id); };
-
-        var dataEvento = orc.evento_data ? new Date(orc.evento_data + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
-        var precoTotal = orc.preco_total ? 'R$ ' + Number(orc.preco_total).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
-
+        card.style.cssText = 'background:var(--surface);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;border-left:4px solid '+cor+';';
+        var d = orc.data_evento ? new Date(orc.data_evento+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+        var p = orc.preco_final ? 'R$ '+Number(orc.preco_final).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
+        var nPratos = Array.isArray(orc.pratos) ? orc.pratos.length : 0;
+        var porPax = (orc.convidados && orc.preco_final) ? Number(orc.preco_final/orc.convidados).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '0,00';
         card.innerHTML =
-            '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
-                '<div style="font-weight:700; font-size:16px; color:var(--text);">' + (orc.cliente_nome || 'Cliente não informado') + '</div>' +
-                '<span style="font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; background:' + (statusCor[orc.status] || '#A0A0B0') + '33; color:' + (statusCor[orc.status] || '#A0A0B0') + ';">' + (statusLabel[orc.status] || orc.status) + '</span>' +
-            '</div>' +
-            '<div style="font-size:13px; color:var(--text-dim);">' + (orc.evento_nome || 'Evento sem nome') + ' · ' + dataEvento + '</div>' +
-            '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">' +
-                '<span style="font-size:13px; color:var(--text-dim);">' + (orc.num_pessoas || 0) + ' pessoas</span>' +
-                '<span style="font-size:15px; font-weight:700; color:var(--accent);">' + precoTotal + '</span>' +
-            '</div>';
-
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
+          +'<div style="font-weight:700;font-size:16px;color:var(--text);flex:1;">'+(orc.cliente||'Cliente não informado')+'</div>'
+          +'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:'+cor+'33;color:'+cor+';white-space:nowrap;">'+(sL[orc.status]||orc.status)+'</span>'
+          +'</div>'
+          +'<div style="font-size:13px;color:var(--text-dim);">📅 '+d+' · 👥 '+(orc.convidados||0)+' convidados · 🍽 '+nPratos+' prato(s)</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+          +'<span style="font-size:15px;font-weight:700;color:var(--accent);">'+p+'</span>'
+          +'<span style="font-size:11px;color:var(--text-dim);">R$ '+porPax+'/pax</span>'
+          +'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:2px;border-top:1px solid var(--bg);padding-top:10px;">'
+          +'<button onclick="editarOrcamento(\''+orc.id+'\')" style="flex:1;background:var(--accent);color:var(--accent-text);border:none;border-radius:10px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Inter\',sans-serif;">✏️ Editar</button>'
+          +'<button onclick="mudarStatusOrcamento(\''+orc.id+'\',\''+orc.status+'\')" style="flex:1;background:var(--surface-2,#443D5C);color:var(--text);border:none;border-radius:10px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:\'Inter\',sans-serif;">🔄 Status</button>'
+          +'<button onclick="excluirOrcamento(\''+orc.id+'\')" style="background:transparent;border:1px solid #E07070;color:#E07070;border-radius:10px;padding:8px 12px;font-size:12px;cursor:pointer;font-family:\'Inter\',sans-serif;">🗑</button>'
+          +'</div>';
         lista.appendChild(card);
     });
 }
 
-function abrirNovoOrcamento() {
-    // Será implementado na Etapa 2
-    alert('Em breve: formulário de novo orçamento! (Etapa 2)');
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function mudarStatusOrcamento(id, statusAtual) {
+    var opcoes = ['rascunho','enviado','aprovado','confirmado','cancelado'];
+    var labels = ['Rascunho','Enviado','Aprovado','Confirmado','Cancelado'];
+    var msg = 'Status atual: ' + statusAtual + '\n\nEscolha:\n';
+    opcoes.forEach(function(o,i){ msg += (i+1)+'. '+labels[i]+'\n'; });
+    var resp = prompt(msg+'\nDigite o número:');
+    var idx = parseInt(resp)-1;
+    if (isNaN(idx)||idx<0||idx>=opcoes.length) return;
+    var U="https://kfgcqshhltemsochafid.supabase.co",K="sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
+    var H={apikey:K,Authorization:"Bearer "+K,"Content-Type":"application/json"};
+    fetch(U+"/rest/v1/orcamentos_eventos?id=eq."+id,{method:"PATCH",headers:H,body:JSON.stringify({status:opcoes[idx]})})
+      .then(function(){carregarOrcamentos();}).catch(function(e){alert("Erro: "+e.message);});
 }
 
-function abrirOrcamento(id) {
-    // Será implementado nas etapas seguintes
-    alert('Em breve: edição do orçamento #' + id + '!');
+function excluirOrcamento(id) {
+    if (!confirm("Excluir este orçamento permanentemente?")) return;
+    var U="https://kfgcqshhltemsochafid.supabase.co",K="sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
+    fetch(U+"/rest/v1/orcamentos_eventos?id=eq."+id,{method:"DELETE",headers:{apikey:K,Authorization:"Bearer "+K}})
+      .then(function(){carregarOrcamentos();}).catch(function(e){alert("Erro: "+e.message);});
 }
+
+async function editarOrcamento(id) {
+    var U="https://kfgcqshhltemsochafid.supabase.co",K="sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
+    var r = await fetch(U+"/rest/v1/orcamentos_eventos?id=eq."+id+"&select=*",{headers:{apikey:K,Authorization:"Bearer "+K}});
+    var dados = await r.json();
+    if (!dados||!dados[0]) { alert("Orçamento não encontrado."); return; }
+    var orc = dados[0];
+    wizPassoAtual = 1;
+    wizEditandoId = orc.id;
+    wizPratosSelecionados = {};
+    wizGrupoAtivo = 'coquetel';
+    wizPratosCache = [];
+    wizEquipe = (Array.isArray(orc.equipe)&&orc.equipe.length) ? orc.equipe.map(function(e){return Object.assign({},e);}) : EQUIPE_PADRAO.map(function(e){return Object.assign({},e);});
+    var m = {cliente:'wiz-cliente',telefone:'wiz-telefone',email:'wiz-email',data_evento:'wiz-data',horario:'wiz-horario',convidados:'wiz-convidados',endereco:'wiz-endereco',observacoes:'wiz-obs',chave_pix:'wiz-chave-pix'};
+    Object.keys(m).forEach(function(k){var el=document.getElementById(m[k]);if(el)el.value=orc[k]||'';});
+    var sq=document.getElementById('wiz-slider-quebras');if(sq)sq.value=orc.quebras||10;
+    var sm=document.getElementById('wiz-slider-margem');if(sm)sm.value=orc.margem||30;
+    var ss=document.getElementById('wiz-slider-sinal');if(ss)ss.value=orc.sinal||30;
+    if (Array.isArray(orc.pratos)) {
+        orc.pratos.forEach(function(p){
+            wizPratosSelecionados[p.id]={ficha:{id:p.id,nome:p.nome,cat:p.cat,custo_porcao:p.custo_porcao,preco_venda_sugerido:p.preco_venda},porcoes:p.porcoes_pax||1};
+        });
+    }
+    wizAtualizarUI();
+    trocarTela('orcamento-wizard-screen');
+    carregarPratosWizard();
+    renderizarEquipeWizard();
+}
+
+function abrirOrcamento(id) { editarOrcamento(id); }
 
 // ======== FIM COTAÇÃO DE EVENTOS ========
 
