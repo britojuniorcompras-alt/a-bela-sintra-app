@@ -2509,22 +2509,51 @@ function renderizarCursos() {
         var itensSel = Object.values(wizPratosSelecionados).filter(function(s) {
             return grupo.cat.indexOf(s.ficha.cat) >= 0;
         });
+        var wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex;flex-direction:column;gap:0;';
+
+        // Card clicável do curso
         var card = document.createElement('div');
         card.className = 'wiz-curso-card';
+        card.style.borderRadius = itensSel.length ? '16px 16px 0 0' : '16px';
         card.onclick = function() { abrirGaveta(grupo); };
-        var nomes = itensSel.map(function(s){
-            return s.ficha.nome.split(' ').slice(0,3).join(' ');
-        }).join(' · ');
         card.innerHTML =
             '<div class="wiz-curso-icone">'+grupo.label.split(' ')[0]+'</div>'
             +'<div class="wiz-curso-info">'
             +'<div class="wiz-curso-nome">'+grupo.label.split(' ').slice(1).join(' ')+'</div>'
-            +'<div class="wiz-curso-itens">'+(itensSel.length ? nomes : 'Nenhum item — toque para adicionar')+'</div>'
+            +'<div class="wiz-curso-itens">'+(itensSel.length ? itensSel.length+' prato(s) adicionado(s)' : 'Toque para adicionar pratos')+'</div>'
             +'</div>'
             +(itensSel.length
                 ? '<div class="wiz-curso-badge">'+itensSel.length+'</div>'
                 : '<div class="wiz-curso-add">+</div>');
-        lista.appendChild(card);
+        wrapper.appendChild(card);
+
+        // Lista dos itens selecionados neste curso
+        if (itensSel.length) {
+            var subLista = document.createElement('div');
+            subLista.style.cssText = 'background:var(--surface);border-radius:0 0 16px 16px;border-top:1px solid var(--bg);padding:8px 12px;display:flex;flex-direction:column;gap:6px;';
+            itensSel.forEach(function(s) {
+                var row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;';
+                var unidade = s.ficha.unidade_rendimento || 'porção';
+                var selOpts = [0.25,0.5,0.75,1,1.5,2].map(function(p,i){
+                    var lb=['¼','½','¾','1','1½','2'][i];
+                    return '<option value="'+p+'"'+(s.porcoes===p?' selected':'')+'>'+lb+'</option>';
+                }).join('');
+                row.innerHTML =
+                    '<div style="flex:1;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.ficha.nome)+'</div>'
+                    +'<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">'
+                    +'<select onchange="setPorcaoCurso('+s.ficha.id+',parseFloat(this.value))" style="background:var(--bg);border:none;border-radius:8px;padding:3px 6px;font-size:12px;color:var(--text);">'+selOpts+'</select>'
+                    +'<input type="number" value="'+(s.qtd||1)+'" min="0.1" step="0.1" onchange="setQtdCurso('+s.ficha.id+',parseFloat(this.value)||1)" style="width:48px;background:var(--bg);border:none;border-radius:8px;padding:3px 5px;font-size:12px;color:var(--text);text-align:center;">'
+                    +'<span style="font-size:11px;color:var(--text-dim);">'+escHtml(unidade)+'</span>'
+                    +'<button onclick="removerPratoCurso('+s.ficha.id+')" style="background:transparent;border:none;color:#E07070;font-size:16px;cursor:pointer;padding:0 2px;">×</button>'
+                    +'</div>';
+                subLista.appendChild(row);
+            });
+            wrapper.appendChild(subLista);
+        }
+
+        lista.appendChild(wrapper);
     });
     var total = Object.keys(wizPratosSelecionados).length;
     if (total > 0) {
@@ -2721,7 +2750,7 @@ function togglePratoGaveta(ficha, itemEl) {
         var btns = itemEl.querySelector('div[style*="flex-wrap"]');
         if (btns) btns.remove();
     } else {
-        wizPratosSelecionados[ficha.id] = { ficha: ficha, porcoes: 1 };
+        wizPratosSelecionados[ficha.id] = { ficha: ficha, porcoes: 1, qtd: 1 };
         itemEl.className = 'wiz-gaveta-item sel';
         var check = itemEl.querySelector('.wiz-gaveta-check');
         if (check) { check.className = 'wiz-gaveta-check ativo'; check.innerText = '✓'; }
@@ -2741,6 +2770,25 @@ function setPorcaoGaveta(id, porcoes, btn) {
     var row = btn.closest('.wiz-gaveta-item');
     if (row) row.querySelectorAll('.wiz-porcao-btn').forEach(function(b, i) { b.classList.toggle('ativo', PORCOES_OPCOES[i] === porcoes); });
 }
+function setPorcaoCurso(id, porcoes) {
+    if (wizPratosSelecionados[id]) {
+        wizPratosSelecionados[id].porcoes = porcoes;
+        renderizarCursos();
+    }
+}
+
+function setQtdCurso(id, qtd) {
+    if (wizPratosSelecionados[id]) {
+        wizPratosSelecionados[id].qtd = qtd;
+        // não re-renderiza para não perder foco
+    }
+}
+
+function removerPratoCurso(id) {
+    delete wizPratosSelecionados[id];
+    renderizarCursos();
+}
+
 // ---- FIM GAVETA ----
 
 
@@ -2801,7 +2849,7 @@ async function salvarOrcamento() {
     var precos = atualizarPreviewPreco();
     if (!precos) { alert('Erro interno.'); return; }
     var pratos = Object.values(wizPratosSelecionados).map(function(s) {
-        return { id: s.ficha.id, nome: s.ficha.nome, cat: s.ficha.cat, porcoes_pax: s.porcoes, custo_porcao: s.ficha.custo_porcao, preco_venda: s.ficha.preco_venda_sugerido };
+        return { id: s.ficha.id, nome: s.ficha.nome, cat: s.ficha.cat, porcoes_pax: s.porcoes, qtd: s.qtd||1, custo_porcao: s.ficha.custo_porcao, preco_venda: s.ficha.preco_venda_sugerido };
     });
     var payload = {
         cliente: document.getElementById('wiz-cliente').value.trim(),
@@ -2949,7 +2997,7 @@ async function editarOrcamento(id) {
     var ss=document.getElementById('wiz-slider-sinal');if(ss)ss.value=orc.sinal||30;
     if (Array.isArray(orc.pratos)) {
         orc.pratos.forEach(function(p){
-            wizPratosSelecionados[p.id]={ficha:{id:p.id,nome:p.nome,cat:p.cat,custo_porcao:p.custo_porcao,preco_venda_sugerido:p.preco_venda},porcoes:p.porcoes_pax||1};
+            wizPratosSelecionados[p.id]={ficha:{id:p.id,nome:p.nome,cat:p.cat,custo_porcao:p.custo_porcao,preco_venda_sugerido:p.preco_venda},porcoes:p.porcoes_pax||1,qtd:p.qtd||1};
         });
     }
     wizAtualizarUI();
