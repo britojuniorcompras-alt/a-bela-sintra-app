@@ -57,7 +57,23 @@
     .hist-btn-cotacao.hist-btn-ativo { background: #D4A24C; color: #1B1420; }
     .hist-btn-eventos.hist-btn-ativo { background: #B45ADC; color: #ffffff; }
 
-    /* ===== WIZARD COTAÇÃO DE EVENTOS ===== */
+    /* ===== MODELO DE CURSOS ===== */
+    .wiz-curso-card { background:var(--surface);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border 0.2s; }
+    .wiz-curso-card:active { opacity:0.85; }
+    .wiz-curso-icone { font-size:28px;flex-shrink:0; }
+    .wiz-curso-info { flex:1;min-width:0; }
+    .wiz-curso-nome { font-weight:700;font-size:15px;color:var(--text); }
+    .wiz-curso-itens { font-size:12px;color:var(--text-dim);margin-top:3px; }
+    .wiz-curso-badge { background:var(--accent);color:var(--accent-text);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;white-space:nowrap; }
+    .wiz-curso-add { color:var(--text-dim);font-size:22px;flex-shrink:0; }
+    .wiz-gaveta-item { background:var(--surface);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer; }
+    .wiz-gaveta-item.sel { border-left:3px solid var(--accent); }
+    .wiz-gaveta-item-info { flex:1;min-width:0; }
+    .wiz-gaveta-item-nome { font-weight:600;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .wiz-gaveta-item-preco { font-size:12px;color:var(--text-dim);margin-top:2px; }
+    .wiz-gaveta-check { width:24px;height:24px;border-radius:12px;border:2px solid var(--surface-2,#443D5C);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px; }
+    .wiz-gaveta-check.ativo { background:var(--accent);border-color:var(--accent);color:var(--accent-text); }
+    /* ===== FIM MODELO DE CURSOS ===== */
     .wiz-input { width:100%; box-sizing:border-box; background:var(--surface); border:none; border-radius:12px; padding:13px 16px; font-size:15px; font-family:'Inter',sans-serif; color:var(--text); outline:none; }
     .wiz-input:focus { box-shadow:0 0 0 2px var(--accent); }
     .wiz-input::placeholder { color:var(--text-dim); }
@@ -605,17 +621,33 @@
 
     <!-- PASSO 2: Seleção de menu -->
     <div id="wiz-passo-2" class="wiz-passo" style="display:none;flex-direction:column;">
-        <div style="padding:12px 20px 0 20px;display:flex;flex-direction:column;gap:8px;">
-            <input id="wiz-busca-prato" type="text" placeholder="🔍 Buscar prato..." class="wiz-input" oninput="filtrarPratosWizard()" style="margin:0;">
-            <!-- Filtros por categoria -->
-            <div id="wiz-cats" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;"></div>
-        </div>
-        <div id="wiz-pratos-lista" style="padding:8px 20px 120px 20px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;"></div>
-        <!-- Resumo flutuante de selecionados -->
-        <div id="wiz-selecionados-bar" style="position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--surface);padding:12px 20px;display:none;z-index:100;">
-            <div id="wiz-selecionados-resumo" style="font-size:13px;color:var(--text-dim);margin-bottom:8px;"></div>
+        <!-- Lista de cursos -->
+        <div id="wiz-cursos-lista" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px;padding-bottom:100px;"></div>
+    </div>
+
+    <!-- GAVETA: seleção de pratos por curso -->
+    <div id="wiz-gaveta" style="display:none;position:fixed;inset:0;z-index:200;flex-direction:column;">
+        <!-- Overlay -->
+        <div onclick="fecharGaveta()" style="flex:1;background:rgba(0,0,0,0.6);"></div>
+        <!-- Sheet -->
+        <div style="background:var(--bg);border-radius:20px 20px 0 0;max-height:85vh;display:flex;flex-direction:column;">
+            <!-- Header da gaveta -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 10px 20px;">
+                <div>
+                    <div id="wiz-gaveta-titulo" style="font-weight:700;font-size:17px;color:var(--text);"></div>
+                    <div id="wiz-gaveta-sub" style="font-size:12px;color:var(--text-dim);margin-top:2px;"></div>
+                </div>
+                <button onclick="fecharGaveta()" style="background:var(--surface);border:none;border-radius:20px;padding:6px 14px;color:var(--text-dim);font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;">Fechar</button>
+            </div>
+            <!-- Busca dentro da gaveta -->
+            <div style="padding:0 20px 10px 20px;">
+                <input id="wiz-gaveta-busca" type="text" placeholder="🔍 Buscar neste grupo..." class="wiz-input" oninput="filtrarGaveta()" style="margin:0;">
+            </div>
+            <!-- Lista de pratos da gaveta -->
+            <div id="wiz-gaveta-lista" style="overflow-y:auto;padding:0 20px 30px 20px;display:flex;flex-direction:column;gap:8px;"></div>
         </div>
     </div>
+
 
     <!-- PASSO 3: Equipe & logística -->
     <div id="wiz-passo-3" class="wiz-passo" style="display:none;padding:20px;flex-direction:column;gap:10px;">
@@ -2461,183 +2493,56 @@ function wizPassoAnterior() {
     if (wizPassoAtual > 1) { wizPassoAtual--; wizAtualizarUI(); window.scrollTo(0,0); }
 }
 
-async function carregarPratosWizard() {
-    if (wizPratosCache.length > 0) { renderizarPratosWizard(); return; }
-    var U = "https://kfgcqshhltemsochafid.supabase.co";
-    var K = "sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
-    var H = { apikey: K, Authorization: "Bearer " + K };
-    var lista = document.getElementById('wiz-pratos-lista');
-    if (lista) lista.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:30px;">Carregando pratos...</div>';
-    try {
-        var r = await fetch(U + "/rest/v1/fichas_tecnicas?select=id,nome,cat,custo_porcao,preco_venda_sugerido,porcoes,unidade_rendimento&disponivel=eq.true&cat=neq.prod&order=cat.asc,nome.asc&limit=500", { headers: H });
-        wizPratosCache = await r.json();
-        renderizarCatsWizard();
-        renderizarPratosWizard();
-    } catch(e) {
-        if (lista) lista.innerHTML = '<div style="text-align:center;color:#E07070;padding:30px;">Erro ao carregar pratos.</div>';
-    }
+function carregarPratosWizard() {
+    renderizarCursos();
 }
 
-function renderizarCatsWizard() {
-    var cont = document.getElementById('wiz-cats');
-    if (!cont) return;
-    var cats = ['todos'];
-    wizPratosCache.forEach(function(f) { if (f.cat && cats.indexOf(f.cat) < 0) cats.push(f.cat); });
-    cont.innerHTML = '';
-    cats.forEach(function(cat) {
-        var btn = document.createElement('button');
-        btn.className = 'wiz-cat-btn' + (cat === wizCatAtiva ? ' ativo' : '');
-        btn.innerText = CATS_LABEL[cat] || cat;
-        btn.onclick = function() { wizCatAtiva = cat; renderizarCatsWizard(); renderizarPratosWizard(); };
-        cont.appendChild(btn);
-    });
-}
-
-function filtrarPratosWizard() { renderizarPratosWizard(); }
-
-function renderizarPratosWizard() {
-    var lista = document.getElementById('wiz-pratos-lista');
+function renderizarCursos() {
+    var lista = document.getElementById('wiz-cursos-lista');
     if (!lista) return;
-    var busca = (document.getElementById('wiz-busca-prato') ? document.getElementById('wiz-busca-prato').value : '').toLowerCase().trim();
     lista.innerHTML = '';
-    var filtrados = wizPratosCache.filter(function(f) {
-        return (wizCatAtiva === 'todos' || f.cat === wizCatAtiva) && (!busca || f.nome.toLowerCase().indexOf(busca) >= 0);
-    });
-    if (!filtrados.length) { lista.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:30px;">Nenhum prato encontrado.</div>'; return; }
-    filtrados.forEach(function(ficha) {
-        var sel = wizPratosSelecionados[ficha.id];
+    var titulo = document.createElement('div');
+    titulo.style.cssText = 'font-size:13px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;';
+    titulo.innerText = 'Toque em um curso para adicionar pratos';
+    lista.appendChild(titulo);
+    GRUPOS_CARDAPIO.forEach(function(grupo) {
+        var itensSel = Object.values(wizPratosSelecionados).filter(function(s) {
+            return grupo.cat.indexOf(s.ficha.cat) >= 0;
+        });
         var card = document.createElement('div');
-        card.className = 'wiz-prato-card' + (sel ? ' selecionado' : '');
-        var custo = ficha.custo_porcao ? 'R$ ' + Number(ficha.custo_porcao).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
-        var preco = ficha.preco_venda_sugerido ? 'R$ ' + Number(ficha.preco_venda_sugerido).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
-        var catLabel = CATS_LABEL[ficha.cat] || ficha.cat || '';
-        var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
-            + '<div style="font-weight:700;font-size:15px;color:var(--text);flex:1;margin-right:8px;">' + ficha.nome + '</div>'
-            + '<span style="font-size:11px;background:var(--bg);color:var(--text-dim);padding:2px 8px;border-radius:10px;white-space:nowrap;">' + catLabel + '</span>'
-            + '</div>'
-            + '<div style="display:flex;gap:16px;font-size:12px;color:var(--text-dim);">'
-            + '<span>Custo/pax: <strong style="color:var(--text);">' + custo + '</strong></span>'
-            + '<span>Venda: <strong style="color:var(--accent);">' + preco + '</strong></span>'
-            + '</div>';
-        if (sel) {
-            html += '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;"><span style="font-size:12px;color:var(--text-dim);">Porções/pax:</span>';
-            PORCOES_OPCOES.forEach(function(p, i) {
-                html += '<button class="wiz-porcao-btn' + (sel.porcoes === p ? ' ativo' : '') + '" onclick="definirPorcaoWizard(' + ficha.id + ',' + p + ',event)">' + PORCOES_LABEL[i] + '</button>';
-            });
-            html += '</div>';
-        }
-        html += '<div style="display:flex;gap:8px;margin-top:6px;">'
-            + '<button onclick="verDetalheFichaWizard(' + ficha.id + ',event)" style="background:transparent;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;padding:0;font-family:\'Inter\',sans-serif;">📋 Ver ingredientes</button>'
-            + (sel
-                ? '<button onclick="removerPratoWizard(' + ficha.id + ',event)" style="background:transparent;border:none;color:#E07070;font-size:12px;cursor:pointer;padding:0;font-family:\'Inter\',sans-serif;margin-left:auto;">✕ Remover</button>'
-                : '<button onclick="selecionarPratoWizard(' + ficha.id + ',event)" style="background:transparent;border:none;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;padding:0;font-family:\'Inter\',sans-serif;margin-left:auto;">+ Selecionar</button>')
-            + '</div>';
-        card.innerHTML = html;
+        card.className = 'wiz-curso-card';
+        card.onclick = function() { abrirGaveta(grupo); };
+        var nomes = itensSel.map(function(s){
+            return s.ficha.nome.split(' ').slice(0,3).join(' ');
+        }).join(' · ');
+        card.innerHTML =
+            '<div class="wiz-curso-icone">'+grupo.label.split(' ')[0]+'</div>'
+            +'<div class="wiz-curso-info">'
+            +'<div class="wiz-curso-nome">'+grupo.label.split(' ').slice(1).join(' ')+'</div>'
+            +'<div class="wiz-curso-itens">'+(itensSel.length ? nomes : 'Nenhum item — toque para adicionar')+'</div>'
+            +'</div>'
+            +(itensSel.length
+                ? '<div class="wiz-curso-badge">'+itensSel.length+'</div>'
+                : '<div class="wiz-curso-add">+</div>');
         lista.appendChild(card);
     });
-    atualizarBarraSelecionados();
-}
-
-function renderizarGruposWizard() {
-    var cats = document.getElementById('wiz-cats');
-    if (cats) {
-        cats.innerHTML = '';
-        GRUPOS_CARDAPIO.forEach(function(g) {
-            var btn = document.createElement('button');
-            btn.className = 'wiz-cat-btn' + (g.id === wizGrupoAtivo ? ' ativo' : '');
-            btn.innerText = g.label;
-            btn.onclick = function() { wizGrupoAtivo = g.id; renderizarGruposWizard(); };
-            cats.appendChild(btn);
-        });
+    var total = Object.keys(wizPratosSelecionados).length;
+    if (total > 0) {
+        var r = document.createElement('div');
+        r.style.cssText = 'background:var(--surface);border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:6px;';
+        r.innerHTML = '<span style="font-size:14px;color:var(--text-dim);">Total de pratos</span>'
+            +'<span style="font-size:16px;font-weight:700;color:var(--accent);">'+total+' selecionado(s)</span>';
+        lista.appendChild(r);
     }
-    var busca = (document.getElementById('wiz-busca-prato')||{}).value || '';
-    if (busca.trim().length >= 2) {
-        clearTimeout(window._wizBuscaTimer);
-        window._wizBuscaTimer = setTimeout(function(){ buscarPratosNoBanco(busca.trim()); }, 400);
-        return;
-    }
-    var grupo = GRUPOS_CARDAPIO.find(function(g){return g.id===wizGrupoAtivo;});
-    if (!grupo) return;
-    var lista = document.getElementById('wiz-pratos-lista');
-    if (!lista) return;
-    lista.innerHTML = '';
-    var h = document.createElement('div');
-    h.style.cssText = 'font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 8px 0;';
-    h.innerText = 'Sugestões · ' + grupo.label;
-    lista.appendChild(h);
-    grupo.sugestoes.forEach(function(ficha) { lista.appendChild(criarCardPrato(ficha)); });
-    var btnMais = document.createElement('button');
-    btnMais.style.cssText = 'width:100%;background:var(--surface);border:none;border-radius:12px;padding:12px;color:var(--text-dim);font-size:13px;cursor:pointer;font-family:\'Inter\',sans-serif;margin-top:4px;';
-    btnMais.innerText = '🔍 Buscar mais pratos deste grupo no banco...';
-    btnMais.onclick = function() { buscarPratosPorGrupo(grupo); };
-    lista.appendChild(btnMais);
-    atualizarBarraSelecionados();
 }
 
-function criarCardPrato(ficha) {
-    var sel = wizPratosSelecionados[ficha.id];
-    var card = document.createElement('div');
-    card.className = 'wiz-prato-card' + (sel ? ' selecionado' : '');
-    var custo = ficha.custo_porcao ? 'R$ '+Number(ficha.custo_porcao).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
-    var preco = ficha.preco_venda_sugerido ? 'R$ '+Number(ficha.preco_venda_sugerido).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
-    var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
-        +'<div style="font-weight:700;font-size:15px;color:var(--text);flex:1;margin-right:8px;">'+escHtml(ficha.nome)+'</div>'
-        +'<span style="font-size:11px;background:var(--bg);color:var(--text-dim);padding:2px 8px;border-radius:10px;white-space:nowrap;">'+(CATS_LABEL[ficha.cat]||ficha.cat||'')+'</span>'
-        +'</div>'
-        +'<div style="display:flex;gap:16px;font-size:12px;color:var(--text-dim);">'
-        +'<span>Custo/pax: <strong style="color:var(--text);">'+custo+'</strong></span>'
-        +'<span>Venda: <strong style="color:var(--accent);">'+preco+'</strong></span>'
-        +'</div>';
-    if (sel) {
-        html += '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;"><span style="font-size:12px;color:var(--text-dim);">Porções/pax:</span>';
-        PORCOES_OPCOES.forEach(function(p,i) {
-            html += '<button class="wiz-porcao-btn'+(sel.porcoes===p?' ativo':'')+'" onclick="definirPorcaoWizard('+ficha.id+','+p+',event)">'+PORCOES_LABEL[i]+'</button>';
-        });
-        html += '</div>';
-    }
-    html += '<div style="display:flex;gap:8px;margin-top:6px;">'
-        +'<button onclick="verDetalheFichaWizard('+ficha.id+',event)" style="background:transparent;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;padding:0;font-family:\'Inter\',sans-serif;">📋 Ver ingredientes</button>'
-        +(sel
-            ? '<button onclick="removerPratoWizard('+ficha.id+',event)" style="background:transparent;border:none;color:#E07070;font-size:12px;cursor:pointer;padding:0;font-family:\'Inter\',sans-serif;margin-left:auto;">✕ Remover</button>'
-            : '<button onclick="selecionarPratoWizardFicha('+ficha.id+',\''+JSON.stringify(ficha).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="background:transparent;border:none;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;padding:0;font-family:\'Inter\',sans-serif;margin-left:auto;">+ Selecionar</button>')
-        +'</div>';
-    card.innerHTML = html;
-    return card;
-}
 
-async function buscarPratosPorGrupo(grupo) {
-    var lista = document.getElementById('wiz-pratos-lista');
-    lista.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;">Buscando...</div>';
-    var U="https://kfgcqshhltemsochafid.supabase.co",K="sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
-    var catFiltro = grupo.cat.map(function(c){return 'cat.eq.'+c;}).join(',');
-    try {
-        var r = await fetch(U+"/rest/v1/fichas_tecnicas?select=id,nome,cat,custo_porcao,preco_venda_sugerido,porcoes,unidade_rendimento&disponivel=eq.true&cat=neq.prod&or=("+catFiltro+")&order=preco_venda_sugerido.desc&limit=40",{headers:{apikey:K,Authorization:"Bearer "+K}});
-        var fichas = await r.json();
-        lista.innerHTML = '';
-        if (!fichas.length) { lista.innerHTML='<div style="text-align:center;color:var(--text-dim);padding:20px;">Nenhum prato encontrado.</div>'; return; }
-        var h=document.createElement('div');h.style.cssText='font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 8px 0;';
-        h.innerText=fichas.length+' pratos · '+grupo.label;lista.appendChild(h);
-        fichas.forEach(function(f){lista.appendChild(criarCardPrato(f));});
-        atualizarBarraSelecionados();
-    } catch(e) { lista.innerHTML='<div style="text-align:center;color:#E07070;padding:20px;">Erro ao buscar.</div>'; }
-}
 
-async function buscarPratosNoBanco(termo) {
-    var lista = document.getElementById('wiz-pratos-lista');
-    if (!lista) return;
-    lista.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;">Buscando...</div>';
-    var U="https://kfgcqshhltemsochafid.supabase.co",K="sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
-    try {
-        var r = await fetch(U+"/rest/v1/fichas_tecnicas?select=id,nome,cat,custo_porcao,preco_venda_sugerido,porcoes,unidade_rendimento&disponivel=eq.true&cat=neq.prod&nome=ilike.*"+encodeURIComponent(termo)+"*&order=preco_venda_sugerido.desc&limit=30",{headers:{apikey:K,Authorization:"Bearer "+K}});
-        var fichas = await r.json();
-        lista.innerHTML = '';
-        if (!fichas.length) { lista.innerHTML='<div style="text-align:center;color:var(--text-dim);padding:20px;">Nenhum prato para "'+escHtml(termo)+'".</div>'; return; }
-        var h=document.createElement('div');h.style.cssText='font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 8px 0;';
-        h.innerText=fichas.length+' resultado(s) para "'+termo+'"';lista.appendChild(h);
-        fichas.forEach(function(f){lista.appendChild(criarCardPrato(f));});
-        atualizarBarraSelecionados();
-    } catch(e) { lista.innerHTML='<div style="text-align:center;color:#E07070;padding:20px;">Erro ao buscar.</div>'; }
-}
+
+
+
+
+
 
 function selecionarPratoWizard(id, ev) {
     if (ev) ev.stopPropagation();
@@ -2685,15 +2590,159 @@ async function verDetalheFichaWizard(id, ev) {
     } catch(e) { alert('Erro ao carregar detalhes.'); }
 }
 
-function atualizarBarraSelecionados() {
-    var bar = document.getElementById('wiz-selecionados-bar');
-    var resumo = document.getElementById('wiz-selecionados-resumo');
-    var ids = Object.keys(wizPratosSelecionados);
-    if (!bar) return;
-    if (!ids.length) { bar.style.display = 'none'; return; }
-    bar.style.display = 'block';
-    if (resumo) resumo.innerText = ids.length + ' prato(s) selecionado(s)';
+function atualizarBarraSelecionados() {}
+
+// ---- GAVETA: seleção de pratos por curso ----
+var wizGavetaGrupoAtivo = null;
+var wizGavetaCache = {};
+
+function abrirGaveta(grupo) {
+    wizGavetaGrupoAtivo = grupo;
+    document.getElementById('wiz-gaveta').style.display = 'flex';
+    document.getElementById('wiz-gaveta-titulo').innerText = grupo.label;
+    document.getElementById('wiz-gaveta-busca').value = '';
+    atualizarSubGaveta();
+    renderizarGaveta(grupo);
 }
+
+function fecharGaveta() {
+    document.getElementById('wiz-gaveta').style.display = 'none';
+    renderizarCursos();
+}
+
+function atualizarSubGaveta() {
+    if (!wizGavetaGrupoAtivo) return;
+    var n = Object.values(wizPratosSelecionados).filter(function(s) {
+        return wizGavetaGrupoAtivo.cat.indexOf(s.ficha.cat) >= 0;
+    }).length;
+    var sub = document.getElementById('wiz-gaveta-sub');
+    if (sub) sub.innerText = n ? n + ' selecionado(s)' : 'Nenhum selecionado';
+}
+
+function filtrarGaveta() {
+    var busca = (document.getElementById('wiz-gaveta-busca') || {}).value || '';
+    clearTimeout(window._wizBuscaTimer);
+    if (busca.trim().length >= 2) {
+        window._wizBuscaTimer = setTimeout(function() { buscarNaGaveta(busca.trim()); }, 350);
+    } else {
+        renderizarGaveta(wizGavetaGrupoAtivo);
+    }
+}
+
+function renderizarGaveta(grupo) {
+    var lista = document.getElementById('wiz-gaveta-lista');
+    if (!lista || !grupo) return;
+    lista.innerHTML = '';
+    var h = document.createElement('div');
+    h.style.cssText = 'font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:6px 0;';
+    h.innerText = 'Sugestões';
+    lista.appendChild(h);
+    grupo.sugestoes.forEach(function(f) { lista.appendChild(criarItemGaveta(f)); });
+    var sep = document.createElement('div');
+    sep.style.cssText = 'height:1px;background:var(--surface);margin:8px 0;';
+    lista.appendChild(sep);
+    var btn = document.createElement('button');
+    btn.style.cssText = 'width:100%;background:var(--surface);border:none;border-radius:12px;padding:12px;color:var(--text-dim);font-size:13px;cursor:pointer;font-family:\'Inter\',sans-serif;';
+    btn.innerText = '🔍 Ver todos os pratos deste grupo';
+    btn.onclick = function() { carregarTodosGaveta(grupo); };
+    lista.appendChild(btn);
+}
+
+async function carregarTodosGaveta(grupo) {
+    var lista = document.getElementById('wiz-gaveta-lista');
+    lista.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;">Buscando...</div>';
+    if (wizGavetaCache[grupo.id]) { renderizarTodosGaveta(wizGavetaCache[grupo.id]); return; }
+    var U = "https://kfgcqshhltemsochafid.supabase.co", K = "sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
+    var catFiltro = grupo.cat.map(function(c) { return 'cat.eq.' + c; }).join(',');
+    try {
+        var r = await fetch(U + "/rest/v1/fichas_tecnicas?select=id,nome,cat,custo_porcao,preco_venda_sugerido&disponivel=eq.true&cat=neq.prod&or=(" + catFiltro + ")&order=preco_venda_sugerido.desc&limit=60", { headers: { apikey: K, Authorization: "Bearer " + K } });
+        var fichas = await r.json();
+        wizGavetaCache[grupo.id] = fichas;
+        renderizarTodosGaveta(fichas);
+    } catch(e) { lista.innerHTML = '<div style="text-align:center;color:#E07070;padding:20px;">Erro ao buscar.</div>'; }
+}
+
+function renderizarTodosGaveta(fichas) {
+    var lista = document.getElementById('wiz-gaveta-lista');
+    lista.innerHTML = '';
+    var h = document.createElement('div');
+    h.style.cssText = 'font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:6px 0;';
+    h.innerText = fichas.length + ' pratos disponíveis';
+    lista.appendChild(h);
+    fichas.forEach(function(f) { lista.appendChild(criarItemGaveta(f)); });
+}
+
+async function buscarNaGaveta(termo) {
+    var lista = document.getElementById('wiz-gaveta-lista');
+    lista.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;">Buscando...</div>';
+    var U = "https://kfgcqshhltemsochafid.supabase.co", K = "sb_publishable_-t8ynneFzBs_Xw3oEWenzA_APQqzOa-";
+    try {
+        var r = await fetch(U + "/rest/v1/fichas_tecnicas?select=id,nome,cat,custo_porcao,preco_venda_sugerido&disponivel=eq.true&cat=neq.prod&nome=ilike.*" + encodeURIComponent(termo) + "*&order=preco_venda_sugerido.desc&limit=30", { headers: { apikey: K, Authorization: "Bearer " + K } });
+        var fichas = await r.json();
+        lista.innerHTML = '';
+        if (!fichas.length) { lista.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;">Nenhum resultado para "' + escHtml(termo) + '".</div>'; return; }
+        var h = document.createElement('div');
+        h.style.cssText = 'font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:6px 0;';
+        h.innerText = fichas.length + ' resultado(s)';
+        lista.appendChild(h);
+        fichas.forEach(function(f) { lista.appendChild(criarItemGaveta(f)); });
+    } catch(e) { lista.innerHTML = '<div style="text-align:center;color:#E07070;padding:20px;">Erro.</div>'; }
+}
+
+function criarItemGaveta(ficha) {
+    var sel = wizPratosSelecionados[ficha.id];
+    var item = document.createElement('div');
+    item.className = 'wiz-gaveta-item' + (sel ? ' sel' : '');
+    item.onclick = function() { togglePratoGaveta(ficha, item); };
+    var preco = ficha.preco_venda_sugerido ? 'Venda: R$ ' + Number(ficha.preco_venda_sugerido).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '';
+    var custo = ficha.custo_porcao ? ' · Custo: R$ ' + Number(ficha.custo_porcao).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '';
+    item.innerHTML =
+        '<div class="wiz-gaveta-check' + (sel ? ' ativo' : '') + '">' + (sel ? '✓' : '') + '</div>'
+        + '<div class="wiz-gaveta-item-info">'
+        +   '<div class="wiz-gaveta-item-nome">' + escHtml(ficha.nome) + '</div>'
+        +   '<div class="wiz-gaveta-item-preco">' + preco + custo + '</div>'
+        + '</div>'
+        + (sel
+            ? '<div style="display:flex;gap:3px;flex-wrap:wrap;max-width:160px;">'
+              + PORCOES_OPCOES.map(function(p, i) {
+                    return '<button class="wiz-porcao-btn' + (sel.porcoes === p ? ' ativo' : '') + '" onclick="event.stopPropagation();setPorcaoGaveta(' + ficha.id + ',' + p + ',this)">' + PORCOES_LABEL[i] + '</button>';
+                }).join('')
+              + '</div>'
+            : '');
+    return item;
+}
+
+function togglePratoGaveta(ficha, itemEl) {
+    if (wizPratosSelecionados[ficha.id]) {
+        delete wizPratosSelecionados[ficha.id];
+        itemEl.className = 'wiz-gaveta-item';
+        var check = itemEl.querySelector('.wiz-gaveta-check');
+        if (check) { check.className = 'wiz-gaveta-check'; check.innerText = ''; }
+        var btns = itemEl.querySelector('div[style*="flex-wrap"]');
+        if (btns) btns.remove();
+    } else {
+        wizPratosSelecionados[ficha.id] = { ficha: ficha, porcoes: 1 };
+        itemEl.className = 'wiz-gaveta-item sel';
+        var check = itemEl.querySelector('.wiz-gaveta-check');
+        if (check) { check.className = 'wiz-gaveta-check ativo'; check.innerText = '✓'; }
+        var div = document.createElement('div');
+        div.style.cssText = 'display:flex;gap:3px;flex-wrap:wrap;max-width:160px;';
+        div.innerHTML = PORCOES_OPCOES.map(function(p, i) {
+            return '<button class="wiz-porcao-btn' + (p === 1 ? ' ativo' : '') + '" onclick="event.stopPropagation();setPorcaoGaveta(' + ficha.id + ',' + p + ',this)">' + PORCOES_LABEL[i] + '</button>';
+        }).join('');
+        itemEl.appendChild(div);
+    }
+    atualizarSubGaveta();
+}
+
+function setPorcaoGaveta(id, porcoes, btn) {
+    if (!wizPratosSelecionados[id]) return;
+    wizPratosSelecionados[id].porcoes = porcoes;
+    var row = btn.closest('.wiz-gaveta-item');
+    if (row) row.querySelectorAll('.wiz-porcao-btn').forEach(function(b, i) { b.classList.toggle('ativo', PORCOES_OPCOES[i] === porcoes); });
+}
+// ---- FIM GAVETA ----
+
 
 function renderizarEquipeWizard() {
     var cont = document.getElementById('wiz-equipe-lista');
