@@ -637,7 +637,7 @@ body{min-height:100vh}
   <!-- PROJEÇÃO -->
   <div id="tab-proj" class="pane">
     <h2 class="sh">Projeção de Produção — Mensal</h2>
-    <p class="ss">Batches, dias e mix definem o volume de produção — e esse volume alimenta todas as outras abas. Custo fixo e dias úteis também são compartilhados com o restante do painel.</p>
+    <p class="ss">O volume mensal é o mesmo de todas as abas. Aqui você escolhe o mix entre as linhas e vê quantos batches por dia ele exige. Volume, dias úteis e custo fixo são compartilhados com o restante do painel.</p>
     <div class="info" style="margin-bottom:18px">
       <strong>🏭 Referência de capacidade:</strong> <span id="cap-ref"></span> A estrutura de 2 salas 5×3m comporta cerca de 3 batches/dia — os volumes acima disso exigem planta ampliada.
     </div>
@@ -645,9 +645,13 @@ body{min-height:100vh}
     <div class="pg">
       <div class="card cp">
         <div class="cg">
-          <div class="cl"><span>Batches por dia</span><span class="cv" id="pb-v">12</span></div>
-          <input type="range" min="1" max="40" step="1" value="12" oninput="pu('batches',this.value)">
+          <div class="cl"><span>Volume mensal (vendável)</span>
+            <span class="pinw"><input class="pin" type="text" inputmode="numeric" autocomplete="off" id="pin-pvol"
+              aria-label="Volume mensal" value="100.000" oninput="setVol(this.value)"
+              onblur="this.value=N(A.vol)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">un</span></span></div>
+          <input type="range" id="i-pvol" min="20000" max="300000" step="10000" value="100000" oninput="setVol(this.value)">
         </div>
+        <div class="mr"><span class="ml">Batches por dia (calculado)</span><span class="mv" id="pb-v">—</span></div>
         <div class="cg">
           <div class="cl"><span>Dias úteis/mês</span><span class="cv" id="pd-v">22</span></div>
           <input type="range" min="18" max="26" step="1" value="22" oninput="pu('dias',this.value)">
@@ -1247,7 +1251,6 @@ function pu(k,v){
   else if(k==='batches')  prj.batches=+v;
   else if(k==='mix25')    prj.mx25=+v;
   else if(k==='mix35')    prj.mx35=+v;
-  if(['batches','dias','mix25','mix35'].includes(k)) A.vol=volDaProducao();   // plano define o volume
   renderAll();
 }
 
@@ -1256,25 +1259,21 @@ function rProj(){
   const m25=Math.min(p.mx25,100)/100;
   const m35=Math.min(p.mx35,100-p.mx25)/100;
   const m50=Math.max(0,1-m25-m35);
-  const tb=p.batches*INS.dias;
-  const b25=Math.round(tb*m25),b35=Math.round(tb*m35),b50=Math.round(tb*m50);
-  const vd=1-A.per;                                   // quebra: só o que sobra é vendido
-  const u25=b25*F.f25.u*vd,u35=b35*F.f35.u*vd,u50=b50*F.f50.u*vd;
+  const vd=1-A.per;                                   // quebra: produz-se volume/(1−quebra) para vender o volume
+  const u25=A.vol*m25,u35=A.vol*m35,u50=A.vol*m50;     // unidades VENDIDAS de cada linha (mesmo volume do painel)
   const tu=u25+u35+u50, tprod=tu/vd;
+  const bd=(u25/F.f25.u+u35/F.f35.u+u50/F.f50.u)/vd/INS.dias;   // batches/dia necessários
   const cogs=u25*cvar('f25')+u35*cvar('f35')+u50*cvar('f50');        // com embalagem e quebra
   const rev=u25*F.f25.pv+u35*F.f35.pv+u50*F.f50.pv;                  // preco real de cada linha
   const com=rev*A.com, gp=rev-cogs-com, ebt=gp-A.fix;
   const al=aliq(rev*12), imp=rev*al, liq=ebt-imp;
   const ec=liq>=0?'var(--gn)':'var(--rd)';
-  window.__proj={tu,rev,cogs,liq,al};
-  const pn=document.getElementById('proj-nota');
-  if(pn) pn.innerHTML = Math.abs(Math.round(tu)-A.vol)>1
-    ? `⚠️ Este plano produz <strong>${N(Math.round(tu))} un vendáveis/mês</strong>, mas as outras abas estão usando <strong>${N(A.vol)} un/mês</strong>. Mexa em batches, dias ou mix aqui para alinhar o volume do painel inteiro a este plano.`
-    : '';
-  if(pn) pn.hidden = !pn.innerHTML;
+  window.__proj={tu,rev,cogs,liq,al,bd};
+  st('pb-v', bd.toFixed(1).replace('.',',')+(bd>CAP_DIA?' ⚠️ acima da capacidade ('+CAP_DIA+')':''));
+  sv('i-pvol',A.vol); sv('pin-pvol',N(A.vol));
 
   document.getElementById('pkpis').innerHTML=`
-    <div class="bm"><div class="bml">Unidades/Mês</div><div class="bmv" style="font-size:1.2rem">${N(Math.round(tu))}</div><div class="bms">vendáveis · produz ${N(Math.round(tprod))}</div></div>
+    <div class="bm"><div class="bml">Unidades/Mês</div><div class="bmv" style="font-size:1.2rem">${N(Math.round(tu))}</div><div class="bms">vendidas · produz ${N(Math.round(tprod))} · ${bd.toFixed(1).replace('.',',')} batches/dia</div></div>
     <div class="bm"><div class="bml">Receita Bruta</div><div class="bmv" style="font-size:1.1rem">${R(rev)}</div><div class="bms">por mês</div></div>
     <div class="bm"><div class="bml">Custo Produto</div><div class="bmv" style="font-size:1.1rem">${R(cogs)}</div><div class="bms">matéria-prima</div></div>
     <div class="bm"><div class="bml">Lucro Líquido</div><div class="bmv" style="font-size:1.1rem;color:${ec}">${R(liq)}</div><div class="bms">após imposto</div></div>`;
@@ -1553,6 +1552,10 @@ function verificar(){
     const porUn = f.pv - r.cv - A.fix/A.vol - A.com*f.pv - r.al*f.pv;
     testar(`Lucro/un × volume · ${NM[k]}`, porUn*A.vol, r.liq, 0.5);
   }
+  // 7b. projeção usa o mesmo volume e o mesmo preço de cada linha
+  if(window.__proj){ const m25=Math.min(prj.mx25,100)/100, m35=Math.min(prj.mx35,100-prj.mx25)/100, m50=Math.max(0,1-m25-m35);
+    testar('Projeção = volume do painel', __proj.tu, A.vol, 0.5);
+    testar('Projeção: receita = volume × mix × preço', __proj.rev, A.vol*(m25*F.f25.pv+m35*F.f35.pv+m50*F.f50.pv), 0.5); }
   // 8. lista de compras (caminho dos batches) = custo variável sem embalagem (caminho do cvar)
   const q=1/(1-A.per);
   for (const k in F){
@@ -2201,7 +2204,7 @@ function syncControls(){
   // precos de canal do simulador
   CH.forEach(c=>{ st('sp-'+c.id,R(sim.pr[c.id])); sv('spr-'+c.id,Math.round(sim.pr[c.id]*100)); });
   // projecao
-  st('pb-v',prj.batches); st('pm25-v',prj.mx25+'%'); st('pm35-v',prj.mx35+'%');
+  st('pm25-v',prj.mx25+'%'); st('pm35-v',prj.mx35+'%');
   st('pm50-v',Math.max(0,100-prj.mx25-prj.mx35)+'%'); st('ppv-v',R(prj.avgp));
 }
 
@@ -2213,8 +2216,8 @@ function renderAll(){
   try{
     syncControls(); rPeso(); rRef(); rTextos();
     rAlert(); rVCards(); rBE(); rScl(); rProjTb();
-    rCash(); rFichas(); rCompras(); rInsumos(); rTax(); rReal(); rFixBox(); rResist(); rRisco(); rVerif();
-    rFCards(); rSim(); rProj();
+    rCash(); rFichas(); rCompras(); rInsumos(); rTax(); rReal(); rFixBox(); rResist(); rRisco();
+    rFCards(); rSim(); rProj(); rVerif();
   } finally { _renderizando=false; }
 }
 
