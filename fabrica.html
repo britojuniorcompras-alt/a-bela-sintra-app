@@ -236,6 +236,30 @@ table.dre{width:100%;border-collapse:collapse;font-size:.86rem}
 .pinw .cur{font-size:.78rem;color:var(--mut)}
 .prec-box{background:var(--gnl);border:1px solid var(--bdr);border-left:3px solid var(--gn);border-radius:var(--r);padding:14px 18px;margin-top:16px}
 .prec-box h4{color:var(--gn);font-size:.92rem;font-weight:700;margin-bottom:9px}
+
+/* ===== Celular ===== */
+@media(max-width:700px){
+  body{font-size:14.5px;-webkit-text-size-adjust:100%}
+  .hd{position:static;padding:10px 12px;gap:9px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
+  .hd-ico{font-size:20px}
+  .hd h1{font-size:.92rem}
+  .hd p{display:none}
+  .hd .hdr{flex-wrap:nowrap;gap:6px;flex-shrink:0}
+  .hbtn{padding:7px 11px;font-size:.74rem}
+  nav{position:sticky;top:0;z-index:99;padding:0 4px;box-shadow:0 2px 8px rgba(25,44,59,.10);scroll-snap-type:x proximity}
+  nav button{padding:12px 11px;font-size:.8rem;scroll-snap-align:center}
+  .wrap{padding:14px 10px 40px}
+  .sh{font-size:1.15rem}
+  .ss{font-size:.8rem;margin-bottom:14px}
+  .card{min-width:0;max-width:100%}
+  .pane [class]>*{min-width:0}
+  .dtbl{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:.8rem}
+  .dtbl th,.dtbl td{padding:8px 9px;white-space:nowrap}
+  .dtbl td:first-child{white-space:normal;min-width:120px}
+  input,select,textarea{font-size:16px!important}
+  .vsbox{padding:16px 14px}
+  .vfic{flex-shrink:0;margin-right:4px}
+}
 </style>
 <style>
 [hidden]{display:none!important}
@@ -1098,6 +1122,7 @@ document.getElementById('nav').addEventListener('click',e=>{
   document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
   b.classList.add('on');
   document.getElementById('tab-'+t).classList.add('on');
+  try{b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});if(innerWidth<=700)scrollTo({top:0})}catch(_){}
   if(t==='sim')rSim();
   if(t==='proj')rProj();
   if(t==='cash')rCash();
@@ -2062,7 +2087,7 @@ function syncControls(){
   sv('i-dias',INS.dias); sv('pin-dias',INS.dias); st('pd-v',INS.dias);
   const dsl=document.querySelector('#tab-proj input[oninput*="\'dias\'"]'); if(dsl) dsl.value=INS.dias;
   // custo fixo — caixa e projecao
-  sv('a-fix',A.fix); st('a-fix-v','R$ '+N(A.fix)); st('pfc-v','R$ '+N(A.fix));
+  sv('a-fix',A.fix); st('a-fix-v','R$ '+N(Math.round(A.fix))); st('pfc-v','R$ '+N(Math.round(A.fix)));
   const fsl=document.querySelector('#tab-proj input[oninput*="\'fixed\'"]'); if(fsl) fsl.value=A.fix;
   // demais premissas da aba Caixa
   st('a-emb-v',R(A.emb)); st('a-com-v',P(A.com)); st('a-per-v',P(A.per)); st('a-pz-v',A.pz+' dias');
