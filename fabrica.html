@@ -2301,8 +2301,36 @@ function resumoAba(t){
   return `🐟 A Bela Sintra · Painel da Fábrica\n📊 ${ABAS[t]} — ${dataBR()}\n\n${premissasTxt()}\n\n${L.join('\n')}\n\nDocumento interno — contém custos e margens.`;
 }
 function toast(msg){ const d=document.createElement('div'); d.className='shtoast'; d.textContent=msg; document.body.appendChild(d); setTimeout(()=>d.remove(),2600); }
-function compWhats(t){ window.open('https://wa.me/?text='+encodeURIComponent(resumoAba(t)),'_blank','noopener'); }
-function compEmail(t){ location.href='mailto:?subject='+encodeURIComponent('Painel da Fábrica — '+ABAS[t]+' — '+dataBR())+'&body='+encodeURIComponent(resumoAba(t)); }
+// Todos os botões geram o PDF. Celular: envia o arquivo pela janela de compartilhar.
+// Computador: baixa o PDF e abre o destino com o PDF (link + arquivo baixado para arrastar).
+async function enviarPDF(t,btn,destino){
+  const cel=ehCelular(), w=(!cel && destino!=='copiar')?janelaEspera():null;
+  ocupado(btn,true,'Gerando PDF…');
+  try{
+    const pdf=await gerarPDF(t);
+    if(cel && await compartilharArquivo(t,pdf)){ if(w) w.close(); return; }
+    baixarBlob(pdf.blob,pdf.nome);
+    const url=await linkPDF(t,pdf);
+    const assunto='Painel da Fábrica — '+ABAS[t]+' — '+dataBR();
+    if(destino==='whats'){
+      irPara(w,(cel?'https://wa.me/?text=':'https://web.whatsapp.com/send?text=')+encodeURIComponent(linhaPDF(t,url)));
+      toast('PDF baixado ✅ — arraste o arquivo para a conversa, ou envie o link');
+    } else if(destino==='gmail'){
+      irPara(w, cel ? `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(linhaPDF(t,url))}`
+                    : `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(assunto)}&body=${encodeURIComponent(linhaPDF(t,url))}`);
+      toast('PDF baixado ✅ — arraste o arquivo para o e-mail (📎), ou envie o link');
+    } else if(destino==='copiar'){
+      if(url){ try{ await navigator.clipboard.writeText(url); toast('PDF baixado ✅ e link do PDF copiado 📋'); }catch(_){ toast('PDF baixado ✅'); } }
+      else toast('PDF baixado ✅');
+    }
+  }catch(e){
+    if(w) w.close();
+    toast('Gerador de PDF indisponível — abrindo impressão (escolha "Salvar como PDF")');
+    setTimeout(()=>window.print(),400);
+  }finally{ ocupado(btn,false); }
+}
+const compWhats=(t,btn)=>enviarPDF(t,btn,'whats');
+const compEmail=(t,btn)=>enviarPDF(t,btn,'gmail');
 async function compCopiar(t){
   const txt=resumoAba(t);
   try{ await navigator.clipboard.writeText(txt); toast('Resumo copiado ✅'); }
@@ -2317,9 +2345,9 @@ function carregarH2P(){
     sc.onload=()=>ok(window.html2pdf); sc.onerror=()=>{_h2p=null; err(new Error('lib'));}; document.head.appendChild(sc); });
   return _h2p;
 }
-async function compPDF(t,btn){
-  const pane=document.getElementById('tab-'+t); if(!pane) return;
-  if(btn){ btn.disabled=true; btn.dataset.txt=btn.innerHTML; btn.innerHTML='⏳ Gerando…'; }
+const ehCelular=()=>/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+async function gerarPDF(t){                 // devolve {blob,nome}
+  const pane=document.getElementById('tab-'+t); if(!pane) throw new Error('aba');
   const html=document.documentElement, temaAntes=html.getAttribute('data-theme');
   html.setAttribute('data-theme','light');                 // PDF sempre claro
   const fora=document.createElement('div'); fora.id='pdfpalco';
@@ -2341,31 +2369,68 @@ async function compPDF(t,btn){
       html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr','.card','.dalert','.info','.bm']}};
     const blob=await h2p().set(opt).from(palco).outputPdf('blob');
+    return {blob,nome};
+  }finally{
+    fora.remove();
+    if(temaAntes===null) html.removeAttribute('data-theme'); else html.setAttribute('data-theme',temaAntes);
+  }
+}
+function ocupado(btn,on,txt){ if(!btn) return; if(on){ btn.disabled=true; btn.dataset.txt=btn.innerHTML; btn.innerHTML='⏳ '+(txt||'Gerando…'); } else { btn.disabled=false; if(btn.dataset.txt) btn.innerHTML=btn.dataset.txt; } }
+async function compPDF(t,btn){
+  ocupado(btn,true);
+  try{
+    const {blob,nome}=await gerarPDF(t);
     const file=new File([blob],nome,{type:'application/pdf'});
-    if(navigator.canShare && navigator.canShare({files:[file]})){
+    if(ehCelular() && navigator.canShare && navigator.canShare({files:[file]})){
       try{ await navigator.share({files:[file],title:'Painel da Fábrica — '+ABAS[t]}); }catch(e){ if(e.name!=='AbortError') throw e; }
     } else {
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nome; document.body.appendChild(a); a.click();
       setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1500);
-      toast('PDF baixado — anexe no WhatsApp ou e-mail 📎');
+      toast('PDF baixado ✅');
     }
   }catch(e){
     toast('Gerador de PDF indisponível — abrindo impressão (escolha "Salvar como PDF")');
     setTimeout(()=>window.print(),400);
-  }finally{
-    fora.remove();
-    if(temaAntes===null) html.removeAttribute('data-theme'); else html.setAttribute('data-theme',temaAntes);
-    if(btn){ btn.disabled=false; btn.innerHTML=btn.dataset.txt; }
-  }
+  }finally{ ocupado(btn,false); }
 }
+// sobe o PDF para o Supabase (bucket privado) e devolve um link temporário de 7 dias
+async function linkPDF(t,pdf){
+  try{
+    const {blob,nome}=pdf||await gerarPDF(t);
+    const path=`${(USER&&USER.id)||'u'}/${Date.now()}-${nome}`;
+    const up=await SB.storage.from('fabrica-pdfs').upload(path,blob,{contentType:'application/pdf',upsert:false});
+    if(up.error) throw up.error;
+    const sg=await SB.storage.from('fabrica-pdfs').createSignedUrl(path,7*24*3600);
+    if(sg.error) throw sg.error;
+    return sg.data.signedUrl;
+  }catch(e){ console.warn('PDF por link falhou',e); return null; }
+}
+function janelaEspera(){                    // abre já no clique (senão o navegador bloqueia o pop-up)
+  const w=window.open('','_blank');
+  if(w){ try{ w.document.write('<title>Preparando…</title><p style="font:16px sans-serif;padding:24px;color:#547A93">⏳ Gerando o PDF do painel e preparando a mensagem…</p>'); }catch(_){} }
+  return w;
+}
+function irPara(w,url){ if(w&&!w.closed){ w.location.href=url; } else { location.href=url; } }
+function baixarBlob(blob,nome){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nome; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1500);
+}
+// celular: abre a janela de compartilhar do aparelho com o ARQUIVO PDF (WhatsApp, Gmail… recebem o anexo)
+async function compartilharArquivo(t,pdf){
+  const file=new File([pdf.blob],pdf.nome,{type:'application/pdf'});
+  if(!(navigator.canShare && navigator.canShare({files:[file]}))) return false;
+  try{ await navigator.share({files:[file],title:'Painel da Fábrica — '+ABAS[t]}); }catch(e){ if(e.name!=='AbortError') return false; }
+  return true;
+}
+const linhaPDF=(t,url)=>`📄 Painel da Fábrica — ${ABAS[t]} (PDF)${url?'\n'+url:''}`;
 function montarBarrasCompartilhar(){
   for(const t of Object.keys(ABAS)){
     const pane=document.getElementById('tab-'+t); if(!pane||pane.querySelector('.shbar')) continue;
     const bar=document.createElement('div'); bar.className='shbar';
-    bar.innerHTML=`<button class="shb pdf" onclick="compPDF('${t}',this)">📄 PDF</button>
-      <button class="shb wa" onclick="compWhats('${t}')">💬 WhatsApp</button>
-      <button class="shb" onclick="compEmail('${t}')">✉️ E-mail</button>
-      <button class="shb" onclick="compCopiar('${t}')">📋 Copiar</button>`;
+    bar.innerHTML=`<button class="shb pdf" onclick="compPDF('${t}',this)" title="Baixar o PDF desta aba">📄 Baixar PDF</button>
+      <button class="shb wa" onclick="compWhats('${t}',this)" title="Gera o PDF e envia pelo WhatsApp">💬 WhatsApp (PDF)</button>
+      <button class="shb" onclick="compEmail('${t}',this)" title="Gera o PDF e abre o Gmail">✉️ Gmail (PDF)</button>
+      <button class="shb" onclick="enviarPDF('${t}',this,'copiar')" title="Gera o PDF e copia o link dele">📋 Copiar link do PDF</button>`;
     const ref=pane.querySelector('.ss')||pane.querySelector('.sh');
     ref?ref.after(bar):pane.prepend(bar);
   }
