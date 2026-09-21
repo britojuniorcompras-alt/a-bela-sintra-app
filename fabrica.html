@@ -102,6 +102,8 @@ nav button:hover:not(.on){color:var(--txt)}
 .ftog{display:flex;background:var(--surf2);border-radius:8px;padding:3px;gap:3px;margin-bottom:16px}
 .ftog button{flex:1;padding:7px 4px;border:none;border-radius:6px;background:none;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:.84rem;font-weight:700;color:var(--mut);transition:all .15s}
 .ftog button.on{background:var(--surf);color:var(--ac);box-shadow:var(--sh)}
+.refbox{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}.refbox .reftog{flex:0 0 220px}.reflbl{font-size:.74rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
+@media(max-width:700px){.refbox .reftog{flex:1 1 100%}}
 
 input[type=range]{width:100%;height:4px;border-radius:2px;background:var(--bdr);appearance:none;cursor:pointer;outline:none}
 input[type=range]::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;background:var(--ac);cursor:pointer;border:2px solid var(--surf);box-shadow:0 0 0 2px var(--ac)}
@@ -522,15 +524,17 @@ body{min-height:100vh}
       </div>
 
       <div>
+        <div class="refbox"><span class="reflbl">Linha de referência</span><div class="ftog reftog" style="margin-bottom:0">
+          <button data-ref="f25" onclick="setRef('f25')">25%</button><button data-ref="f35" onclick="setRef('f35')">35%</button><button data-ref="f50" onclick="setRef('f50')">50%</button></div></div>
         <div class="m4" id="fckpi" style="margin-bottom:14px"></div>
         <div class="card">
           <div class="sec-ttl">🛒 Lista de Compras Mensal — por Ingrediente</div>
           <div class="tw" style="padding:0"><table class="dtbl">
-            <thead><tr><th>Ingrediente</th><th class="tr">Linha 25</th><th class="tr">Linha 35</th><th class="tr">Linha 50</th><th class="tr">Gasto (L35)</th></tr></thead>
+            <thead><tr><th>Ingrediente</th><th class="tr">Linha 25</th><th class="tr">Linha 35</th><th class="tr">Linha 50</th><th class="tr">Gasto (<span class="refnm" data-fmt="L"></span>)</th></tr></thead>
             <tbody id="comprastb"></tbody>
           </table></div>
           <p style="font-size:.77rem;color:var(--mut);padding:11px 19px">
-            Quantidades já incluem a quebra de produção — é o que entra no pedido de compra, não o que sai como produto acabado. A coluna de gasto usa a Linha 35 como referência.
+            Quantidades já incluem a quebra de produção — é o que entra no pedido de compra, não o que sai como produto acabado. A coluna de gasto usa a <span class="refnm" data-fmt="Linha"></span> (linha de referência).
           </p>
         </div>
       </div>
@@ -544,12 +548,12 @@ body{min-height:100vh}
         <thead><tr>
           <th>Preço do bacalhau</th>
           <th class="tr">Custo/un F25</th><th class="tr">Custo/un F35</th><th class="tr">Custo/un F50</th>
-          <th class="tr">Impacto mensal</th><th class="tr">Margem líq. F35</th>
+          <th class="tr">Impacto mensal</th><th class="tr">Margem líq. <span class="refnm" data-fmt="F"></span></th>
         </tr></thead>
         <tbody id="senstb"></tbody>
       </table></div>
       <p style="font-size:.77rem;color:var(--mut);padding:11px 19px">
-        Impacto mensal sobre a Linha 35 no volume atual, já com a quebra. A margem é a <b>líquida</b>, depois de embalagem, custo fixo, comissão e imposto. Linha destacada = preço vigente.
+        Impacto mensal sobre a <span class="refnm" data-fmt="Linha"></span> no volume atual, já com a quebra. A margem é a <b>líquida</b>, depois de embalagem, custo fixo, comissão e imposto. Linha destacada = preço vigente.
       </p>
     </div>
 
@@ -586,7 +590,7 @@ body{min-height:100vh}
 
     <div class="info" style="background:var(--acl);border-left-color:var(--ac)">
       <strong>💡 Onde está o seu ganho</strong>
-      Cada 1% negociado no bacalhau vale mais do que 1% em qualquer outro insumo — ele é quase todo o custo. Repare na ordem de grandeza: a compra mensal de bacalhau fica em torno de <span id="tx-baccompra"></span> (Linha 35), enquanto salsa, cebola e alho somados ficam em <span id="tx-temp"></span>. Antes de apertar fornecedor de tempero ou renegociar aluguel, vale esgotar a negociação de bacalhau: volume garantido, prazo de pagamento e compra direta de importador.
+      Cada 1% negociado no bacalhau vale mais do que 1% em qualquer outro insumo — ele é quase todo o custo. Repare na ordem de grandeza: a compra mensal de bacalhau fica em torno de <span id="tx-baccompra"></span> (<span class="refnm" data-fmt="Linha"></span>), enquanto salsa, cebola e alho somados ficam em <span id="tx-temp"></span>. Antes de apertar fornecedor de tempero ou renegociar aluguel, vale esgotar a negociação de bacalhau: volume garantido, prazo de pagamento e compra direta de importador.
     </div>
   </div>
 
@@ -689,7 +693,7 @@ body{min-height:100vh}
     <div class="dalert">
       <strong>🚨 O risco que não aparece no lucro</strong>
       Você paga o bacalhau à vista ou em prazo curto e recebe do cliente B2B em 30, 45 ou 60 dias.
-      Essa diferença precisa estar no seu caixa o tempo todo — e no prazo de <span id="tx-pz"></span> dias ela chega a <b><span id="tx-wcx"></span> o investimento inteiro na fábrica</b> (linha 35%). É assim que indústria de alimento lucrativa quebra.
+      Essa diferença precisa estar no seu caixa o tempo todo — e no prazo de <span id="tx-pz"></span> dias ela chega a <b><span id="tx-wcx"></span> o investimento inteiro na fábrica</b> (<span class="refnm" data-fmt="linha"></span>). É assim que indústria de alimento lucrativa quebra.
     </div>
 
     <div class="d2col">
@@ -729,6 +733,8 @@ body{min-height:100vh}
       </div>
 
       <div>
+        <div class="refbox"><span class="reflbl">Linha de referência</span><div class="ftog reftog" style="margin-bottom:0">
+          <button data-ref="f25" onclick="setRef('f25')">25%</button><button data-ref="f35" onclick="setRef('f35')">35%</button><button data-ref="f50" onclick="setRef('f50')">50%</button></div></div>
         <div class="m4" id="cashkpi" style="margin-bottom:14px"></div>
         <div class="card" style="margin-bottom:14px">
           <div class="sec-ttl">💧 Capital de Giro Necessário</div>
@@ -944,7 +950,7 @@ body{min-height:100vh}
           <div class="rl"><span>10%</span><span>concentração</span><span>100%</span></div>
         </div>
         <hr class="sp">
-        <div class="mr"><span class="ml">Linha de referência</span><span class="mv">35% · <span id="r-pv"></span></span></div>
+        <div class="mr"><span class="ml">Linha de referência</span><span class="mv"><span class="refnm" data-fmt="pct"></span> · <span id="r-pv"></span></span></div>
         <div class="mr"><span class="ml">Volume mensal</span><span class="mv" id="r-vol"></span></div>
         <div class="mr" style="border:none"><span class="ml">Investimento na planta</span><span class="mv" id="r-inv"></span></div>
         <div class="nt" style="margin-top:10px;padding-top:10px">
@@ -953,6 +959,8 @@ body{min-height:100vh}
       </div>
 
       <div>
+        <div class="refbox"><span class="reflbl">Linha de referência</span><div class="ftog reftog" style="margin-bottom:0">
+          <button data-ref="f25" onclick="setRef('f25')">25%</button><button data-ref="f35" onclick="setRef('f35')">35%</button><button data-ref="f50" onclick="setRef('f50')">50%</button></div></div>
         <div class="m4" id="riscokpi" style="margin-bottom:14px"></div>
         <div class="card">
           <div class="sec-ttl">💸 Exposição por Prazo de Pagamento</div>
@@ -1357,6 +1365,7 @@ const instantaneo = () => ({
   dias:INS.dias,
   canais:{...sim.pr},
   producao:{batches:prj.batches,mx25:prj.mx25,mx35:prj.mx35},
+  ref:REF.k,
 });
 function aplicar(d){
   if(!d||typeof d!=='object') return false;
@@ -1365,6 +1374,7 @@ function aplicar(d){
     (d.fixos||[]).forEach(x=>{const it=FIX.find(y=>y.id===x.id); if(it&&isFinite(x.valor)) it.valor=x.valor;});
     for(const k in (d.precos||{})) if(F[k]&&isFinite(d.precos[k])) F[k].pv=d.precos[k];
     A.peso=30;   // versoes salvas antes do campo de peso eram todas de 30 g
+    REF.k = F[d.ref] ? d.ref : 'f35';
     for(const k in (d.A||{})) if(isFinite(d.A[k])) A[k]=d.A[k];
     if(isFinite(d.dias)) INS.dias=d.dias;
     for(const k in (d.canais||{})) if(k in sim.pr && isFinite(d.canais[k])) sim.pr[k]=d.canais[k];
@@ -1411,7 +1421,7 @@ async function restaurarOriginal(){
   REC.forEach(i=>i.preco=ORIG.insumos[i.id]);
   FIX.forEach(i=>i.valor=ORIG.fixos[i.id]);
   for(const k in ORIG.precos) F[k].pv=ORIG.precos[k];
-  Object.assign(A,ORIG.A); INS.dias=ORIG.dias;
+  Object.assign(A,ORIG.A); INS.dias=ORIG.dias; REF.k='f35';
   recalcFix(); recalcF(); renderAll(); guardar();
 }
 
@@ -1663,13 +1673,13 @@ function rProjTb(){
 /* ===== CAIXA & RETORNO ===== */
 function rCash(){
   const kp=document.getElementById('cashkpi'); if(!kp) return;
-  const f=F.f35, r0=calc('f35'), cv=r0.cv, rec=r0.rec, eb=r0.eb;
+  const RK=REF.k, f=F[RK], r0=calc(RK), cv=r0.cv, rec=r0.rec, eb=r0.eb, LN='F'+RK.slice(1);
   const desemb=cv*A.vol+A.fix-depMensal(), wc=desemb*A.pz/30;     // depreciação não é saída de caixa
   const al=r0.al, liq=r0.liq, gc=liq+depMensal();                 // geração de caixa = lucro + depreciação
   kp.innerHTML=`
-    <div class="bm"><div class="bml">Capital de Giro</div><div class="bmv" style="font-size:1.1rem;color:var(--ac)">${R(wc,0)}</div><div class="bms">${A.pz} dias · ref. F35</div></div>
+    <div class="bm"><div class="bml">Capital de Giro</div><div class="bmv" style="font-size:1.1rem;color:var(--ac)">${R(wc,0)}</div><div class="bms">${A.pz} dias · ref. ${LN}</div></div>
     <div class="bm"><div class="bml">Necessidade Total</div><div class="bmv" style="font-size:1.1rem">${R(wc+A.inv,0)}</div><div class="bms">giro + planta</div></div>
-    <div class="bm"><div class="bml">Lucro Líquido</div><div class="bmv" style="font-size:1.1rem;color:${liq>=0?'var(--gn)':'var(--rd)'}">${R(liq,0)}</div><div class="bms">mês · F35</div></div>
+    <div class="bm"><div class="bml">Lucro Líquido</div><div class="bmv" style="font-size:1.1rem;color:${liq>=0?'var(--gn)':'var(--rd)'}">${R(liq,0)}</div><div class="bms">mês · ${LN}</div></div>
     <div class="bm"><div class="bml">Payback Total</div><div class="bmv" style="font-size:1.1rem">${gc>0?((wc+A.inv)/gc).toFixed(1)+' m':'—'}</div><div class="bms">incluindo o giro · pela geração de caixa</div></div>`;
 
   const nm={f25:'25%',f35:'35%',f50:'50%'};
@@ -1806,8 +1816,8 @@ function rTextos(){
   const pct=v=>(v*100).toFixed(0)+'%', faixa=(a,b)=>{const x=Math.min(a,b),y=Math.max(a,b);return Math.round(x*100)===Math.round(y*100)?pct(x):pct(x)+' a '+pct(y);};
   const K=Object.keys(F), sh=id=>K.map(k=>{const it=REC.find(x=>x.id===id);return qtdDe(it,k)*it.preco/batchCusto(k);});
   const bac=sh('bac'), bat=sh('bat'), aze=sh('aze');
-  const q=1/(1-A.per), b35=A.vol*q/F.f35.u, itB=REC.find(x=>x.id==='bac');
-  const tempero=['sls','ceb','alh'].reduce((t,id)=>{const it=REC.find(x=>x.id===id);return t+b35*qtdDe(it,'f35')*it.preco;},0);
+  const RK=REF.k, q=1/(1-A.per), b35=A.vol*q/F[RK].u, itB=REC.find(x=>x.id==='bac');
+  const tempero=['sls','ceb','alh'].reduce((t,id)=>{const it=REC.find(x=>x.id===id);return t+b35*qtdDe(it,RK)*it.preco;},0);
   const capun=CAP_DIA*INS.dias*F.f25.u*(1-A.per);
   const bd=v=>Math.round(v*q/F.f25.u/INS.dias);
   const ton=300000*q*A.peso/1e6;
@@ -1816,7 +1826,7 @@ function rTextos(){
   const T={
     capun:N(Math.round(capun/100)*100), capvol:N(A.vol), capx:(A.vol/capun).toFixed(1).replace('.',',')+'×',
     bacsh:faixa(Math.min(...bac),Math.max(...bac)), bacpr:R(itB.preco), batsh:faixa(Math.min(...bat),Math.max(...bat)), azesh:faixa(Math.min(...aze),Math.max(...aze)),
-    baccompra:R(b35*F.f35.bac*itB.preco,0), temp:R(tempero,0),
+    baccompra:R(b35*F[RK].bac*itB.preco,0), temp:R(tempero,0),
     impeb:rows.length?faixa(Math.min(...rows.map(r=>r.ie)),Math.max(...rows.map(r=>r.ie))):'—',
     mgliq:rows.length?faixa(Math.min(...rows.map(r=>r.mg)),Math.max(...rows.map(r=>r.mg))):'—',
     fix:R(A.fix,0), fix2:R(A.fix,0), ton:(ton).toFixed(1).replace('.',',')+' toneladas', kgpp:N(Math.round(ton*1000/4/INS.dias))+' kg',
@@ -1824,7 +1834,7 @@ function rTextos(){
     mg300:K.map(k=>{const r=calc(k,300000,fixoEsc(300000));return pct(r.eb/r.rec);}).join(', '),
     pe25:pe?R(pe)+' (equilíbrio da F25)':'—', bd100:bd(100000), bd300:bd(300000),
     pv25:R(F.f25.pv), pv35:R(F.f35.pv), bacsh2:faixa(Math.min(...bac),Math.max(...bac)), pz:A.pz,
-    wcx:(()=>{const w=(cvar('f35')*A.vol+A.fix-depMensal())*A.pz/30/A.inv; return w.toFixed(1).replace('.',',')+'×';})(),
+    wcx:(()=>{const w=(cvar(RK)*A.vol+A.fix-depMensal())*A.pz/30/A.inv; return w.toFixed(1).replace('.',',')+'×';})(),
     ...Object.fromEntries(K.flatMap(k=>{const v=SUBLIM/12/F[k].pv, t=N(Math.round(v/500)*500)+' un/mês'; return [['sl'+k.slice(1),t],['sl'+k.slice(1)+'b',t]];})),
   };
   for(const [id,v] of Object.entries(T)) st('tx-'+id, v);
@@ -1885,6 +1895,13 @@ function rResist(){
 
 /* ===== RISCO DO CLIENTE — estado proprio, nao toca no resto do painel ===== */
 const RISK = { pz:45, meses:6, conc:1.00 };
+const REF = { k:'f35' };                    // linha usada como referência em Caixa, Risco e Compras
+function setRef(k){ if(!F[k]) return; REF.k=k; renderAll(); }
+function rRef(){
+  const n=REF.k.slice(1), fm={L:'L'+n, F:'F'+n, Linha:'Linha '+n, linha:'linha '+n+'%', pct:n+'%'};
+  document.querySelectorAll('.reftog button').forEach(b=>b.classList.toggle('on', b.dataset.ref===REF.k));
+  document.querySelectorAll('.refnm').forEach(e=>{ e.textContent=fm[e.dataset.fmt]||''; });
+}
 function setRPz(v){
   const n=parseNum(v), el=document.getElementById('pin-rpz');
   if(n===null||n<0||n>365){ if(el) el.classList.add('bad'); return; }
@@ -1899,7 +1916,7 @@ function setRCc(v){ RISK.conc=+v/100; st('r-cc-v',v+'%'); rRisco(); }
 
 function rRisco(){
   const kp=document.getElementById('riscokpi'); if(!kp) return;
-  const k='f35', f=F[k], r=calc(k);
+  const k=REF.k, f=F[k], r=calc(k);
   const recCli = r.rec*RISK.conc;                 // faturamento vindo deste cliente
   const liqMes = r.liq*RISK.conc;                 // lucro liquido atribuivel a ele
   const naRua  = recCli*RISK.pz/30;               // entregue e nao recebido
@@ -2023,12 +2040,12 @@ function rFichas(){
 function rCompras(){
   const kp=document.getElementById('fckpi'); if(!kp) return;
   const q=1/(1-A.per), nm={f25:'25%',f35:'35%',f50:'50%'};   // produzir vol/(1−quebra) para vender vol
-  const f=F.f35, bt35=A.vol*q/f.u;
+  const RK=REF.k, f=F[RK], bt35=A.vol*q/f.u, LN='Linha '+RK.slice(1);
 
   kp.innerHTML=`
-    <div class="bm"><div class="bml">Bacalhau/mês</div><div class="bmv" style="font-size:1.1rem;color:var(--ac)">${N(Math.round(bt35*f.bac))} kg</div><div class="bms">ref. Linha 35</div></div>
-    <div class="bm"><div class="bml">Massa batata/mês</div><div class="bmv" style="font-size:1.1rem">${N(Math.round(bt35*f.bat))} kg</div><div class="bms">ref. Linha 35</div></div>
-    <div class="bm"><div class="bml">Gasto Insumos</div><div class="bmv" style="font-size:1.1rem">${R(bt35*batchCusto('f35'),0)}</div><div class="bms">por mês</div></div>
+    <div class="bm"><div class="bml">Bacalhau/mês</div><div class="bmv" style="font-size:1.1rem;color:var(--ac)">${N(Math.round(bt35*f.bac))} kg</div><div class="bms">ref. ${LN}</div></div>
+    <div class="bm"><div class="bml">Massa batata/mês</div><div class="bmv" style="font-size:1.1rem">${N(Math.round(bt35*f.bat))} kg</div><div class="bms">ref. ${LN}</div></div>
+    <div class="bm"><div class="bml">Gasto Insumos</div><div class="bmv" style="font-size:1.1rem">${R(bt35*batchCusto(RK),0)}</div><div class="bms">por mês · ${LN}</div></div>
     <div class="bm"><div class="bml">Batches/dia</div><div class="bmv" style="font-size:1.1rem;color:${bt35/INS.dias>CAP_DIA?'var(--rd)':'var(--gn)'}">${(bt35/INS.dias).toFixed(1)}</div><div class="bms">capacidade atual: ${CAP_DIA}</div></div>`;
 
   document.getElementById('comprastb').innerHTML=REC.map(it=>{
@@ -2036,13 +2053,13 @@ function rCompras(){
       const b=A.vol*q/F[k].u;
       return `<td class="tr fn">${N(Math.round(b*qtdDe(it,k)))} ${it.un}</td>`;
     }).join('');
-    const custo35=(A.vol*q/F.f35.u)*qtdDe(it,'f35')*it.preco;
+    const custo35=(A.vol*q/F[REF.k].u)*qtdDe(it,REF.k)*it.preco;
     return `<tr><td><strong>${it.nome}</strong></td>${cel}<td class="tr fn"${it.id==='bac'?' style="color:var(--ac);font-weight:700"':''}>${R(custo35,0)}</td></tr>`;
   }).join('') + (()=>{
     const tot=['f25','f35','f50'].map(k=>(A.vol*q/F[k].u)*batchCusto(k));
     return `<tr style="background:var(--surf2)"><td><strong>TOTAL</strong></td>
       <td class="tr fn">${R(tot[0],0)}</td><td class="tr fn">${R(tot[1],0)}</td><td class="tr fn">${R(tot[2],0)}</td>
-      <td class="tr fn" style="font-weight:700">${R(tot[1],0)}</td></tr>`;
+      <td class="tr fn" style="font-weight:700">${R(tot[['f25','f35','f50'].indexOf(REF.k)],0)}</td></tr>`;
   })();
 
   document.getElementById('prodtb').innerHTML=Object.keys(F).map(k=>{
@@ -2054,14 +2071,13 @@ function rCompras(){
       <td class="tr"><span class="badge-${ok?'gn':'rd'}">${ok?'cabe na estrutura ✅':'exige planta maior ⚠️'}</span></td></tr>`;
   }).join('');
 
-  const itBac=REC.find(x=>x.id==='bac'), base=itBac.preco, ref=F.f35;
+  const itBac=REC.find(x=>x.id==='bac'), base=itBac.preco, ref=F[REF.k];
   const custoCom=(k,precoBac)=>REC.reduce((t,it)=>t+qtdDe(it,k)*(it.id==='bac'?precoBac:it.preco),0)/F[k].u;
   document.getElementById('senstb').innerHTML=[-20,-10,-5,0,5,10,20].map(d=>{
     const pr=base*(1+d/100), aqui=(d===0);
     const c25=custoCom('f25',pr), c35=custoCom('f35',pr), c50=custoCom('f50',pr);
-    const delta=(c35-ref.custo)/(1-A.per)*A.vol;
-    const tot=c35/(1-A.per)+A.emb+A.fix/A.vol+ref.pv*A.com;
-    const rec=ref.pv*A.vol, eb=rec-(c35/(1-A.per)+A.emb)*A.vol-A.fix-rec*A.com;
+    const cref=custoCom(REF.k,pr), delta=(cref-ref.custo)/(1-A.per)*A.vol;
+    const rec=ref.pv*A.vol, eb=rec-(cref/(1-A.per)+A.emb)*A.vol-A.fix-rec*A.com;
     const mg=(eb-rec*aliq(rec*12))/rec;
     return `<tr${aqui?' style="background:var(--surf2)"':''}>
       <td>${aqui?'<strong>'+R(pr)+'/kg ← hoje</strong>':(d>0?'+':'')+d+'% · '+R(pr)+'/kg'}</td>
@@ -2195,7 +2211,7 @@ function renderAll(){
   guardar();                 // evita recursao entre os renderizadores
   _renderizando=true;
   try{
-    syncControls(); rPeso(); rTextos();
+    syncControls(); rPeso(); rRef(); rTextos();
     rAlert(); rVCards(); rBE(); rScl(); rProjTb();
     rCash(); rFichas(); rCompras(); rInsumos(); rTax(); rReal(); rFixBox(); rResist(); rRisco(); rVerif();
     rFCards(); rSim(); rProj();
