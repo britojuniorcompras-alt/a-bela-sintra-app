@@ -176,10 +176,8 @@ table.dre{width:100%;border-collapse:collapse;font-size:.86rem}
 .dalert b,.dalert-ok b,.info b{display:inline;font-weight:700}
 .dalert-ok{background:#DCFCE7;border:1px solid #86EFAC;border-left:4px solid #16A34A;border-radius:var(--r);padding:15px 19px;margin-bottom:20px;font-size:.92rem;line-height:1.55}
 .dalert-ok strong{display:block;font-size:1rem;color:#14532D;margin-bottom:5px}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .dalert b,.dalert-ok b,.info b{display:inline;font-weight:700}
-.dalert-ok{background:#052817;border-color:#4ADE80;border-left-color:#16A34A}}
-:root[data-theme="dark"] .dalert b,.dalert-ok b,.info b{display:inline;font-weight:700}
-.dalert-ok{background:#052817;border-color:#4ADE80;border-left-color:#16A34A}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .dalert-ok{background:#052817;border-color:#4ADE80;border-left-color:#16A34A}}
+:root[data-theme="dark"] .dalert-ok{background:#052817;border-color:#4ADE80;border-left-color:#16A34A}
 
 .vcard{padding:18px 20px}
 .vcard-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
@@ -269,6 +267,23 @@ table.dre{width:100%;border-collapse:collapse;font-size:.86rem}
 @media(max-width:700px){.hd-logo{width:32px;height:32px}}
 :root[data-theme="dark"] .lglogo,:root[data-theme="dark"] .hd-logo{filter:brightness(0) invert(.88) sepia(.35)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .lglogo,:root:not([data-theme="light"]) .hd-logo{filter:brightness(0) invert(.88) sepia(.35)}}
+
+/* ===== Compartilhar ===== */
+.shbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.shb{font:inherit;font-size:.78rem;font-weight:700;padding:7px 12px;border-radius:20px;border:1px solid var(--bdr);background:var(--surf);color:var(--txt);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.shb:hover{border-color:var(--ac);color:var(--ac)}
+.shb.wa{border-color:#25D366;color:#128C4A}.shb.pdf{border-color:var(--ac);color:var(--ac)}
+.shb[disabled]{opacity:.55;cursor:wait}
+@media print{.hd,nav,.shbar,.refbox,#vs-modal,.shtoast{display:none!important}.pane:not(.on){display:none!important}body{background:#fff}}
+.shtoast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#192C3B;color:#fff;padding:10px 16px;border-radius:10px;font-size:.85rem;z-index:300;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+@media(max-width:700px){.shb{flex:1 1 calc(50% - 6px);justify-content:center;padding:9px 8px}}
+#pdfpalco{position:absolute;left:0;top:0;z-index:-5;width:718px;overflow:hidden;pointer-events:none}
+.pdfdoc{width:718px;background:#fff;color:#192C3B;padding:4px}
+.pdfdoc .shbar,.pdfdoc .reftog,.pdfdoc .refbox,.pdfdoc input[type=range],.pdfdoc button,.pdfdoc .adot{display:none!important}
+.pdfdoc .dtbl{display:table!important;overflow:visible!important;white-space:normal!important}
+.pdfdoc{font-size:13px}.pdfdoc .pg,.pdfdoc .sg,.pdfdoc .d2col{grid-template-columns:1fr!important}.pdfdoc .dtbl{width:100%!important;font-size:10px!important;table-layout:auto}.pdfdoc .dtbl th,.pdfdoc .dtbl td{padding:5px 5px!important;white-space:normal!important}.pdfdoc .tw,.pdfdoc [style*='margin:0 -19px']{margin:0!important;overflow:visible!important}.pdfdoc [style*='overflow-x:auto']{overflow:visible!important}.pdfdoc .dre td,.pdfdoc .dre th{padding:5px 8px!important}
+.pdfdoc .card,.pdfdoc tr,.pdfdoc .dalert,.pdfdoc .info,.pdfdoc .bm{break-inside:avoid;page-break-inside:avoid}
+.pdfdoc .pane{display:block!important}
 </style>
 <style>
 [hidden]{display:none!important}
@@ -2228,6 +2243,135 @@ const ORIG={
   A:{...A}, dias:INS.dias,
 };
 recalcFix();recalcF();rFCards();rSim();rProj();renderAll();
+
+/* ===== COMPARTILHAR — PDF, WhatsApp, e-mail e copiar em cada aba ===== */
+const ABAS={diag:'Diagnóstico',form:'Formulações',fcust:'Ficha de Custo & Compras',sim:'Simulador de Canal',proj:'Projeção Mensal',cash:'Caixa & Retorno',tax:'Impostos',risco:'Risco do Cliente',strat:'Estratégia'};
+const dataBR=()=>new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+const pctx=v=>(v*100).toFixed(1).replace('.',',')+'%';
+function premissasTxt(){
+  const bac=REC.find(i=>i.id==='bac');
+  return `Volume: ${N(A.vol)} un/mês · Peso: ${fmtPeso(A.peso)} g · Bacalhau: ${R(bac.preco)}/kg\nPreços: 25% ${R(F.f25.pv)} · 35% ${R(F.f35.pv)} · 50% ${R(F.f50.pv)}\nCusto fixo: ${R(A.fix,0)}/mês · Quebra ${pctx(A.per)} · Embalagem ${R(A.emb)}/un · Prazo ${A.pz} dias`;
+}
+function resumoAba(t){
+  const K=Object.keys(F), L=[];
+  const linha=k=>'Linha '+k.slice(1)+'%';
+  if(t==='diag'){
+    for(const k of K){ const r=calc(k), be=breakEven(k), pe=precoEquilibrio(k);
+      L.push(`• ${linha(k)} — preço ${R(F[k].pv)} · custo total ${R(r.cv+A.fix/A.vol+A.com*F[k].pv)}/un · lucro líquido ${R(r.liq,0)}/mês (${pctx(r.mg)}) · imposto ${pctx(r.al)} · equilíbrio ${be?N(Math.round(be))+' un':'não cobre'}${pe?' ou preço mín. '+R(pe):''}`); }
+  } else if(t==='form'){
+    for(const k of K){ const f=F[k], r=calc(k);
+      L.push(`• ${linha(k)} — batch ${String(f.kg).replace('.',',')} kg (bacalhau ${String(f.bac).replace('.',',')} kg) · ${N(Math.round(f.u))} un/batch · ingrediente ${R(f.custo)}/un · custo variável ${R(cvar(k))}/un · contribuição após imposto ${R(f.pv*(1-r.al-A.com)-cvar(k))}/un`); }
+  } else if(t==='fcust'){
+    L.push('Preços de insumo: '+REC.map(i=>`${i.nome.split(' (')[0]} ${R(i.preco)}`).join(' · '));
+    const q=1/(1-A.per);
+    for(const k of K){ const b=A.vol*q/F[k].u, bac=REC.find(i=>i.id==='bac');
+      L.push(`• ${linha(k)} — ${N(Math.round(b))} batches/mês (${(b/INS.dias).toFixed(1).replace('.',',')}/dia) · bacalhau ${N(Math.round(b*qtdDe(bac,k)))} kg · batata ${N(Math.round(b*F[k].bat))} kg · gasto insumos ${R(b*batchCusto(k),0)}/mês`); }
+  } else if(t==='sim'){
+    const k=sim.fid, cv=cvar(k); L.push(`Formulação simulada: ${linha(k)} · custo variável ${R(cv)}/un`);
+    for(const ch of CH){ const p=sim.pr[ch.id], c=p*(1-aliq(p*A.vol*12)-A.com)-cv;
+      L.push(`• ${ch.nom} — ${R(p)}/un · contribuição após imposto ${R(c)}/un · ${R(c*A.vol,0)}/mês`); }
+  } else if(t==='proj'){
+    const p=window.__proj||{}; const m25=Math.min(prj.mx25,100), m35=Math.min(prj.mx35,100-prj.mx25);
+    L.push(`Mix: 25% ${m25}% · 35% ${m35}% · 50% ${Math.max(0,100-m25-m35)}%`);
+    L.push(`• Unidades vendidas: ${N(Math.round(p.tu||0))} (produz ${N(Math.round((p.tu||0)/(1-A.per)))}) · ${(p.bd||0).toFixed(1).replace('.',',')} batches/dia`);
+    L.push(`• Receita bruta: ${R(p.rev||0)}`); L.push(`• Custo variável: ${R(p.cogs||0)}`); L.push(`• Custo fixo: ${R(A.fix)}`);
+    L.push(`• Imposto (${pctx(p.al||0)}): ${R((p.rev||0)*(p.al||0))}`); L.push(`• LUCRO LÍQUIDO: ${R(p.liq||0)}`);
+  } else if(t==='cash'){
+    const k=REF.k, r=calc(k), dep=depMensal(), wc=(r.cv*A.vol+A.fix-dep)*A.pz/30;
+    L.push(`Linha de referência: ${linha(k)}`);
+    L.push(`• Capital de giro (${A.pz} dias): ${R(wc,0)}`); L.push(`• Necessidade total (giro + planta): ${R(wc+A.inv,0)}`);
+    L.push(`• Lucro líquido: ${R(r.liq,0)}/mês · geração de caixa ${R(r.liq+dep,0)}/mês`);
+    L.push(`• Payback total: ${r.liq+dep>0?((wc+A.inv)/(r.liq+dep)).toFixed(1).replace('.',',')+' meses':'—'}`);
+    for(const k2 of K){ const r2=calc(k2), g=r2.liq+dep; L.push(`• ${linha(k2)} — lucro ${R(r2.liq,0)}/mês · payback da planta ${g>0?(A.inv/g).toFixed(1).replace('.',',')+' meses':'—'}`); }
+  } else if(t==='tax'){
+    for(const k of K){ const r=calc(k), ra=r.rec*12; const reg= ra<=SUBLIM?'Simples Nacional':(ra<=TETO?'Acima do sublimite → Presumido':'Lucro Presumido');
+      L.push(`• ${linha(k)} — faturamento ${R(ra/1e6,2).replace('R$ ','R$ ')} mi/ano · ${reg} · ${pctx(r.al)} · imposto ${R(r.imp,0)}/mês`); }
+    L.push(`Sublimite do Simples (R$ 3,6 mi/ano) com os preços atuais: `+K.map(k=>`${linha(k)} ${N(Math.round(SUBLIM/12/F[k].pv/500)*500)} un/mês`).join(' · '));
+  } else if(t==='risco'){
+    const k=REF.k, r=calc(k), rec=r.rec*RISK.conc, rua=rec*RISK.pz/30, acum=r.liq*RISK.conc*RISK.meses;
+    L.push(`Linha de referência: ${linha(k)} · prazo ${RISK.pz} dias · ${Math.round(RISK.conc*100)}% do faturamento neste cliente`);
+    L.push(`• Valor na rua: ${R(rua,0)} (${A.inv>0?(rua/A.inv).toFixed(1).replace('.',','):'—'}× o investimento)`);
+    L.push(`• Lucro em ${RISK.meses} meses: ${R(acum,0)}`); L.push(`• Saldo se houver calote: ${R(acum-rua,0)}`);
+  } else if(t==='strat'){
+    const pe=precoEquilibrio('f25');
+    L.push(`• Preço de equilíbrio da linha 25%: ${pe?R(pe):'—'}`);
+    L.push(`• Custo fixo hoje ${R(A.fix,0)} · estrutura estimada 200k ${R(fixoEsc(200000),0)} · 300k ${R(fixoEsc(300000),0)}`);
+    for(const k of K){ const r=calc(k,300000,fixoEsc(300000)); L.push(`• ${linha(k)} a 300k com estrutura crescendo: margem EBITDA ${pctx(r.eb/r.rec)}`); }
+  }
+  return `🐟 A Bela Sintra · Painel da Fábrica\n📊 ${ABAS[t]} — ${dataBR()}\n\n${premissasTxt()}\n\n${L.join('\n')}\n\nDocumento interno — contém custos e margens.`;
+}
+function toast(msg){ const d=document.createElement('div'); d.className='shtoast'; d.textContent=msg; document.body.appendChild(d); setTimeout(()=>d.remove(),2600); }
+function compWhats(t){ window.open('https://wa.me/?text='+encodeURIComponent(resumoAba(t)),'_blank','noopener'); }
+function compEmail(t){ location.href='mailto:?subject='+encodeURIComponent('Painel da Fábrica — '+ABAS[t]+' — '+dataBR())+'&body='+encodeURIComponent(resumoAba(t)); }
+async function compCopiar(t){
+  const txt=resumoAba(t);
+  try{ await navigator.clipboard.writeText(txt); toast('Resumo copiado ✅'); }
+  catch(_){ const a=document.createElement('textarea'); a.value=txt; document.body.appendChild(a); a.select(); try{document.execCommand('copy'); toast('Resumo copiado ✅');}catch(e){ toast('Não foi possível copiar'); } a.remove(); }
+}
+let _h2p=null;
+function carregarH2P(){
+  if(window.html2pdf) return Promise.resolve(window.html2pdf);
+  if(_h2p) return _h2p;
+  _h2p=new Promise((ok,err)=>{ const sc=document.createElement('script');
+    sc.src='https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js';
+    sc.onload=()=>ok(window.html2pdf); sc.onerror=()=>{_h2p=null; err(new Error('lib'));}; document.head.appendChild(sc); });
+  return _h2p;
+}
+async function compPDF(t,btn){
+  const pane=document.getElementById('tab-'+t); if(!pane) return;
+  if(btn){ btn.disabled=true; btn.dataset.txt=btn.innerHTML; btn.innerHTML='⏳ Gerando…'; }
+  const html=document.documentElement, temaAntes=html.getAttribute('data-theme');
+  html.setAttribute('data-theme','light');                 // PDF sempre claro
+  const fora=document.createElement('div'); fora.id='pdfpalco';
+  const palco=document.createElement('div'); palco.className='pdfdoc'; fora.appendChild(palco);
+  const logo=document.querySelector('.hd-logo');
+  palco.innerHTML=`<div style="display:flex;align-items:center;gap:12px;border-bottom:2px solid #B5781A;padding:0 0 10px;margin-bottom:12px">
+      ${logo?`<img src="${logo.src}" style="width:40px;height:40px">`:''}
+      <div><div style="font-family:'Playfair Display',serif;font-weight:700;color:#B5781A;font-size:17px">A Bela Sintra · Painel da Fábrica</div>
+      <div style="font-size:12px;color:#547A93">${ABAS[t]} · gerado em ${dataBR()} · documento interno</div></div></div>
+    <div style="font-size:11.5px;color:#192C3B;background:#F2F5FA;border-radius:8px;padding:8px 10px;margin-bottom:12px;white-space:pre-line">${premissasTxt()}</div>`;
+  const clone=pane.cloneNode(true); clone.classList.add('on'); clone.removeAttribute('id');
+  clone.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));
+  clone.querySelectorAll('input:not([type=range])').forEach(i=>{ const s=document.createElement('strong'); s.textContent=i.value; i.replaceWith(s); });
+  palco.appendChild(clone); document.body.appendChild(fora);
+  const nome=`Fabrica-${ABAS[t].normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-')}-${new Date().toISOString().slice(0,10)}.pdf`;
+  try{
+    const h2p=await carregarH2P();
+    const opt={margin:[10,10,12,10],filename:nome,image:{type:'jpeg',quality:0.92},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr','.card','.dalert','.info','.bm']}};
+    const blob=await h2p().set(opt).from(palco).outputPdf('blob');
+    const file=new File([blob],nome,{type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file],title:'Painel da Fábrica — '+ABAS[t]}); }catch(e){ if(e.name!=='AbortError') throw e; }
+    } else {
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nome; document.body.appendChild(a); a.click();
+      setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1500);
+      toast('PDF baixado — anexe no WhatsApp ou e-mail 📎');
+    }
+  }catch(e){
+    toast('Gerador de PDF indisponível — abrindo impressão (escolha "Salvar como PDF")');
+    setTimeout(()=>window.print(),400);
+  }finally{
+    fora.remove();
+    if(temaAntes===null) html.removeAttribute('data-theme'); else html.setAttribute('data-theme',temaAntes);
+    if(btn){ btn.disabled=false; btn.innerHTML=btn.dataset.txt; }
+  }
+}
+function montarBarrasCompartilhar(){
+  for(const t of Object.keys(ABAS)){
+    const pane=document.getElementById('tab-'+t); if(!pane||pane.querySelector('.shbar')) continue;
+    const bar=document.createElement('div'); bar.className='shbar';
+    bar.innerHTML=`<button class="shb pdf" onclick="compPDF('${t}',this)">📄 PDF</button>
+      <button class="shb wa" onclick="compWhats('${t}')">💬 WhatsApp</button>
+      <button class="shb" onclick="compEmail('${t}')">✉️ E-mail</button>
+      <button class="shb" onclick="compCopiar('${t}')">📋 Copiar</button>`;
+    const ref=pane.querySelector('.ss')||pane.querySelector('.sh');
+    ref?ref.after(bar):pane.prepend(bar);
+  }
+}
+montarBarrasCompartilhar();
+
 iniciarAuth();
 </script>
 
