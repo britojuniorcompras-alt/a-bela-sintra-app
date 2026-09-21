@@ -1352,6 +1352,7 @@ function aplicar(d){
     (d.insumos||[]).forEach(x=>{const it=REC.find(y=>y.id===x.id); if(it&&isFinite(x.preco)) it.preco=x.preco;});
     (d.fixos||[]).forEach(x=>{const it=FIX.find(y=>y.id===x.id); if(it&&isFinite(x.valor)) it.valor=x.valor;});
     for(const k in (d.precos||{})) if(F[k]&&isFinite(d.precos[k])) F[k].pv=d.precos[k];
+    A.peso=30;   // versoes salvas antes do campo de peso eram todas de 30 g
     for(const k in (d.A||{})) if(isFinite(d.A[k])) A[k]=d.A[k];
     if(isFinite(d.dias)) INS.dias=d.dias;
     for(const k in (d.canais||{})) if(k in sim.pr && isFinite(d.canais[k])) sim.pr[k]=d.canais[k];
@@ -1460,7 +1461,7 @@ async function listarVersoes(){
   ul.innerHTML=data.map(v=>{
     const p=v.dados.precos||{};
     return `<li><div class="vsinf"><strong>${v.nome.replace(/</g,'&lt;')}</strong>
-      <span>${quandoBR(v.criado_em)} · L25 ${R(p.f25??0)} · L35 ${R(p.f35??0)} · L50 ${R(p.f50??0)}</span></div>
+      <span>${quandoBR(v.criado_em)} · ${fmtPeso(v.dados.A?.peso??30)} g · L25 ${R(p.f25??0)} · L35 ${R(p.f35??0)} · L50 ${R(p.f50??0)}</span></div>
       <button class="vsb" onclick="carregarVersao(${v.id})">Carregar</button>
       <button class="vsb vsx" onclick="excluirVersao(${v.id})" aria-label="Excluir versão">✕</button></li>`;
   }).join('');
