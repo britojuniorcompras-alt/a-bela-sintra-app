@@ -451,25 +451,25 @@ body{min-height:100vh}
           </tr></thead>
           <tbody id="projtb"></tbody>
         </table>
-        <p style="font-size:.77rem;color:var(--mut);margin-top:9px">EBITDA = Receita − Ingredientes − Custos fixos (R$ 40.637). Não inclui impostos, logística, embalagem e outros variáveis.</p>
+        <p style="font-size:.77rem;color:var(--mut);margin-top:9px">EBITDA = Receita − custo variável (ingrediente, quebra e embalagem) − custo fixo da escala (a estrutura cresce com o volume, como na aba Estratégia). Antes do imposto; frete por conta do cliente.</p>
       </div>
     </div>
 
     <div class="info" style="background:var(--acl);border-left-color:var(--ac)">
       <strong>⚠️ Ponto de atenção: capacidade de produção</strong>
-      A dark kitchen planejada (2 salas 5×3m) comporta ~16.500 unidades/mês. Para produzir 100k unidades, você precisará de uma <strong>planta industrial ou co-manufacturing</strong> — aproximadamente 6× a estrutura atual. O investimento de R$ 290.200 previsto pode ser a base, mas certamente precisará ser ampliado. Isso não muda a viabilidade dos preços — confirma que a escala está bem pensada. Valide a estrutura de produção com um parceiro industrial ou consulte o Sebrae/SENAI para dimensionamento.
+      A dark kitchen planejada (2 salas 5×3m) comporta cerca de <span id="tx-capun"></span> unidades/mês. Para produzir <span id="tx-capvol"></span> unidades, você precisará de uma <strong>planta industrial ou co-manufacturing</strong> — aproximadamente <span id="tx-capx"></span> a estrutura atual. O investimento de R$ 290.200 previsto pode ser a base, mas certamente precisará ser ampliado. Isso não muda a viabilidade dos preços — confirma que a escala está bem pensada. Valide a estrutura de produção com um parceiro industrial ou consulte o Sebrae/SENAI para dimensionamento.
     </div>
   </div>
 
   <!-- FORMULAÇÕES -->
   <div id="tab-form" class="pane">
     <h2 class="sh">Comparativo de Formulações B2B</h2>
-    <p class="ss">Dados da sua ficha técnica de custo · Batch padrão: 9,2 kg batata + bacalhau variável</p>
+    <p class="ss">Dados da sua ficha técnica de custo · Batch padrão: 8,3 kg de batata + 0,9 kg de temperos + bacalhau variável</p>
     <div class="g3" id="fcards"></div>
     <div class="info">
       <strong>📌 Referência de Mercado:</strong>
       Bom Porto Gourmet 360 g (12 un) → R$ 41,90 no Empório Quatro Estrelas SP = <strong>R$ 3,49/un no varejo especial</strong>.
-      Com a contraproposta, a linha 25% a R$ 2,12 e a 35% a R$ 2,69 ficam bem abaixo dessa referência — competitivas no preço, mas veja na aba Impostos o que sobra depois de todos os custos.
+      Com os preços atuais, a linha 25% a <span id="tx-pv25"></span> e a 35% a <span id="tx-pv35"></span> ficam bem abaixo dessa referência — competitivas no preço, mas veja na aba Impostos o que sobra depois de todos os custos.
     </div>
   </div>
 
@@ -479,8 +479,8 @@ body{min-height:100vh}
     <p class="ss">Preços de insumo, custo por batch e preço de venda de cada linha. Qualquer alteração aqui reflete imediatamente no Diagnóstico, nas Formulações e em todas as demais abas.</p>
 
     <div class="dalert">
-      <strong>🎯 O bacalhau é 87% a 93% do seu custo de ingrediente</strong>
-      Dos nove ingredientes da sua ficha, o bacalhau a <b>R$ 206,00/kg</b> responde sozinho por quase todo o custo. O segundo maior item é a batata, com 5% a 9%, e o terceiro é o azeite, com cerca de 2%.
+      <strong>🎯 O bacalhau é <span id="tx-bacsh"></span> do seu custo de ingrediente</strong>
+      Dos nove ingredientes da sua ficha, o bacalhau a <b><span id="tx-bacpr"></span>/kg</b> responde sozinho por quase todo o custo. O segundo maior item é a batata, com <span id="tx-batsh"></span>, e o terceiro é o azeite, com cerca de <span id="tx-azesh"></span>.
       Isso significa que <b>negociar compra é a sua maior alavanca de margem</b> — muito acima de qualquer economia em aluguel, energia ou embalagem.
       Confira esse preço com a sua nota fiscal e ajuste no controle abaixo.
     </div>
@@ -565,7 +565,7 @@ body{min-height:100vh}
       <div class="dalert" style="margin:0 19px 16px">
         <strong>📉 O bacalhau subiu cerca de 10% ao ano nos últimos quatro anos</strong>
         Não é sazonalidade de Páscoa: são <b>restrições de cota de pesca no Atlântico Norte</b>, que reduzem a oferta global de forma estrutural.
-        Como o bacalhau é 87% a 93% do seu custo, um contrato de preço fixo por 12 meses transfere esse risco inteiro para você.
+        Como o bacalhau é <span id="tx-bacsh2"></span> do seu custo, um contrato de preço fixo por 12 meses transfere esse risco inteiro para você.
         A coluna da direita mostra o reajuste que o preço precisaria ter só para manter a margem de hoje.
       </div>
     </div>
@@ -586,7 +586,7 @@ body{min-height:100vh}
 
     <div class="info" style="background:var(--acl);border-left-color:var(--ac)">
       <strong>💡 Onde está o seu ganho</strong>
-      Cada 1% negociado no bacalhau vale mais do que 1% em qualquer outro insumo — ele é quase todo o custo. Repare na ordem de grandeza: a compra mensal de bacalhau passa de R$ 165 mil, enquanto salsa, cebola e alho somados não chegam a R$ 120. Antes de apertar fornecedor de tempero ou renegociar aluguel, vale esgotar a negociação de bacalhau: volume garantido, prazo de pagamento e compra direta de importador.
+      Cada 1% negociado no bacalhau vale mais do que 1% em qualquer outro insumo — ele é quase todo o custo. Repare na ordem de grandeza: a compra mensal de bacalhau fica em torno de <span id="tx-baccompra"></span> (Linha 35), enquanto salsa, cebola e alho somados ficam em <span id="tx-temp"></span>. Antes de apertar fornecedor de tempero ou renegociar aluguel, vale esgotar a negociação de bacalhau: volume garantido, prazo de pagamento e compra direta de importador.
     </div>
   </div>
 
@@ -637,6 +637,7 @@ body{min-height:100vh}
     <div class="info" style="margin-bottom:18px">
       <strong>🏭 Referência de capacidade:</strong> <span id="cap-ref"></span> A estrutura de 2 salas 5×3m comporta cerca de 3 batches/dia — os volumes acima disso exigem planta ampliada.
     </div>
+    <div class="dalert" id="proj-nota" hidden></div>
     <div class="pg">
       <div class="card cp">
         <div class="cg">
@@ -688,7 +689,7 @@ body{min-height:100vh}
     <div class="dalert">
       <strong>🚨 O risco que não aparece no lucro</strong>
       Você paga o bacalhau à vista ou em prazo curto e recebe do cliente B2B em 30, 45 ou 60 dias.
-      Essa diferença precisa estar no seu caixa o tempo todo — e no prazo de 45 dias ela fica <b>maior que o investimento inteiro na fábrica</b>. É assim que indústria de alimento lucrativa quebra.
+      Essa diferença precisa estar no seu caixa o tempo todo — e no prazo de <span id="tx-pz"></span> dias ela chega a <b><span id="tx-wcx"></span> o investimento inteiro na fábrica</b> (linha 35%). É assim que indústria de alimento lucrativa quebra.
     </div>
 
     <div class="d2col">
@@ -772,9 +773,9 @@ body{min-height:100vh}
     <p class="ss">NCM 1604.20.90 · Preparações de pescado congeladas · Indústria em São Paulo · Ano-base 2026</p>
 
     <div class="dalert">
-      <strong>🚨 Alerta estratégico: o teto do Simples Nacional é R$ 4,8 milhões/ano</strong>
-      Nas suas projeções você <strong>ultrapassa esse teto muito cedo</strong>. A Formulação 50% já estoura logo na largada (R$ 5,17 mi/ano com 100k un).
-      A F25 estoura entre 150k e 200k un/mês. Isso força a migração para <strong>Lucro Presumido</strong>, onde a carga sobe de ~12% para ~15,5%.
+      <strong>🚨 Alerta estratégico: o Simples deixa de compensar acima de R$ 3,6 milhões/ano</strong>
+      Acima de R$ 3,6 mi/ano (sublimite) o ICMS sai do Simples e passa a ser pago por fora — a carga total passa do Lucro Presumido, então o painel usa ~15,5% a partir daí. O teto absoluto do Simples é R$ 4,8 mi/ano.
+      Com os preços atuais isso acontece a partir de <span id="tx-sl25"></span> (linha 25%), <span id="tx-sl35"></span> (35%) e <span id="tx-sl50"></span> (50%). <strong>O lucro cai um degrau ao cruzar essa linha</strong> — como o regime vale para o ano inteiro, planeje o volume do Habib's para ficar claramente abaixo ou claramente acima dela.
       Não é um problema — é uma decisão que precisa estar planejada com o contador <strong>antes</strong> de acontecer, porque o desenquadramento no meio do ano gera passivo retroativo.
     </div>
 
@@ -858,7 +859,7 @@ body{min-height:100vh}
           <tbody id="imptb"></tbody>
         </table>
         <p style="font-size:.77rem;color:var(--mut);margin-top:9px">
-          O imposto consome entre <strong>34% e 40% do seu EBITDA</strong>. Ainda assim o negócio permanece sólido: margem líquida de 19% a 30% é saudável para indústria de alimentos.
+          Nos cenários desta tabela o imposto consome entre <strong><span id="tx-impeb"></span> do seu EBITDA</strong>, e a margem líquida fica entre <span id="tx-mgliq"></span>.
         </p>
       </div>
     </div>
@@ -994,9 +995,9 @@ body{min-height:100vh}
 
     <div class="dalert">
       <strong>🚨 O ponto mais frágil do plano: a estrutura fixa não cresce sozinha</strong>
-      As projeções deste painel mantêm o custo fixo travado em <strong>R$ 40.637</strong> de 100k até 300k un/mês. Isso pressupõe que
-      4 funcionários e uma sala de R$ 6.000 de aluguel dariam conta de <strong>9 toneladas por mês</strong> — o que equivale a 102 kg por pessoa por dia.
-      Não é realista. A margem de 46% que aparece nos 300k <strong>só existe se a estrutura ficar congelada</strong>.
+      Se o custo fixo ficasse travado em <strong><span id="tx-fix"></span></strong> de 100k até 300k un/mês, isso pressuporia que
+      4 funcionários e uma sala de R$ 6.000 de aluguel dariam conta de <strong><span id="tx-ton"></span> por mês</strong> — o que equivale a <span id="tx-kgpp"></span> por pessoa por dia.
+      Não é realista. A margem alta que apareceria nos 300k <strong>só existe se a estrutura ficar congelada</strong> — por isso as projeções usam a estrutura crescendo.
       Abaixo está o mesmo plano com a estrutura crescendo junto — é esse número que você deve levar para o cliente.
     </div>
 
@@ -1011,8 +1012,8 @@ body{min-height:100vh}
           <tbody id="realtb"></tbody>
         </table>
         <p style="font-size:.77rem;color:var(--mut);margin-top:9px">
-          Cenário realista estimado: 200k com 8 funcionários e galpão maior (≈R$ 80.000/mês); 300k com 12 funcionários e planta industrial (≈R$ 120.000/mês).
-          <strong>A leitura correta é esta:</strong> a margem não sobe de 31% para 46% com a escala — ela se mantém estável em torno de 31%, 35% e 39%.
+          Cenário realista estimado: 200k com 8 funcionários e galpão maior (≈<span id="tx-f200"></span>/mês); 300k com 12 funcionários e planta industrial (≈<span id="tx-f300"></span>/mês).
+          <strong>A leitura correta é esta:</strong> a margem não dispara com a escala — com a estrutura crescendo, nos 300k ela fica em torno de <span id="tx-mg300"></span> (linhas 25%, 35% e 50%).
           O que cresce é o lucro em reais, e isso já é uma ótima notícia. Prometer margem crescente é o tipo de número que um cliente experiente derruba na primeira pergunta.
         </p>
       </div>
@@ -1032,7 +1033,7 @@ body{min-height:100vh}
           <div class="pp ph2">Fase 2<br>6–18m</div>
           <div>
             <strong>Ampliação e Transição Fiscal · 100k → 200k un/mês</strong><br>
-            <span style="font-size:.84rem;color:var(--mut)">Aqui acontecem duas coisas ao mesmo tempo, e ambas custam dinheiro: você <strong>estoura o teto do Simples Nacional</strong> (migração para Lucro Presumido, carga sobe de ~12% para ~15,5%) e precisa <strong>dobrar a equipe e o espaço</strong> (custo fixo de R$ 40.637 para ~R$ 80.000). Planeje o caixa para absorver as duas coisas juntas.</span>
+            <span style="font-size:.84rem;color:var(--mut)">Aqui acontecem duas coisas ao mesmo tempo, e ambas custam dinheiro: você <strong>passa do sublimite de R$ 3,6 mi do Simples</strong> (migração para Lucro Presumido, carga sobe de ~12% para ~15,5%) e precisa <strong>dobrar a equipe e o espaço</strong> (custo fixo de <span id="tx-fix2"></span> para ~<span id="tx-f200b"></span>). Planeje o caixa para absorver as duas coisas juntas.</span>
           </div>
         </div>
         <div class="prow">
@@ -1054,7 +1055,7 @@ body{min-height:100vh}
           </tr></thead>
           <tbody>
             <tr>
-              <td>Distribuidoras e redes</td><td class="tr fn">25%</td><td class="tr fn">R$ 1,95–2,12</td>
+              <td>Distribuidoras e redes</td><td class="tr fn">25%</td><td class="tr fn">a partir de <span id="tx-pe25"></span></td>
               <td style="font-size:.82rem">Volume que dilui o custo fixo. Margem menor, previsibilidade maior</td>
             </tr>
             <tr>
@@ -1080,17 +1081,17 @@ body{min-height:100vh}
     <div class="card" style="margin-bottom:16px">
       <div class="sec-ttl">⚠️ Os Quatro Pontos de Decisão Críticos</div>
       <div style="padding:13px 19px">
-        <div class="pc"><span class="ic">1️⃣</span><span><strong>Capacidade real antes de vender.</strong> 100k un/mês exigem ~12 batches/dia; 300k exigem ~36. A estrutura de 2 salas comporta cerca de 3. Não feche contrato de volume sem a planta dimensionada — inadimplência de entrega em B2B queima a relação de uma vez.</span></div>
-        <div class="pc"><span class="ic">2️⃣</span><span><strong>Teto do Simples em R$ 4,8 mi/ano.</strong> A F50 estoura já na largada com 100k un. Desenquadramento no meio do ano gera passivo retroativo — o contador precisa saber disso com antecedência.</span></div>
+        <div class="pc"><span class="ic">1️⃣</span><span><strong>Capacidade real antes de vender.</strong> 100k un/mês exigem ~<span id="tx-bd100"></span> batches/dia; 300k exigem ~<span id="tx-bd300"></span>. A estrutura de 2 salas comporta cerca de 3. Não feche contrato de volume sem a planta dimensionada — inadimplência de entrega em B2B queima a relação de uma vez.</span></div>
+        <div class="pc"><span class="ic">2️⃣</span><span><strong>Sublimite do Simples em R$ 3,6 mi/ano.</strong> Com os preços atuais: <span id="tx-sl25b"></span> (25%), <span id="tx-sl35b"></span> (35%) e <span id="tx-sl50b"></span> (50%). Desenquadramento no meio do ano gera passivo retroativo — o contador precisa saber disso com antecedência.</span></div>
         <div class="pc"><span class="ic">3️⃣</span><span><strong>SIF/MAPA é pré-requisito, não etapa.</strong> Produto à base de pescado exige registro federal. O prazo costuma ser longo e trava a venda interestadual. Comece por aí.</span></div>
-        <div class="pc"><span class="ic">4️⃣</span><span><strong>Custos que ainda não estão no modelo.</strong> Embalagem, logística de congelados (frete refrigerado é caro), comissão de vendas, perdas de produção e capital de giro para estoque. Nenhum deles aparece nas margens deste painel.</span></div>
+        <div class="pc"><span class="ic">4️⃣</span><span><strong>Custos que ainda não estão nas margens.</strong> Embalagem, quebra de produção e comissão já entram no cálculo, e o frete é por conta do cliente. Ficam de fora o estoque de bacalhau parado, o custo financeiro do prazo de recebimento e os encargos de folha no Lucro Presumido — confira a aba Caixa e feche esses valores com o contador.</span></div>
       </div>
     </div>
 
     <div class="nt">
       ⚠️ <strong>Nota:</strong> Ferramenta de planejamento baseada na ficha técnica de custo e na planilha de investimento que você compartilhou, mais pesquisa de mercado em SP.
-      Os valores do cenário realista (R$ 80.000 e R$ 120.000 de custo fixo) são estimativas de ordem de grandeza, não orçamentos —
-      precisam ser fechados com cotação real de galpão, folha e energia. Impostos, logística, embalagem e capital de giro devem ser levantados com seu contador.
+      Os valores do cenário realista (<span id="tx-f200c"></span> e <span id="tx-f300c"></span> de custo fixo) são estimativas de ordem de grandeza, não orçamentos —
+      precisam ser fechados com cotação real de galpão, folha e energia. Impostos, estoque e capital de giro devem ser fechados com seu contador.
       Referência de varejo: Bom Porto Gourmet SP — R$ 41,90/caixa 12 un = R$ 3,49/un.
     </div>
   </div>
@@ -1125,7 +1126,7 @@ const CH = [
 let sim={fid:'f25',pr:{ch1:1.95,ch2:2.12,ch3:3.49,ch4:5.00}};   // volume vem de A.vol
 let prj={batches:12,mx25:60,mx35:30,avgp:3.00};                  // dias vem de INS.dias, fixo de A.fix
 
-const R=(v,d=2)=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const R=(v,d=2)=>{ const t=Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}); return (v<0&&t.replace(/[0,.]/g,'')!==''?'− ':'')+'R$ '+t; };
 const N=v=>v.toLocaleString('pt-BR');
 const P=v=>(v*100).toFixed(1)+'%';
 
@@ -1152,7 +1153,7 @@ document.getElementById('nav').addEventListener('click',e=>{
 function rFCards(){
   document.getElementById('fcards').innerHTML=Object.entries(F).map(([k2,f])=>{
     const bp=(f.bat/f.kg*100).toFixed(0),bcp=(f.bac/f.kg*100).toFixed(0);
-    const cv=cvar(k2),luc=f.pv-cv,mk=luc/cv,mp=luc/f.pv,liq=calc(k2);
+    const cv=cvar(k2),liq=calc(k2),mk=(f.pv-cv)/cv,mp=(f.pv-cv)/f.pv,luc=f.pv*(1-liq.al-A.com)-cv;
     return`<div class="card fc">
       <div class="fc-hd"><div class="fc-nm">${f.lbl}</div><span class="bdg ${f.bc}">${f.bdg}</span></div>
       <div class="cbar"><div class="cf" style="width:${bp}%;background:#93C5FD"></div><div class="cf" style="width:${bcp}%;background:${f.cor}"></div></div>
@@ -1164,7 +1165,7 @@ function rFCards(){
       <div class="mr"><span class="ml">Ingrediente/un</span><span class="mv">${R(f.custo)}</span></div>
       <div class="mr"><span class="ml">Custo variável/un</span><span class="mv ac">${R(cv)}</span></div>
       <div class="mr"><span class="ml">Preço de venda</span><span class="mv gn">${R(f.pv)}</span></div>
-      <div class="mr"><span class="ml">Contribuição/un</span><span class="mv gn">${R(luc)}</span></div>
+      <div class="mr"><span class="ml">Contribuição/un <span style="font-size:.75rem">(após imposto${A.com>0?' e comissão':''})</span></span><span class="mv gn">${R(luc)}</span></div>
       <div class="mr"><span class="ml">Markup s/ variável</span><span class="mv">${P(mk)}</span></div>
       <div class="mr"><span class="ml">Margem bruta</span><span class="mv">${P(mp)}</span></div>
       <div class="mr" style="border:none"><span class="ml" style="font-weight:700">Margem líquida</span><span class="mv" style="color:${liq.liq>0?'var(--gn)':'var(--rd)'}">${P(liq.mg)}</span></div>
@@ -1193,13 +1194,14 @@ function setPV(k,v){
 
 function rSim(){
   const f=F[sim.fid],vol=A.vol;
-  const maxL=Math.max(...CH.map(c=>sim.pr[c.id]-f.custo));
+  const cvS=cvar(sim.fid), contrib=p=>p*(1-aliq(p*vol*12)-A.com)-cvS;   // por unidade, após imposto e comissão
+  const maxL=Math.max(...CH.map(c=>contrib(sim.pr[c.id])));
   const ss=`<div class="ss2">
     <div class="bm"><div class="bml">Custo Variável/un</div><div class="bmv">${R(cvar(sim.fid))}</div><div class="bms">${f.lbl} · c/ embalagem e quebra</div></div>
     <div class="bm"><div class="bml">Volume Mensal</div><div class="bmv" style="font-size:1.25rem">${N(vol)}</div><div class="bms">unidades</div></div>
   </div>`;
   const cs=CH.map(ch=>{
-    const p=sim.pr[ch.id],l=p-cvar(sim.fid);
+    const p=sim.pr[ch.id],l=contrib(p);
     const bw=maxL>0?Math.max(0,l/maxL*100).toFixed(1):0;
     const rev=p*vol,prof=l*vol;
     const mp=(l/p*100).toFixed(1);
@@ -1207,14 +1209,14 @@ function rSim(){
     return`<div class="chc">
       <div class="chh">
         <div><div class="chn">${ch.nom}</div><div class="chd">${ch.desc}</div></div>
-        <div class="chp"><div class="pv">${R(p)}/un</div><div class="mg" style="color:${pc}">+${R(l)} · ${mp}%</div>
+        <div class="chp"><div class="pv">${R(p)}/un</div><div class="mg" style="color:${pc}">${l>=0?'+':'−'}${R(Math.abs(l))} · ${mp}%</div>
           <button class="adot${Math.abs(p-f.pv)<0.005?' on':''}" onclick="adotarPreco('${ch.id}')"
             title="Usar este preço como preço base da ${f.lbl}">${Math.abs(p-f.pv)<0.005?'✓ preço base':'adotar →'}</button></div>
       </div>
       <div class="bb"><div class="bf" style="width:${bw}%;background:${ch.cor}"></div></div>
       <div class="chs">
         <span>Receita: <strong>${R(rev)}</strong></span>
-        <span>Margem de contribuição: <strong style="color:${pc}">${R(prof)}</strong></span>
+        <span>Contribuição após imposto: <strong style="color:${pc}">${prof<0?'− ':''}${R(Math.abs(prof))}</strong></span>
       </div>
     </div>`;
   }).join('');
@@ -1227,7 +1229,8 @@ function volDaProducao(){          // producao planejada -> unidades/mes
   const m35=Math.min(prj.mx35,100-prj.mx25)/100;
   const m50=Math.max(0,1-m25-m35);
   const tb=prj.batches*INS.dias;
-  return Math.round(Math.round(tb*m25)*F.f25.u + Math.round(tb*m35)*F.f35.u + Math.round(tb*m50)*F.f50.u);
+  // unidades VENDÁVEIS: produção menos a quebra (mesma base de volume das outras abas)
+  return Math.round((Math.round(tb*m25)*F.f25.u + Math.round(tb*m35)*F.f35.u + Math.round(tb*m50)*F.f50.u)*(1-A.per));
 }
 function pu(k,v){
   if(k==='avgprice')      prj.avgp=+v/100;
@@ -1247,16 +1250,23 @@ function rProj(){
   const m50=Math.max(0,1-m25-m35);
   const tb=p.batches*INS.dias;
   const b25=Math.round(tb*m25),b35=Math.round(tb*m35),b50=Math.round(tb*m50);
-  const u25=b25*F.f25.u,u35=b35*F.f35.u,u50=b50*F.f50.u;
-  const tu=u25+u35+u50;
+  const vd=1-A.per;                                   // quebra: só o que sobra é vendido
+  const u25=b25*F.f25.u*vd,u35=b35*F.f35.u*vd,u50=b50*F.f50.u*vd;
+  const tu=u25+u35+u50, tprod=tu/vd;
   const cogs=u25*cvar('f25')+u35*cvar('f35')+u50*cvar('f50');        // com embalagem e quebra
   const rev=u25*F.f25.pv+u35*F.f35.pv+u50*F.f50.pv;                  // preco real de cada linha
   const com=rev*A.com, gp=rev-cogs-com, ebt=gp-A.fix;
   const al=aliq(rev*12), imp=rev*al, liq=ebt-imp;
   const ec=liq>=0?'var(--gn)':'var(--rd)';
+  window.__proj={tu,rev,cogs,liq,al};
+  const pn=document.getElementById('proj-nota');
+  if(pn) pn.innerHTML = Math.abs(Math.round(tu)-A.vol)>1
+    ? `⚠️ Este plano produz <strong>${N(Math.round(tu))} un vendáveis/mês</strong>, mas as outras abas estão usando <strong>${N(A.vol)} un/mês</strong>. Mexa em batches, dias ou mix aqui para alinhar o volume do painel inteiro a este plano.`
+    : '';
+  if(pn) pn.hidden = !pn.innerHTML;
 
   document.getElementById('pkpis').innerHTML=`
-    <div class="bm"><div class="bml">Unidades/Mês</div><div class="bmv" style="font-size:1.2rem">${N(tu)}</div><div class="bms">produção estimada</div></div>
+    <div class="bm"><div class="bml">Unidades/Mês</div><div class="bmv" style="font-size:1.2rem">${N(Math.round(tu))}</div><div class="bms">vendáveis · produz ${N(Math.round(tprod))}</div></div>
     <div class="bm"><div class="bml">Receita Bruta</div><div class="bmv" style="font-size:1.1rem">${R(rev)}</div><div class="bms">por mês</div></div>
     <div class="bm"><div class="bml">Custo Produto</div><div class="bmv" style="font-size:1.1rem">${R(cogs)}</div><div class="bms">matéria-prima</div></div>
     <div class="bm"><div class="bml">Lucro Líquido</div><div class="bmv" style="font-size:1.1rem;color:${ec}">${R(liq)}</div><div class="bms">após imposto</div></div>`;
@@ -1319,10 +1329,12 @@ function breakEven(k){
   return q;
 }
 const TETO = 4800000;
+const SUBLIM = 3600000;   // acima disso o ICMS sai do Simples e é pago por fora
 const AN2 = [[180000,.045,0],[360000,.078,5940],[720000,.10,13860],
              [1800000,.112,22500],[3600000,.147,85500],[4800000,.30,720000]];
 function aliq(recAno){
-  if (recAno > TETO) return 0.155;                       // Lucro Presumido estimado
+  // acima do sublimite o Simples fica ~10–14% + ICMS por fora (~9%) → Lucro Presumido (15,5%) passa a ser o regime mais barato
+  if (recAno > SUBLIM) return 0.155;                     // Lucro Presumido estimado
   for (const [lim,al,ded] of AN2) if (recAno <= lim) return (recAno*al - ded)/recAno;
   return 0.155;
 }
@@ -1520,20 +1532,23 @@ function verificar(){
     const be=breakEven(k);
     if(be) testar(`Break-even zera · ${NM[k]}`, calc(k,be,A.fix).liq, 0, 2);
   }
-  // 6. custo fixo por unidade × volume = custo fixo total
-  testar('Diluição do fixo confere', (A.fix/A.vol)*A.vol, A.fix, 0.01);
+  // 6. imposto nunca cai quando o faturamento sobe (pega degrau errado de faixa/sublimite)
+  { let ant=0, ok=true, onde='';
+    for(let ra=60000; ra<=8000000; ra+=20000){ const a=aliq(ra); if(a<ant-1e-9){ ok=false; onde=ra; break; } ant=a; }
+    VERIF.push({nome:'Alíquota nunca cai com mais faturamento', a:onde||0, b:0, ok, dif:0}); }
 
-  // 7. coerência entre abas: Diagnóstico x Impostos no mesmo cenário
+  // 7. lucro por unidade (Diagnóstico) × volume = lucro líquido do mês
   for (const k in F){
-    const d=calc(k, A.vol, A.fix), i=calc(k, A.vol, fixoEsc(A.vol)===A.fix?A.fix:A.fix);
-    testar(`Diagnóstico = Impostos · ${NM[k]}`, d.liq, i.liq, 0.01);
+    const r=calc(k), f=F[k];
+    const porUn = f.pv - r.cv - A.fix/A.vol - A.com*f.pv - r.al*f.pv;
+    testar(`Lucro/un × volume · ${NM[k]}`, porUn*A.vol, r.liq, 0.5);
   }
-  // 8. lista de compras: soma dos insumos = custo do batch × nº de batches
-  const q=1+A.per;
+  // 8. lista de compras (caminho dos batches) = custo variável sem embalagem (caminho do cvar)
+  const q=1/(1-A.per);
   for (const k in F){
     const b=A.vol*q/F[k].u;
     let soma=0; for(const it of REC) soma += b*qtdDe(it,k)*it.preco;
-    testar(`Lista de compras · ${NM[k]}`, soma, b*batchCusto(k), 0.5);
+    testar(`Lista de compras = custo variável · ${NM[k]}`, soma, A.vol*(cvar(k)-A.emb), 0.5);
   }
   // 9. alíquota dentro da faixa plausível
   for (const k in F){
@@ -1571,7 +1586,8 @@ function rVCards(){
   const rot={f25:['Formulação 25% — Entrada'],f35:['Formulação 35% — Premium'],f50:['Formulação 50% — Gourmet']};
   el.innerHTML = Object.keys(F).map(k=>{
     const f=F[k], r=calc(k), cv=r.cv, fxu=A.fix/A.vol, tot=cv+fxu+(A.com*f.pv);
-    const luc=f.pv-tot, rec=r.rec, eb=r.eb, al=r.al, imp=r.imp, liq=r.liq, mg=r.mg;
+    const rec=r.rec, eb=r.eb, al=r.al, imp=r.imp, liq=r.liq, mg=r.mg;
+    const qbu=cv-f.custo-A.emb, impu=imp/A.vol, luc=liq/A.vol;
     const ok=liq>0, bom=mg>=0.12;
     const ico = ok?(bom?'✅':'⚠️'):'❌';
     const txt = ok?(bom?'Lucrativo':'Margem apertada'):'Prejuízo';
@@ -1579,11 +1595,14 @@ function rVCards(){
       <div class="vcard-hd"><div class="vcnm">${rot[k][0]}</div><div class="vict">${ico}</div></div>
       <span class="vstatus ${ok&&bom?'vs-ok':''}" ${ok?'':'style="background:#FEE2E2;color:#991B1B"'}>${txt} · ${P(mg)} líquido</span>
       <div class="mr"><span class="ml">Ingredientes/un</span><span class="mv">${R(f.custo)}</span></div>
-      <div class="mr"><span class="ml">Embalagem/un</span><span class="mv">${R(A.emb)}</span></div>
+      <div class="mr"><span class="ml">Quebra (${P(A.per)})/un</span><span class="mv">${R(qbu)}</span></div>
+      <div class="mr"><span class="ml">Embalagem/un</span><span class="mv">${R(A.emb)}</span></div>${A.com>0?`
+      <div class="mr"><span class="ml">Comissão/un</span><span class="mv">${R(A.com*f.pv)}</span></div>`:''}
       <div class="mr"><span class="ml">Custo fixo/un</span><span class="mv">${R(fxu)}</span></div>
       <div class="mr"><span class="ml">Custo total/un</span><span class="mv" style="color:var(--gn)">${R(tot)}</span></div>
       <div class="mr"><span class="ml">PV sugerido</span><span class="mv">${R(f.pv)}</span></div>
-      <div class="mr"><span class="ml">Lucro por unidade</span><span class="mv" style="color:var(--gn)">+ ${R(luc)}</span></div>
+      <div class="mr"><span class="ml">Imposto/un (${P(al)})</span><span class="mv" style="color:var(--rd)">− ${R(impu)}</span></div>
+      <div class="mr"><span class="ml">Lucro por unidade <span style="font-size:.75rem">(após imposto)</span></span><span class="mv" style="color:${luc>=0?'var(--gn)':'var(--rd)'}">${luc>=0?'+ ':'− '}${R(Math.abs(luc))}</span></div>
       <div class="mr"><span class="ml">Receita mensal</span><span class="mv">${R(rec,0)}</span></div>
       <div class="mr"><span class="ml">EBITDA mensal</span><span class="mv">${R(eb,0)}</span></div>
       <div class="mr"><span class="ml">Imposto (${P(al)})</span><span class="mv" style="color:var(--rd)">− ${R(imp,0)}</span></div>
@@ -1645,17 +1664,17 @@ function rProjTb(){
 function rCash(){
   const kp=document.getElementById('cashkpi'); if(!kp) return;
   const f=F.f35, r0=calc('f35'), cv=r0.cv, rec=r0.rec, eb=r0.eb;
-  const desemb=cv*A.vol+A.fix, wc=desemb*A.pz/30;
-  const al=r0.al, liq=r0.liq;
+  const desemb=cv*A.vol+A.fix-depMensal(), wc=desemb*A.pz/30;     // depreciação não é saída de caixa
+  const al=r0.al, liq=r0.liq, gc=liq+depMensal();                 // geração de caixa = lucro + depreciação
   kp.innerHTML=`
     <div class="bm"><div class="bml">Capital de Giro</div><div class="bmv" style="font-size:1.1rem;color:var(--ac)">${R(wc,0)}</div><div class="bms">${A.pz} dias · ref. F35</div></div>
     <div class="bm"><div class="bml">Necessidade Total</div><div class="bmv" style="font-size:1.1rem">${R(wc+A.inv,0)}</div><div class="bms">giro + planta</div></div>
     <div class="bm"><div class="bml">Lucro Líquido</div><div class="bmv" style="font-size:1.1rem;color:${liq>=0?'var(--gn)':'var(--rd)'}">${R(liq,0)}</div><div class="bms">mês · F35</div></div>
-    <div class="bm"><div class="bml">Payback Total</div><div class="bmv" style="font-size:1.1rem">${liq>0?((wc+A.inv)/liq).toFixed(1)+' m':'—'}</div><div class="bms">incluindo o giro</div></div>`;
+    <div class="bm"><div class="bml">Payback Total</div><div class="bmv" style="font-size:1.1rem">${gc>0?((wc+A.inv)/gc).toFixed(1)+' m':'—'}</div><div class="bms">incluindo o giro · pela geração de caixa</div></div>`;
 
   const nm={f25:'25%',f35:'35%',f50:'50%'};
   document.getElementById('wctb').innerHTML=Object.keys(F).map(k=>{
-    const d=cvar(k)*A.vol+A.fix, w=d*A.pz/30, r=w/A.inv;
+    const d=cvar(k)*A.vol+A.fix-depMensal(), w=d*A.pz/30, r=w/A.inv;
     return `<tr><td><strong>${nm[k]}</strong></td><td class="tr fn">${R(d,0)}</td>
       <td class="tr fn" style="color:var(--ac);font-weight:700">${R(w,0)}</td>
       <td class="tr"><span class="badge-${r>1?'rd':(r>0.6?'wn':'gn')}">${r.toFixed(1)}× o investimento</span></td></tr>`;
@@ -1663,7 +1682,7 @@ function rCash(){
 
   document.getElementById('fulltb').innerHTML=Object.keys(F).map(k=>{
     const r=calc(k), rec=r.rec, cvt=r.cvt, eb=r.eb, imp=r.imp, liq=r.liq;
-    const pb=liq>0?(A.inv/liq).toFixed(1)+' meses':'—';
+    const gck=liq+depMensal(), pb=gck>0?(A.inv/gck).toFixed(1)+' meses':'—';
     return `<tr><td><strong>${nm[k]}</strong></td>
       <td class="tr fn">${R(rec,0)}</td><td class="tr fn">${R(cvt,0)}</td><td class="tr fn">${R(A.fix,0)}</td>
       <td class="tr fn">${R(eb,0)}</td><td class="tr fn" style="color:var(--rd)">− ${R(imp,0)}</td>
@@ -1777,6 +1796,39 @@ function setPeso(v){
   if(el) el.classList.remove('bad');
   A.peso=Math.round(n*10)/10; recalcF(); renderAll();
 }
+function precoEquilibrio(k){           // preço que zera o lucro líquido no volume atual
+  const cv=cvar(k), v=A.vol, liqEm=p=>{const rec=p*v; return rec-cv*v-A.fix-rec*A.com-rec*aliq(rec*12);};
+  let lo=cv, hi=cv*6+A.fix/v*3; if(liqEm(hi)<=0) return null;
+  for(let i=0;i<80;i++){ const m=(lo+hi)/2; if(liqEm(m)>0) hi=m; else lo=m; }
+  return hi;
+}
+function rTextos(){
+  const pct=v=>(v*100).toFixed(0)+'%', faixa=(a,b)=>{const x=Math.min(a,b),y=Math.max(a,b);return Math.round(x*100)===Math.round(y*100)?pct(x):pct(x)+' a '+pct(y);};
+  const K=Object.keys(F), sh=id=>K.map(k=>{const it=REC.find(x=>x.id===id);return qtdDe(it,k)*it.preco/batchCusto(k);});
+  const bac=sh('bac'), bat=sh('bat'), aze=sh('aze');
+  const q=1/(1-A.per), b35=A.vol*q/F.f35.u, itB=REC.find(x=>x.id==='bac');
+  const tempero=['sls','ceb','alh'].reduce((t,id)=>{const it=REC.find(x=>x.id===id);return t+b35*qtdDe(it,'f35')*it.preco;},0);
+  const capun=CAP_DIA*INS.dias*F.f25.u*(1-A.per);
+  const bd=v=>Math.round(v*q/F.f25.u/INS.dias);
+  const ton=300000*q*A.peso/1e6;
+  const rows=[]; for(const k of K) for(const v of [100000,200000,300000]){ const r=calc(k,v,fixoEsc(v)); if(r.eb>0) rows.push({ie:r.imp/r.eb, mg:r.liq/r.rec}); }
+  const pe=precoEquilibrio('f25');
+  const T={
+    capun:N(Math.round(capun/100)*100), capvol:N(A.vol), capx:(A.vol/capun).toFixed(1).replace('.',',')+'×',
+    bacsh:faixa(Math.min(...bac),Math.max(...bac)), bacpr:R(itB.preco), batsh:faixa(Math.min(...bat),Math.max(...bat)), azesh:faixa(Math.min(...aze),Math.max(...aze)),
+    baccompra:R(b35*F.f35.bac*itB.preco,0), temp:R(tempero,0),
+    impeb:rows.length?faixa(Math.min(...rows.map(r=>r.ie)),Math.max(...rows.map(r=>r.ie))):'—',
+    mgliq:rows.length?faixa(Math.min(...rows.map(r=>r.mg)),Math.max(...rows.map(r=>r.mg))):'—',
+    fix:R(A.fix,0), fix2:R(A.fix,0), ton:(ton).toFixed(1).replace('.',',')+' toneladas', kgpp:N(Math.round(ton*1000/4/INS.dias))+' kg',
+    f200:R(fixoEsc(200000),0), f300:R(fixoEsc(300000),0), f200b:R(fixoEsc(200000),0), f200c:R(fixoEsc(200000),0), f300c:R(fixoEsc(300000),0),
+    mg300:K.map(k=>{const r=calc(k,300000,fixoEsc(300000));return pct(r.eb/r.rec);}).join(', '),
+    pe25:pe?R(pe)+' (equilíbrio da F25)':'—', bd100:bd(100000), bd300:bd(300000),
+    pv25:R(F.f25.pv), pv35:R(F.f35.pv), bacsh2:faixa(Math.min(...bac),Math.max(...bac)), pz:A.pz,
+    wcx:(()=>{const w=(cvar('f35')*A.vol+A.fix-depMensal())*A.pz/30/A.inv; return w.toFixed(1).replace('.',',')+'×';})(),
+    ...Object.fromEntries(K.flatMap(k=>{const v=SUBLIM/12/F[k].pv, t=N(Math.round(v/500)*500)+' un/mês'; return [['sl'+k.slice(1),t],['sl'+k.slice(1)+'b',t]];})),
+  };
+  for(const [id,v] of Object.entries(T)) st('tx-'+id, v);
+}
 function rPeso(){
   sv('i-peso',Math.round(A.peso)); sv('pin-peso',fmtPeso(A.peso));
   const R=v=>'R$ '+v.toFixed(4).replace('.',',');
@@ -1785,8 +1837,7 @@ function rPeso(){
     ? 'Padrão da ficha: 30 g. Mude aqui e todas as abas recalculam — rendimento, custo, lista de compras, batches e impostos.'
     : `<strong>Simulando ${fmtPeso(A.peso)} g</strong> (ficha original: 30 g). Rendimento por batch: ${Object.keys(F).map(k=>N(Math.round(F[k].u))+' un').join(' · ')}. Custo/un: ${Object.keys(F).map(k=>R(F[k].custo)).join(' · ')}. <a href="#" onclick="setPeso(30);return false">voltar a 30 g</a>`;
   const fr=document.getElementById('ficha-ref');
-  if(fr) fr.textContent = A.peso===30 ? 'Os custos por unidade batem exatamente com ela: R$ 1,4149 · R$ 1,7679 · R$ 2,2091.'
-    : `Com ${fmtPeso(A.peso)} g por bolinho, o custo por unidade fica: ${Object.keys(F).map(k=>R(F[k].custo)).join(' · ')}.`;
+  if(fr) fr.textContent = `Com os preços atuais e ${fmtPeso(A.peso)} g por bolinho, o custo de ingrediente por unidade é: ${Object.keys(F).map(k=>R(F[k].custo)).join(' · ')}.`;
   const cr=document.getElementById('cap-ref');
   if(cr){ const u=F.f25.u, q=1/(1-A.per), bd=v=>Math.round(v*q/u/INS.dias);
     cr.innerHTML=`cada batch da F25 rende ${N(Math.round(u))} un de ${fmtPeso(A.peso)} g (${F.f25.kg.toString().replace('.',',')} kg). Para <strong>100k un/mês</strong> são necessários ~${bd(100000)} batches/dia; para <strong>300k un/mês</strong>, ~${bd(300000)} batches/dia.`; }
@@ -1814,7 +1865,7 @@ function rResist(){
       for(let i=0;i<80;i++){ const m=(lo+hi)/2; if(liqCom(k,m)>0) lo=m; else hi=m; }
       pmax=lo;
     }
-    const folga=pmax?(pmax/base-1):0, anos=folga/0.10;
+    const folga=pmax?(pmax/base-1):0, anos=folga>0?Math.log(1+folga)/Math.log(1.10):0;   // 10% ao ano, composto
     // preco de venda necessario para manter a margem se o bacalhau subir 10%
     let pvNec=null;
     { const alvo=Math.max(hoje,0), pb=base*1.10; let lo=F[k].pv,hi=F[k].pv*3;
@@ -1971,7 +2022,7 @@ function rFichas(){
 /* compras, kpis, sensibilidade e plano de producao */
 function rCompras(){
   const kp=document.getElementById('fckpi'); if(!kp) return;
-  const q=1+A.per, nm={f25:'25%',f35:'35%',f50:'50%'};
+  const q=1/(1-A.per), nm={f25:'25%',f35:'35%',f50:'50%'};   // produzir vol/(1−quebra) para vender vol
   const f=F.f35, bt35=A.vol*q/f.u;
 
   kp.innerHTML=`
@@ -2031,8 +2082,9 @@ function rTax(){
   let h='';
   for (const v of [100000,150000,200000]){
     for (const k of ['f25','f35','f50']){
-      const f=F[k], rec=f.pv*v, ra=rec*12, al=aliq(ra), dentro=ra<=TETO;
-      const faixa = dentro ? (ra<=3600000?'Simples · 5ª faixa':'Simples · 6ª faixa') : 'Lucro Presumido';
+      const f=F[k], rec=f.pv*v, ra=rec*12, al=aliq(ra), dentro=ra<=SUBLIM;
+      const nf=AN2.findIndex(([lim])=>ra<=lim)+1;
+      const faixa = dentro ? `Simples · ${nf}ª faixa` : (ra<=TETO?'Acima do sublimite → Presumido':'Lucro Presumido');
       h+=`<tr${v===100000?' style="background:var(--surf2)"':''}>
         <td>${NM[k]} · ${v/1000}k un</td>
         <td class="tr fn">${R(rec,0)}</td><td class="tr fn">R$ ${(ra/1e6).toFixed(2)} mi</td>
@@ -2143,7 +2195,7 @@ function renderAll(){
   guardar();                 // evita recursao entre os renderizadores
   _renderizando=true;
   try{
-    syncControls(); rPeso();
+    syncControls(); rPeso(); rTextos();
     rAlert(); rVCards(); rBE(); rScl(); rProjTb();
     rCash(); rFichas(); rCompras(); rInsumos(); rTax(); rReal(); rFixBox(); rResist(); rRisco(); rVerif();
     rFCards(); rSim(); rProj();
