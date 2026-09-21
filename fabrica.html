@@ -507,9 +507,17 @@ body{min-height:100vh}
           <input type="range" id="i-dias" min="18" max="26" step="1" value="22" oninput="setDias(this.value)">
         </div>
         <div class="mr" style="margin-top:6px"><span class="ml">Quebra de produção</span><span class="mv" id="i-quebra">3,0%</span></div>
-        <div class="mr"><span class="ml">Peso por unidade</span><span class="mv">30 g</span></div>
+        <div class="cg" style="margin-top:10px">
+          <div class="cl"><span>Peso por bolinho</span>
+            <span class="pinw"><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="pin-peso"
+              aria-label="Peso por bolinho em gramas" value="30" style="width:64px" oninput="setPeso(this.value)"
+              onblur="document.getElementById('pin-peso').value=fmtPeso(A.peso)"
+              onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">g</span></span></div>
+          <input type="range" id="i-peso" min="15" max="50" step="1" value="30" oninput="setPeso(this.value)">
+          <div class="nt" id="peso-nota" style="margin-top:6px"></div>
+        </div>
         <div class="nt" style="margin-top:10px;padding-top:10px">
-          Ficha técnica completa da sua planilha, com os nove ingredientes. Os custos por unidade batem exatamente com ela: R$ 1,4149 · R$ 1,7679 · R$ 2,2091. Altere qualquer preço acima e o painel inteiro recalcula.
+          Ficha técnica completa da sua planilha, com os nove ingredientes. <span id="ficha-ref">Os custos por unidade batem exatamente com ela: R$ 1,4149 · R$ 1,7679 · R$ 2,2091.</span> Altere qualquer preço acima e o painel inteiro recalcula.
         </div>
       </div>
 
@@ -627,7 +635,7 @@ body{min-height:100vh}
     <h2 class="sh">Projeção de Produção — Mensal</h2>
     <p class="ss">Batches, dias e mix definem o volume de produção — e esse volume alimenta todas as outras abas. Custo fixo e dias úteis também são compartilhados com o restante do painel.</p>
     <div class="info" style="margin-bottom:18px">
-      <strong>🏭 Referência de capacidade:</strong> cada batch da F25 rende 383 un (11,5 kg). Para <strong>100k un/mês</strong> são necessários ~12 batches/dia; para <strong>300k un/mês</strong>, ~36 batches/dia. A estrutura de 2 salas 5×3m comporta cerca de 3 batches/dia (≈17.000 un/mês) — os volumes acima disso exigem planta ampliada.
+      <strong>🏭 Referência de capacidade:</strong> <span id="cap-ref"></span> A estrutura de 2 salas 5×3m comporta cerca de 3 batches/dia — os volumes acima disso exigem planta ampliada.
     </div>
     <div class="pg">
       <div class="card cp">
@@ -1152,7 +1160,7 @@ function rFCards(){
       <div class="mr"><span class="ml">Batata por batch</span><span class="mv">${f.bat} kg</span></div>
       <div class="mr"><span class="ml">Bacalhau por batch</span><span class="mv">${f.bac} kg</span></div>
       <div class="mr"><span class="ml">Total por batch</span><span class="mv">${f.kg} kg</span></div>
-      <div class="mr"><span class="ml">Unidades por batch</span><span class="mv">${N(f.u)} un</span></div>
+      <div class="mr"><span class="ml">Unidades por batch</span><span class="mv">${N(Math.round(f.u))} un</span></div>
       <div class="mr"><span class="ml">Ingrediente/un</span><span class="mv">${R(f.custo)}</span></div>
       <div class="mr"><span class="ml">Custo variável/un</span><span class="mv ac">${R(cv)}</span></div>
       <div class="mr"><span class="ml">Preço de venda</span><span class="mv gn">${R(f.pv)}</span></div>
@@ -1276,7 +1284,7 @@ function rProj(){
 
 
 /* ===== PREMISSAS — fonte única de verdade do painel ===== */
-const A = { emb:0.05, com:0, per:0.03, fix:40637, pz:45, vol:100000, inv:290200, depMeses:60 };
+const A = { emb:0.05, com:0, per:0.03, fix:40637, pz:45, vol:100000, inv:290200, depMeses:60, peso:30 };
 
 
 // quebra: perde-se a MASSA, nao a embalagem -> divide o ingrediente por (1-quebra)
@@ -1333,7 +1341,7 @@ const instantaneo = () => ({
   insumos:REC.map(i=>({id:i.id,preco:i.preco})),
   fixos:FIX.map(i=>({id:i.id,valor:i.valor})),
   precos:Object.fromEntries(Object.keys(F).map(k=>[k,F[k].pv])),
-  A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses},
+  A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses,peso:A.peso},
   dias:INS.dias,
   canais:{...sim.pr},
   producao:{batches:prj.batches,mx25:prj.mx25,mx35:prj.mx35},
@@ -1495,6 +1503,7 @@ function verificar(){
   }
   // 2. custo/un = batch ÷ rendimento
   for (const k in F) testar(`Custo por unidade · ${NM[k]}`, F[k].custo, batchCusto(k)/F[k].u, 0.0001);
+  testar('Rendimento × peso = massa do batch', Object.keys(F).reduce((t,k)=>t+F[k].u*A.peso/1000,0), Object.keys(F).reduce((t,k)=>t+F[k].kg,0), 0.001);
 
   // 3. custo fixo = soma das linhas + depreciação
   testar('Custo fixo = linhas + depreciação', A.fix,
@@ -1718,7 +1727,7 @@ const qtdDe = (it,k) => it.id==='bac' ? F[k].bac : it.qtd;
 const CAP_DIA = 3;   // batches/dia que a estrutura atual comporta
 
 function batchCusto(k){ return REC.reduce((t,it)=>t+qtdDe(it,k)*it.preco,0); }
-function recalcF(){ for (const k in F) F[k].custo = batchCusto(k)/F[k].u; }
+function recalcF(){ for (const k in F){ F[k].u = F[k].kg*1000/A.peso; F[k].custo = batchCusto(k)/F[k].u; } }
 
 function setI(k,v){
   INS[k]=v;
@@ -1759,6 +1768,27 @@ function setVol(v){
   if(n===null||n<1000){ if(el) el.classList.add('bad'); return; }
   if(el) el.classList.remove('bad');
   A.vol=Math.round(n); renderAll();
+}
+const fmtPeso=g=>(Math.round(g*10)/10).toLocaleString('pt-BR');
+function setPeso(v){
+  const n=parseNum(v); const el=document.getElementById('pin-peso');
+  if(n===null||n<10||n>100){ if(el) el.classList.add('bad'); return; }
+  if(el) el.classList.remove('bad');
+  A.peso=Math.round(n*10)/10; recalcF(); renderAll();
+}
+function rPeso(){
+  sv('i-peso',Math.round(A.peso)); sv('pin-peso',fmtPeso(A.peso));
+  const R=v=>'R$ '+v.toFixed(4).replace('.',',');
+  const nota=document.getElementById('peso-nota');
+  if(nota) nota.innerHTML = A.peso===30
+    ? 'Padrão da ficha: 30 g. Mude aqui e todas as abas recalculam — rendimento, custo, lista de compras, batches e impostos.'
+    : `<strong>Simulando ${fmtPeso(A.peso)} g</strong> (ficha original: 30 g). Rendimento por batch: ${Object.keys(F).map(k=>N(Math.round(F[k].u))+' un').join(' · ')}. Custo/un: ${Object.keys(F).map(k=>R(F[k].custo)).join(' · ')}. <a href="#" onclick="setPeso(30);return false">voltar a 30 g</a>`;
+  const fr=document.getElementById('ficha-ref');
+  if(fr) fr.textContent = A.peso===30 ? 'Os custos por unidade batem exatamente com ela: R$ 1,4149 · R$ 1,7679 · R$ 2,2091.'
+    : `Com ${fmtPeso(A.peso)} g por bolinho, o custo por unidade fica: ${Object.keys(F).map(k=>R(F[k].custo)).join(' · ')}.`;
+  const cr=document.getElementById('cap-ref');
+  if(cr){ const u=F.f25.u, q=1/(1-A.per), bd=v=>Math.round(v*q/u/INS.dias);
+    cr.innerHTML=`cada batch da F25 rende ${N(Math.round(u))} un de ${fmtPeso(A.peso)} g (${F.f25.kg.toString().replace('.',',')} kg). Para <strong>100k un/mês</strong> são necessários ~${bd(100000)} batches/dia; para <strong>300k un/mês</strong>, ~${bd(300000)} batches/dia.`; }
 }
 function setDias(v){
   const n=parseNum(v); const el=document.getElementById('pin-dias');
@@ -1965,7 +1995,7 @@ function rCompras(){
 
   document.getElementById('prodtb').innerHTML=Object.keys(F).map(k=>{
     const f=F[k], b=A.vol*q/f.u, bd=b/INS.dias, ok=bd<=CAP_DIA;
-    return `<tr><td><strong>${nm[k]}</strong></td><td class="tr fn">${N(f.u)}</td>
+    return `<tr><td><strong>${nm[k]}</strong></td><td class="tr fn">${N(Math.round(f.u))}</td>
       <td class="tr fn">${N(Math.round(b))}</td>
       <td class="tr fn" style="font-weight:700">${bd.toFixed(1)}</td>
       <td class="tr fn">${N(Math.round(b*f.kg/INS.dias))} kg</td>
@@ -2112,7 +2142,7 @@ function renderAll(){
   guardar();                 // evita recursao entre os renderizadores
   _renderizando=true;
   try{
-    syncControls();
+    syncControls(); rPeso();
     rAlert(); rVCards(); rBE(); rScl(); rProjTb();
     rCash(); rFichas(); rCompras(); rInsumos(); rTax(); rReal(); rFixBox(); rResist(); rRisco(); rVerif();
     rFCards(); rSim(); rProj();
