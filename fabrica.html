@@ -401,6 +401,13 @@ body.com-rasc .shtoast{bottom:104px}
 .perg{font-family:'Playfair Display',serif;font-size:1.05rem;line-height:1.45;color:var(--txt);border-left:4px solid var(--ac);padding:4px 0 4px 12px}
 .cx-2{display:grid;grid-template-columns:1fr 1fr;gap:16px} @media(max-width:760px){.cx-2{grid-template-columns:1fr}}
 .cx-2 .cx-sec{margin-bottom:0} .cx-wrap{margin-bottom:16px}
+.radar td .rd-b{font:inherit;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:14px;border:1px solid var(--bdr);background:var(--surf2);color:var(--txt);cursor:pointer;white-space:nowrap}
+.radar td .rd-b:hover{border-color:var(--ac);color:var(--ac)}
+.radar .rd-o{display:block;font-size:.72rem;color:var(--mut);font-weight:400;margin-top:2px;line-height:1.3}
+.radar a{color:var(--bl)} .radar .eco{color:var(--gn);font-weight:700} .radar .sob{color:var(--rd);font-weight:700}
+.rd-tot{display:flex;flex-wrap:wrap;gap:10px;padding:12px 19px 0}
+.rd-tot div{flex:1 1 180px;border-radius:10px;padding:9px 12px;background:var(--surf2);border:1px solid var(--bdr);font-size:.78rem;color:var(--mut)}
+.rd-tot b{display:block;font-family:'Playfair Display',serif;font-size:1.15rem}
 .sv-pos{color:var(--gn)} .sv-neg{color:var(--rd)} .sv-d{display:block;font-size:.72rem;color:var(--mut);font-weight:400}
 </style>
 </head>
@@ -1211,6 +1218,12 @@ body.com-rasc .shtoast{bottom:104px}
     <p class="ss">Todo dia às 7h e às 17h o Claude lê os números <b>salvos</b> no painel, pesquisa bacalhau, câmbio, Habib's, impostos e energia, e deixa aqui as dicas de decisão.</p>
     <div id="conselheiro" class="cons"><p class="cons-vaz">Carregando…</p></div>
     <div id="cons-extra"></div>
+    <div id="radar-card" class="card radar" style="margin-bottom:16px" hidden>
+      <div class="sec-ttl">🧺 Radar de insumos <span style="font-weight:400;font-size:.8rem;color:var(--mut)">· preço do app × mercado, impacto na linha <span class="refnm" data-fmt="L"></span></span></div>
+      <div id="radar-tot" class="rd-tot"></div>
+      <div class="tw"><table class="dtbl" id="radartb"></table></div>
+      <p style="font-size:.77rem;color:var(--mut);padding:8px 19px 14px">Preço de mercado pesquisado pelo Conselheiro; o impacto é calculado agora pelo app. "Usar" coloca o preço no app como <b>rascunho</b> — só vale depois de Salvar. Confira casca/perda, frete e estado do produto antes.</p>
+    </div>
     <div class="card" style="margin-bottom:16px">
       <div class="sec-ttl">🧮 E se…? Sensibilidade do lucro <span style="font-weight:400;font-size:.8rem;color:var(--mut)">· calculado agora pelo app, com os números da tela</span></div>
       <div class="tw"><table class="dtbl" id="sensitb"></table></div>
@@ -1690,6 +1703,7 @@ async function carregarConselheiro(){
     <p class="cons-res">${esc(u.resumo)}</p>${termoHTML(u.extras)}<ul class="cons-li">${dicasHTML(u.dicas)}</ul>
     ${fontes?`<div class="cons-ft">Fontes: ${fontes}</div>`:''}`;
   document.getElementById('cons-extra').innerHTML=extrasHTML(u.extras);
+  rRadar();
   const ant=CONS.slice(1);
   hist.innerHTML=ant.length?`<h3 class="cons-h3">Histórico (${ant.length})</h3>`+ant.map(a=>{const f=fontesHTML(a.fontes);
     return `<details class="cons-hi"><summary><b>${quandoBR(a.criado_em)}</b>${esc(a.resumo)} <span class="cons-cnt">${contagem(a.dicas)}</span></summary>
@@ -1758,6 +1772,41 @@ function rSensi(){
       return `<td class="tr fn ${v<0?'sv-neg':'sv-pos'}">${R(v,0)}${i?`<span class="sv-d">${d>=0?'+':'−'}${R(Math.abs(d),0).replace('R$ ','R$ ')}</span>`:''}</td>`;}).join('')}</tr>`).join('')+'</tbody>';
   const n=document.getElementById('sensi-nota');
   if(n) n.textContent='Lucro líquido por mês, depois do imposto, com o custo fixo atual ('+R(A.fix,0)+'). 150 mil un/mês pode cruzar o sublimite do Simples (R$ 3,6 mi/ano) e pagar mais imposto, e exige ~'+Math.round(150000/(1-A.per)/F.f25.u/INS.dias)+' batches/dia (capacidade hoje: '+fmtCap(A.cap)+'). Bacalhau hoje: '+R(bac)+'/kg.';
+}
+// ---- radar de insumos: mercado (Conselheiro) × app, impacto calculado aqui ----
+function rRadar(){
+  const card=document.getElementById('radar-card'); if(!card) return;
+  const u=CONS[0], lst=(u&&u.extras&&Array.isArray(u.extras.insumos))?u.extras.insumos:[];
+  const k=REF.k, prod=A.vol/(1-A.per), bpm=prod/F[k].u;           // unidades produzidas e batches/mês da linha de referência
+  const linhas=lst.map(x=>{
+    const m=+x.mercado; if(!isFinite(m)||m<=0) return null;
+    if(x.id==='emb') return {id:'emb',nome:'Embalagem',un:'un',app:A.emb,m,imp:(m-A.emb)*A.vol,x};              // embalagem vai em cada unidade vendida
+    const it=REC.find(r=>r.id===x.id); if(!it) return null;
+    return {id:it.id,nome:it.nome.split(' (')[0],un:it.un,app:it.preco,m,imp:(m-it.preco)*qtdDe(it,k)*bpm,x};   // kg comprados = qtd do batch × batches produzidos
+  }).filter(Boolean).sort((a,b)=>Math.abs(b.imp)-Math.abs(a.imp));
+  if(!linhas.length){ card.hidden=true; return; }
+  card.hidden=false;
+  const eco=linhas.filter(l=>l.imp<0).reduce((t,l)=>t-l.imp,0), sob=linhas.filter(l=>l.imp>0).reduce((t,l)=>t+l.imp,0);
+  document.getElementById('radar-tot').innerHTML=
+    `<div>Economia possível (mercado abaixo do app)<b class="eco">${R(eco,0)}/mês</b></div>`+
+    `<div>Custo subestimado (mercado acima do app)<b class="sob">${R(sob,0)}/mês</b></div>`+
+    `<div>Pesquisa de ${u?quandoBR(u.criado_em):'—'}<b style="color:var(--txt)">${linhas.length} insumos</b></div>`;
+  document.getElementById('radartb').innerHTML=`<thead><tr><th>Insumo</th><th class="tr">No app</th><th class="tr">Mercado</th><th class="tr">Diferença</th><th class="tr">Impacto/mês</th><th></th></tr></thead><tbody>`+
+    linhas.map(l=>{const d=l.m/l.app-1, cls=l.imp<0?'eco':(l.imp>0?'sob':''), f=l.x.url&&urlOk(l.x.url)?`<a href="${esc(l.x.url)}" target="_blank" rel="noopener noreferrer">${esc(l.x.fonte||'fonte')}</a>`:esc(l.x.fonte||'');
+      const tend=l.x.tendencia==='alta'?' ▲':(l.x.tendencia==='baixa'?' ▼':'');
+      return `<tr><td><strong>${esc(l.nome)}</strong><span class="rd-o">${f}${l.x.obs?' · '+esc(l.x.obs):''}</span></td>
+        <td class="tr fn">${R(l.app)}/${l.un}</td><td class="tr fn">${R(l.m)}/${l.un}${tend}${l.x.faixa?`<span class="rd-o">${esc(l.x.faixa)}</span>`:''}</td>
+        <td class="tr fn ${cls}">${d>=0?'+':'−'}${Math.abs(d*100).toFixed(0)}%</td>
+        <td class="tr fn ${cls}">${l.imp<0?'−':'+'}${R(Math.abs(l.imp),0)}</td>
+        <td class="tr">${Math.abs(l.m-l.app)>=0.005?`<button class="rd-b" onclick="usarMercado('${l.id}',${l.m})">usar</button>`:'✓'}</td></tr>`;}).join('')+'</tbody>';
+  document.querySelectorAll('#radar-card .refnm').forEach(e=>e.textContent=k.slice(1)+'%');
+}
+function usarMercado(id,v){
+  const nome=id==='emb'?'Embalagem':(REC.find(r=>r.id===id)||{}).nome;
+  if(!confirm('Usar '+R(v)+' para '+nome+'?\n\nEntra como rascunho — só vale depois de clicar em Salvar.')) return;
+  if(id==='emb'){ A.emb=v; renderAll(); }
+  else { setPreco(id,v); fmtPin(id); }
+  toast(nome+' atualizado no rascunho');
 }
 function marcarConsVisto(){
   document.getElementById('cons-novo').hidden=true;
@@ -2525,7 +2574,7 @@ function renderAll(){
     syncControls(); rPeso(); rRef(); rTextos();
     rAlert(); rVCards(); rBE(); rScl(); rProjTb();
     rCash(); rFichas(); rCompras(); rInsumos(); rTax(); rReal(); rFixBox(); rResist(); rRisco();
-    rFCards(); rSim(); rProj(); rSensi(); rVerif();
+    rFCards(); rSim(); rProj(); rSensi(); rRadar(); rVerif();
   } finally { _renderizando=false; }
 }
 
