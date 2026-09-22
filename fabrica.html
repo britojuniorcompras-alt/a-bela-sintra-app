@@ -348,6 +348,24 @@ body.com-rasc .shtoast{bottom:104px}
 @media(max-width:520px){.rasc-txt span{display:none}.rasc-b{padding:9px 12px}}
 @media print{.rasc{display:none!important}}
 @media(min-width:701px){.d2col.d2ins{grid-template-columns:340px 1fr}}
+/* ---- conselheiro agendado ---- */
+.cons{background:var(--surf);border:1px solid var(--bdr);border-top:4px solid var(--bl);border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;margin-bottom:16px}
+.cons-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.cons-hd h3{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--bl)}
+.cons-hd span{font-size:.74rem;color:var(--mut)}
+.cons-res{font-size:.9rem;line-height:1.5;margin-bottom:10px}
+.cons-li{list-style:none;display:grid;gap:8px}
+.cons-li li{border:1px solid var(--bdr);border-left:4px solid var(--mut);border-radius:8px;padding:9px 12px;background:var(--surf2)}
+.cons-li li.alerta{border-left-color:var(--rd)} .cons-li li.atencao{border-left-color:var(--ac)}
+.cons-li li.oportunidade{border-left-color:var(--gn)} .cons-li li.info{border-left-color:var(--bl)}
+.cons-li strong{display:block;font-size:.9rem;margin-bottom:2px}
+.cons-li p{font-size:.84rem;line-height:1.45;color:var(--txt)}
+.cons-li .acao{margin-top:4px;font-size:.8rem;font-weight:700;color:var(--mut)}
+.cons-ft{margin-top:10px;font-size:.74rem;color:var(--mut);line-height:1.5}
+.cons-ft a{color:var(--bl)}
+.cons details{margin-top:10px;font-size:.8rem} .cons summary{cursor:pointer;color:var(--mut);font-weight:700}
+.cons-ant{margin-top:8px;display:grid;gap:6px} .cons-ant div{padding:7px 10px;border-radius:8px;background:var(--surf2)}
+.cons-vaz{font-size:.86rem;color:var(--mut)}
 </style>
 </head>
 <body>
@@ -410,6 +428,7 @@ body.com-rasc .shtoast{bottom:104px}
     <h2 class="sh">Diagnóstico de Viabilidade — Escala 100k–300k/mês</h2>
     <p class="ss">Análise com os custos reais da sua planilha · Meta: início 100.000 un/mês → 300.000 un/mês</p>
 
+    <div id="conselheiro" class="cons" hidden></div>
     <div id="verifbox"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:-8px 0 14px">
       <span id="salvostatus" style="font-size:.78rem;color:var(--mut)"></span>
@@ -1409,7 +1428,23 @@ const instantaneo = () => ({
   canais:{...sim.pr},
   producao:{mx25:prj.mx25,mx35:prj.mx35},
   ref:REF.k,
+  resultado:resultadoAtual(),
 });
+function resultadoAtual(){                 // números já calculados, para o conselheiro agendado ler
+  try{
+    const out={custo_fixo_mes:Math.round(A.fix), capacidade_batches_dia:A.cap, peso_g:A.peso,
+      bacalhau_rs_kg:(REC.find(i=>i.id==='bac')||{}).preco, sublimite_simples_ano:SUBLIM, linhas:{}};
+    for(const k of Object.keys(F)){
+      const r=calc(k), be=breakEven(k), pe=precoEquilibrio(k), dep=depMensal(), wc=(r.cv*A.vol+A.fix-dep)*A.pz/30;
+      out.linhas[k]={preco:F[k].pv, custo_un:+r.cv.toFixed(4), ingrediente_un:+F[k].custo.toFixed(4), un_por_batch:Math.round(F[k].u),
+        receita_mes:Math.round(r.rec), lucro_liquido_mes:Math.round(r.liq), margem_liquida:+r.mg.toFixed(4), aliquota:+r.al.toFixed(4),
+        equilibrio_un_mes:be?Math.round(be):null, preco_equilibrio:pe?+pe.toFixed(2):null,
+        batches_dia:+(A.vol/(1-A.per)/F[k].u/INS.dias).toFixed(2), capital_giro:Math.round(wc),
+        volume_cruza_sublimite:Math.round(SUBLIM/12/F[k].pv)};
+    }
+    return out;
+  }catch(e){ return null; }
+}
 function aplicar(d){
   if(!d||typeof d!=='object') return false;
   try{
@@ -1539,6 +1574,7 @@ async function entrar(user){
   document.getElementById('usr').textContent=user.email;
   tela('app');
   const erro=await carregarEstado();
+  if(!erro) carregarConselheiro();
   if(erro){
     if(erro.code==='42501'||/row-level security/i.test(erro.message||'')){
       document.getElementById('ng-mail').textContent=user.email; tela('negado');
@@ -1567,6 +1603,30 @@ async function sair(){
   if(sujo&&!confirm('Você tem alterações não salvas. Sair e descartar?')) return;
   sujo=false; limparRascunhoLocal(); rRascunho();
   await SB.auth.signOut();
+}
+
+/* ---- CONSELHEIRO: análises gravadas 2x/dia pela tarefa agendada do Claude ---- */
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const urlOk=u=>/^https?:\/\//i.test(String(u||''));
+async function carregarConselheiro(){
+  const el=document.getElementById('conselheiro'); if(!el||!SB) return;
+  const {data,error}=await SB.from('fabrica_dicas').select('criado_em,resumo,dicas,fontes').order('criado_em',{ascending:false}).limit(6);
+  if(error){ el.hidden=true; return; }
+  el.hidden=false;
+  if(!data||!data.length){
+    el.innerHTML='<div class="cons-hd"><h3>🧭 Conselheiro</h3></div><p class="cons-vaz">A primeira análise aparece aqui depois da próxima rodada (7h e 17h).</p>';
+    return;
+  }
+  const [u,...ant]=data, TIP={alerta:'🔴',atencao:'🟠',oportunidade:'🟢',info:'🔵'};
+  const dicas=(Array.isArray(u.dicas)?u.dicas:[]).map(d=>{const t=TIP[d.tipo]?d.tipo:'info';
+    return `<li class="${t}"><strong>${TIP[t]} ${esc(d.titulo)}</strong><p>${esc(d.texto)}</p>${d.acao?`<div class="acao">👉 ${esc(d.acao)}</div>`:''}</li>`;}).join('');
+  const fontes=(Array.isArray(u.fontes)?u.fontes:[]).filter(f=>urlOk(f.url)).slice(0,8)
+    .map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">${esc(f.titulo||f.url)}</a>`).join(' · ');
+  el.innerHTML=`<div class="cons-hd"><h3>🧭 Conselheiro</h3><span>análise de ${quandoBR(u.criado_em)} · próxima às ${new Date().getHours()<17?'17h':'7h'}</span></div>
+    <p class="cons-res">${esc(u.resumo)}</p><ul class="cons-li">${dicas}</ul>
+    ${fontes?`<div class="cons-ft">Fontes: ${fontes}</div>`:''}
+    <div class="cons-ft">Apoio para decisão — confirme impostos com o contador e contratos com o advogado. O conselheiro lê só os valores <b>salvos</b>.</div>
+    ${ant.length?`<details><summary>Análises anteriores (${ant.length})</summary><div class="cons-ant">${ant.map(a=>`<div><b>${quandoBR(a.criado_em)}</b> — ${esc(a.resumo)}</div>`).join('')}</div></details>`:''}`;
 }
 
 /* ---- versões nomeadas: guardar cenários de negociação ---- */
