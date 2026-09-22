@@ -329,6 +329,25 @@ body{min-height:100vh}
 .vsb{font:inherit;font-size:.76rem;font-weight:700;padding:5px 11px;border-radius:20px;border:1px solid var(--bdr);background:var(--surf2);color:var(--txt);cursor:pointer}
 .vsx{color:var(--rd)}
 .vsvaz{font-size:.84rem;color:var(--mut);border:0!important}
+
+/* ---- rascunho: alteracoes locais ate clicar em Salvar ---- */
+.rasc{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:250;
+  width:min(720px,calc(100% - 24px));display:flex;align-items:center;gap:10px;padding:11px 12px 11px 16px;
+  background:var(--surf);border:1px solid var(--ac);border-left:5px solid var(--ac);border-radius:12px;
+  box-shadow:0 8px 28px rgba(0,0,0,.22)}
+.rasc[hidden]{display:none}
+.rasc-txt{flex:1;min-width:0;line-height:1.25}
+.rasc-txt strong{display:block;font-size:.9rem;color:var(--ac)}
+.rasc-txt span{font-size:.76rem;color:var(--mut)}
+.rasc-b{font:inherit;font-weight:700;font-size:.84rem;padding:9px 14px;border-radius:9px;border:1px solid var(--bdr);
+  background:var(--surf2);color:var(--txt);cursor:pointer;white-space:nowrap}
+.rasc-b.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+.rasc-b:disabled{opacity:.6;cursor:wait}
+body.com-rasc{padding-bottom:92px}
+body.com-rasc .shtoast{bottom:104px}
+@media(max-width:520px){.rasc-txt span{display:none}.rasc-b{padding:9px 12px}}
+@media print{.rasc{display:none!important}}
+@media(min-width:701px){.d2col.d2ins{grid-template-columns:340px 1fr}}
 </style>
 </head>
 <body>
@@ -502,7 +521,7 @@ body{min-height:100vh}
       Confira esse preço com a sua nota fiscal e ajuste no controle abaixo.
     </div>
 
-    <div class="d2col">
+    <div class="d2col d2ins">
       <div class="card cp" style="padding:17px 19px">
         <div class="slb" style="margin-bottom:10px">Preços de Insumo — Ficha Técnica</div>
         <div class="tw" style="margin:0 -19px 12px"><table class="dtbl" id="insumostb"></table></div>
@@ -1126,6 +1145,12 @@ body{min-height:100vh}
 </div>
 
 
+<div id="rasc" class="rasc" hidden role="status" aria-live="polite">
+  <div class="rasc-txt"><strong>✏️ Rascunho — não salvo</strong><span>Só você está vendo estas alterações. Salve para valer para todos.</span></div>
+  <button class="rasc-b" type="button" onclick="descartarRascunho()">Descartar</button>
+  <button id="rasc-salvar" class="rasc-b pri" type="button" onclick="salvarRascunho()">💾 Salvar</button>
+</div>
+
 <div id="vs-modal" class="vsback" hidden onclick="if(event.target===this)fecharVersoes()">
   <div class="vsbox" role="dialog" aria-labelledby="vs-t">
     <div class="vshd"><h3 id="vs-t">Versões salvas</h3><button class="vsb" onclick="fecharVersoes()">Fechar</button></div>
@@ -1399,44 +1424,95 @@ function aplicar(d){
 }
 const quandoBR = iso => new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
 
-function guardar(){                        // agrupa digitação rápida numa gravação só
-  if(!SB||!USER||!carregado) return;       // nunca grava antes de ler o que está salvo
-  clearTimeout(salvando);
-  statusSalvo='Salvando…'; rSalvo();
-  salvando=setTimeout(async()=>{
-    const {error}=await SB.from('fabrica_estado').upsert(
-      {id:'atual', dados:instantaneo(), atualizado_em:new Date().toISOString(), atualizado_por:USER.email});
-    statusSalvo = error ? 'Não foi possível salvar — '+(error.code==='42501'?'sem permissão':error.message)
-                        : 'Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    rSalvo();
-  },900);
+/* ---- RASCUNHO: nada vai para o banco até clicar em Salvar ---- */
+let sujo=false, baseEm=null;                 // baseEm = data da versão salva que está aberta na tela
+const rascKey=()=>'fabrica-rascunho-'+((USER&&USER.id)||'');
+function guardar(){                          // chamada a cada alteração: só marca rascunho
+  if(!SB||!USER||!carregado) return;         // carregamento inicial não conta como alteração
+  sujo=true; rRascunho();
+  clearTimeout(salvando);                    // cópia local, para não perder se a página fechar
+  salvando=setTimeout(()=>{ try{ localStorage.setItem(rascKey(),JSON.stringify({base:baseEm,quando:new Date().toISOString(),dados:instantaneo()})); }catch(_){} },600);
 }
+function limparRascunhoLocal(){ clearTimeout(salvando); try{ localStorage.removeItem(rascKey()); }catch(_){} }
+function rRascunho(){
+  const b=document.getElementById('rasc'); if(b) b.hidden=!sujo;
+  document.body.classList.toggle('com-rasc',sujo);
+}
+async function salvarRascunho(){
+  if(!sujo||!SB||!USER) return;
+  const btn=document.getElementById('rasc-salvar'), txt=btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='Salvando…';
+  try{
+    // alguém salvou depois que você abriu? avisa antes de sobrescrever
+    const {data:atual,error:e1}=await SB.from('fabrica_estado').select('atualizado_em,atualizado_por').eq('id','atual').maybeSingle();
+    if(e1) throw e1;
+    if(atual&&atual.atualizado_em&&baseEm&&new Date(atual.atualizado_em)>new Date(baseEm)){
+      const quem=atual.atualizado_por===USER.email?'Você (em outra aba ou aparelho)':(atual.atualizado_por||'Outra pessoa');
+      const ok=confirm(quem+' salvou alterações em '+quandoBR(atual.atualizado_em)+', depois que você abriu o painel.\n\n'+
+        'OK = salvar mesmo assim (substitui o que foi salvo).\nCancelar = não salvar agora. Dica: guarde seu cenário em 💾 Versões e depois clique em Descartar para ver o que foi salvo.');
+      if(!ok) return;
+    }
+    const agora=new Date().toISOString();
+    const {error}=await SB.from('fabrica_estado').upsert({id:'atual',dados:instantaneo(),atualizado_em:agora,atualizado_por:USER.email});
+    if(error) throw error;
+    baseEm=agora; sujo=false; limparRascunhoLocal(); rRascunho();
+    statusSalvo='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' por '+USER.email; rSalvo();
+    toast('Alterações salvas ✅');
+  }catch(e){
+    toast('Não foi possível salvar — '+(e.code==='42501'?'sem permissão':(e.message||'verifique a internet')));
+  }finally{ btn.disabled=false; btn.innerHTML=txt; }
+}
+async function descartarRascunho(){
+  if(sujo&&!confirm('Descartar as alterações não salvas e voltar aos valores salvos?')) return;
+  sujo=false; limparRascunhoLocal(); carregado=false; rRascunho();
+  const erro=await carregarEstado(true);
+  if(erro){ statusSalvo='Erro ao recarregar: '+erro.message; rSalvo(); }
+  toast('Alterações descartadas');
+}
+window.addEventListener('beforeunload',e=>{ if(sujo){ e.preventDefault(); e.returnValue=''; } });
+document.addEventListener('keydown',e=>{                 // Ctrl+S / Cmd+S salva
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'&&USER){ e.preventDefault(); salvarRascunho(); }
+});
 function rSalvo(){
   const el=document.getElementById('salvostatus'); if(el) el.textContent=statusSalvo;
 }
-async function carregarEstado(){
+async function carregarEstado(semRecuperar){
   const {data,error}=await SB.from('fabrica_estado').select('dados,atualizado_em,atualizado_por').eq('id','atual').maybeSingle();
   if(error){ return error; }
   if(data && aplicar(data.dados)){
+    baseEm=data.atualizado_em||null;
     statusSalvo='Carregado · última alteração '+quandoBR(data.atualizado_em)+(data.atualizado_por?' por '+data.atualizado_por:'');
   } else {
     // primeira vez: grava o estado inicial para confirmar a permissão
-    const {error:e2}=await SB.from('fabrica_estado').upsert({id:'atual',dados:instantaneo(),atualizado_por:USER.email});
+    const agora=new Date().toISOString();
+    const {error:e2}=await SB.from('fabrica_estado').upsert({id:'atual',dados:instantaneo(),atualizado_em:agora,atualizado_por:USER.email});
     if(e2) return e2;
+    baseEm=agora;
     statusSalvo='Primeiro acesso · valores da planilha carregados';
   }
+  // rascunho que ficou sem salvar (página fechada, bateria, etc.)
+  let rec=null;
+  if(!semRecuperar){ try{ rec=JSON.parse(localStorage.getItem(rascKey())||'null'); }catch(_){ rec=null; } }
+  let recuperou=false;
+  if(rec&&rec.dados){
+    const mudou=rec.base&&baseEm&&new Date(baseEm)>new Date(rec.base);
+    const ok=confirm('Você tem alterações não salvas de '+quandoBR(rec.quando)+'.\n\n'+
+      (mudou?'Atenção: o painel foi salvo por '+(data&&data.atualizado_por||'outra pessoa')+' depois disso.\n\n':'')+
+      'OK = recuperar como rascunho · Cancelar = descartar');
+    if(ok&&aplicar(rec.dados)) recuperou=true; else limparRascunhoLocal();
+  }
   renderAll();          // redesenha com o que veio do banco, sem regravar
-  carregado=true; rSalvo();
+  carregado=true; sujo=recuperou; rRascunho(); rSalvo();
   return null;
 }
 async function restaurarOriginal(){
-  const ok = confirm('Voltar todas as premissas aos valores da sua planilha original?\n\nIsso desfaz as alterações salvas.');
+  const ok = confirm('Voltar todas as premissas aos valores da sua planilha original?\n\nOs valores entram como rascunho — só substituem os salvos quando você clicar em Salvar.');
   if(!ok) return;
   REC.forEach(i=>i.preco=ORIG.insumos[i.id]);
   FIX.forEach(i=>i.valor=ORIG.fixos[i.id]);
   for(const k in ORIG.precos) F[k].pv=ORIG.precos[k];
   Object.assign(A,ORIG.A); INS.dias=ORIG.dias; REF.k='f35';
-  recalcFix(); recalcF(); renderAll(); guardar();
+  recalcFix(); recalcF(); renderAll();
 }
 
 
@@ -1483,7 +1559,11 @@ async function criarConta(){
   if(data.session){ msgLogin(''); await entrar(data.user); }
   else msgLogin('Acesso criado. Enviamos um e-mail de confirmação — clique no link e depois entre aqui com a mesma senha.');
 }
-async function sair(){ await SB.auth.signOut(); }
+async function sair(){
+  if(sujo&&!confirm('Você tem alterações não salvas. Sair e descartar?')) return;
+  sujo=false; limparRascunhoLocal(); rRascunho();
+  await SB.auth.signOut();
+}
 
 /* ---- versões nomeadas: guardar cenários de negociação ---- */
 async function abrirVersoes(){ document.getElementById('vs-modal').hidden=false; await listarVersoes(); }
@@ -1512,9 +1592,9 @@ async function salvarVersao(ev){
 }
 function carregarVersao(id){
   const v=(window._versoes||[]).find(x=>x.id===id); if(!v) return;
-  if(!confirm('Carregar a versão "'+v.nome+'"?\n\nAs premissas atuais serão substituídas. Se quiser guardá-las, salve uma versão antes.')) return;
+  if(!confirm('Carregar a versão "'+v.nome+'"?\n\nEla abre como rascunho: os valores salvos só mudam quando você clicar em Salvar.')) return;
   aplicar(v.dados); renderAll(); fecharVersoes();
-  statusSalvo='Versão "'+v.nome+'" carregada'; rSalvo();
+  toast('Versão "'+v.nome+'" aberta como rascunho');
 }
 async function excluirVersao(id){
   const v=(window._versoes||[]).find(x=>x.id===id); if(!v) return;
