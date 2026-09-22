@@ -366,6 +366,17 @@ body.com-rasc .shtoast{bottom:104px}
 .cons details{margin-top:10px;font-size:.8rem} .cons summary{cursor:pointer;color:var(--mut);font-weight:700}
 .cons-ant{margin-top:8px;display:grid;gap:6px} .cons-ant div{padding:7px 10px;border-radius:8px;background:var(--surf2)}
 .cons-vaz{font-size:.86rem;color:var(--mut)}
+.cnovo{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:10px;background:var(--rd);color:#fff;font-size:.62rem;font-weight:700;vertical-align:middle}
+.cnovo[hidden]{display:none}
+.cmini{display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--bll);border:1px solid var(--bdr);border-left:4px solid var(--bl);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:.86rem;line-height:1.4}
+.cmini[hidden]{display:none}
+.cmini .cm-t{flex:1;min-width:0} .cmini b{color:var(--bl)} .cmini .cm-v{font-weight:700;color:var(--bl);white-space:nowrap}
+.cons-h3{font-family:'Playfair Display',serif;font-size:1rem;color:var(--txt);margin:6px 0 10px}
+.cons-hi{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:8px;padding:10px 14px}
+.cons-hi summary{cursor:pointer;font-size:.86rem;line-height:1.4;list-style-position:inside}
+.cons-hi summary b{color:var(--mut);font-weight:700;margin-right:6px}
+.cons-hi .cons-li{margin-top:10px}
+.cons-cnt{display:inline-flex;gap:6px;margin-left:6px;font-size:.74rem;color:var(--mut)}
 </style>
 </head>
 <body>
@@ -419,6 +430,7 @@ body.com-rasc .shtoast{bottom:104px}
   <button data-tab="tax">🏛️ Impostos</button>
   <button data-tab="risco">⚠️ Risco do Cliente</button>
   <button data-tab="strat">🎯 Estratégia</button>
+  <button data-tab="cons">🧭 Conselheiro <span id="cons-novo" class="cnovo" hidden>novo</span></button>
 </nav>
 
 <div class="wrap">
@@ -428,7 +440,7 @@ body.com-rasc .shtoast{bottom:104px}
     <h2 class="sh">Diagnóstico de Viabilidade — Escala 100k–300k/mês</h2>
     <p class="ss">Análise com os custos reais da sua planilha · Meta: início 100.000 un/mês → 300.000 un/mês</p>
 
-    <div id="conselheiro" class="cons" hidden></div>
+    <div id="cons-mini" class="cmini" hidden onclick="abrirAba('cons')" role="button" tabindex="0"></div>
     <div id="verifbox"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:-8px 0 14px">
       <span id="salvostatus" style="font-size:.78rem;color:var(--mut)"></span>
@@ -1169,6 +1181,14 @@ body.com-rasc .shtoast{bottom:104px}
     </div>
   </div>
 
+  <div id="tab-cons" class="pane">
+    <h2 class="sh">Conselheiro — Análises Automáticas</h2>
+    <p class="ss">Todo dia às 7h e às 17h o Claude lê os números <b>salvos</b> no painel, pesquisa bacalhau, câmbio, Habib's, impostos e energia, e deixa aqui as dicas de decisão.</p>
+    <div id="conselheiro" class="cons"><p class="cons-vaz">Carregando…</p></div>
+    <div id="cons-hist"></div>
+    <div class="nt">Apoio para decisão, não substitui o contador (impostos) nem o advogado (contratos). Números marcados como "estimativa" são aproximados.</div>
+  </div>
+
 </div>
 
 
@@ -1226,6 +1246,7 @@ document.getElementById('nav').addEventListener('click',e=>{
   if(t==='tax')rTax();
   if(t==='strat')rReal();
   if(t==='risco')rRisco();
+  if(t==='cons'){ marcarConsVisto(); carregarConselheiro(); }
 });
 
 // Formula cards
@@ -1608,26 +1629,52 @@ async function sair(){
 /* ---- CONSELHEIRO: análises gravadas 2x/dia pela tarefa agendada do Claude ---- */
 const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const urlOk=u=>/^https?:\/\//i.test(String(u||''));
-async function carregarConselheiro(){
-  const el=document.getElementById('conselheiro'); if(!el||!SB) return;
-  const {data,error}=await SB.from('fabrica_dicas').select('criado_em,resumo,dicas,fontes').order('criado_em',{ascending:false}).limit(6);
-  if(error){ el.hidden=true; return; }
-  el.hidden=false;
-  if(!data||!data.length){
-    el.innerHTML='<div class="cons-hd"><h3>🧭 Conselheiro</h3></div><p class="cons-vaz">A primeira análise aparece aqui depois da próxima rodada (7h e 17h).</p>';
-    return;
-  }
-  const [u,...ant]=data, TIP={alerta:'🔴',atencao:'🟠',oportunidade:'🟢',info:'🔵'};
-  const dicas=(Array.isArray(u.dicas)?u.dicas:[]).map(d=>{const t=TIP[d.tipo]?d.tipo:'info';
-    return `<li class="${t}"><strong>${TIP[t]} ${esc(d.titulo)}</strong><p>${esc(d.texto)}</p>${d.acao?`<div class="acao">👉 ${esc(d.acao)}</div>`:''}</li>`;}).join('');
-  const fontes=(Array.isArray(u.fontes)?u.fontes:[]).filter(f=>urlOk(f.url)).slice(0,8)
-    .map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">${esc(f.titulo||f.url)}</a>`).join(' · ');
-  el.innerHTML=`<div class="cons-hd"><h3>🧭 Conselheiro</h3><span>análise de ${quandoBR(u.criado_em)} · próxima às ${new Date().getHours()<17?'17h':'7h'}</span></div>
-    <p class="cons-res">${esc(u.resumo)}</p><ul class="cons-li">${dicas}</ul>
-    ${fontes?`<div class="cons-ft">Fontes: ${fontes}</div>`:''}
-    <div class="cons-ft">Apoio para decisão — confirme impostos com o contador e contratos com o advogado. O conselheiro lê só os valores <b>salvos</b>.</div>
-    ${ant.length?`<details><summary>Análises anteriores (${ant.length})</summary><div class="cons-ant">${ant.map(a=>`<div><b>${quandoBR(a.criado_em)}</b> — ${esc(a.resumo)}</div>`).join('')}</div></details>`:''}`;
+let CONS=[];
+const TIPC={alerta:'🔴',atencao:'🟠',oportunidade:'🟢',info:'🔵'};
+const consVistoKey='fabrica-cons-visto';
+function dicasHTML(lista){
+  return (Array.isArray(lista)?lista:[]).map(d=>{const t=TIPC[d.tipo]?d.tipo:'info';
+    return `<li class="${t}"><strong>${TIPC[t]} ${esc(d.titulo)}</strong><p>${esc(d.texto)}</p>${d.acao?`<div class="acao">👉 ${esc(d.acao)}</div>`:''}</li>`;}).join('');
 }
+function fontesHTML(lista){
+  return (Array.isArray(lista)?lista:[]).filter(f=>urlOk(f.url)).slice(0,8)
+    .map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">${esc(f.titulo||f.url)}</a>`).join(' · ');
+}
+function contagem(lista){
+  const c={}; (Array.isArray(lista)?lista:[]).forEach(d=>{const t=TIPC[d.tipo]?d.tipo:'info'; c[t]=(c[t]||0)+1;});
+  return ['alerta','atencao','oportunidade','info'].filter(t=>c[t]).map(t=>TIPC[t]+' '+c[t]).join(' ');
+}
+async function carregarConselheiro(){
+  if(!SB) return;
+  const {data,error}=await SB.from('fabrica_dicas').select('criado_em,resumo,dicas,fontes').order('criado_em',{ascending:false}).limit(30);
+  const el=document.getElementById('conselheiro'), hist=document.getElementById('cons-hist'), mini=document.getElementById('cons-mini');
+  if(error){ if(el) el.innerHTML='<p class="cons-vaz">Não foi possível carregar as análises.</p>'; return; }
+  CONS=data||[];
+  if(!CONS.length){
+    el.innerHTML='<div class="cons-hd"><h3>🧭 Última análise</h3></div><p class="cons-vaz">A primeira análise aparece aqui depois da próxima rodada (7h ou 17h).</p>';
+    hist.innerHTML=''; mini.hidden=true; return;
+  }
+  const u=CONS[0], fontes=fontesHTML(u.fontes);
+  el.innerHTML=`<div class="cons-hd"><h3>🧭 Última análise</h3><span>${quandoBR(u.criado_em)} · próxima às ${new Date().getHours()<7||new Date().getHours()>=17?'7h':'17h'}</span></div>
+    <p class="cons-res">${esc(u.resumo)}</p><ul class="cons-li">${dicasHTML(u.dicas)}</ul>
+    ${fontes?`<div class="cons-ft">Fontes: ${fontes}</div>`:''}`;
+  const ant=CONS.slice(1);
+  hist.innerHTML=ant.length?`<h3 class="cons-h3">Histórico (${ant.length})</h3>`+ant.map(a=>{const f=fontesHTML(a.fontes);
+    return `<details class="cons-hi"><summary><b>${quandoBR(a.criado_em)}</b>${esc(a.resumo)} <span class="cons-cnt">${contagem(a.dicas)}</span></summary>
+      <ul class="cons-li">${dicasHTML(a.dicas)}</ul>${f?`<div class="cons-ft">Fontes: ${f}</div>`:''}</details>`;}).join(''):'';
+  // aviso curto no Diagnóstico + selo "novo" na aba
+  const al=(Array.isArray(u.dicas)?u.dicas:[]).filter(d=>d.tipo==='alerta').length;
+  mini.innerHTML=`<span>🧭</span><span class="cm-t"><b>Conselheiro · ${quandoBR(u.criado_em)}</b>${al?` · 🔴 ${al} alerta${al>1?'s':''}`:''}<br>${esc(u.resumo)}</span><span class="cm-v">Ver →</span>`;
+  mini.hidden=false;
+  let visto=null; try{ visto=localStorage.getItem(consVistoKey); }catch(_){}
+  document.getElementById('cons-novo').hidden = !!visto && new Date(visto)>=new Date(u.criado_em);
+}
+function marcarConsVisto(){
+  document.getElementById('cons-novo').hidden=true;
+  if(CONS[0]) try{ localStorage.setItem(consVistoKey,CONS[0].criado_em); }catch(_){}
+}
+function abrirAba(t){ const b=document.querySelector(`#nav button[data-tab="${t}"]`); if(b) b.click(); }
+document.getElementById('cons-mini')?.addEventListener('keydown',e=>{ if(e.key==='Enter') abrirAba('cons'); });
 
 /* ---- versões nomeadas: guardar cenários de negociação ---- */
 async function abrirVersoes(){ document.getElementById('vs-modal').hidden=false; await listarVersoes(); }
@@ -2399,7 +2446,7 @@ const ORIG={
 recalcFix();recalcF();rFCards();rSim();rProj();renderAll();
 
 /* ===== COMPARTILHAR — PDF, WhatsApp, e-mail e copiar em cada aba ===== */
-const ABAS={diag:'Diagnóstico',form:'Formulações',fcust:'Ficha de Custo & Compras',sim:'Simulador de Canal',proj:'Projeção Mensal',cash:'Caixa & Retorno',tax:'Impostos',risco:'Risco do Cliente',strat:'Estratégia'};
+const ABAS={diag:'Diagnóstico',form:'Formulações',fcust:'Ficha de Custo & Compras',sim:'Simulador de Canal',proj:'Projeção Mensal',cash:'Caixa & Retorno',tax:'Impostos',risco:'Risco do Cliente',strat:'Estratégia',cons:'Conselheiro'};
 const dataBR=()=>new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const pctx=v=>(v*100).toFixed(1).replace('.',',')+'%';
 function premissasTxt(){
@@ -2446,6 +2493,11 @@ function resumoAba(t){
     L.push(`Linha de referência: ${linha(k)} · prazo ${RISK.pz} dias · ${Math.round(RISK.conc*100)}% do faturamento neste cliente`);
     L.push(`• Valor na rua: ${R(rua,0)} (${A.inv>0?(rua/A.inv).toFixed(1).replace('.',','):'—'}× o investimento)`);
     L.push(`• Lucro em ${RISK.meses} meses: ${R(acum,0)}`); L.push(`• Saldo se houver calote: ${R(acum-rua,0)}`);
+  } else if(t==='cons'){
+    const u=CONS[0];
+    if(!u) L.push('Nenhuma análise ainda.');
+    else { L.push(`Análise de ${quandoBR(u.criado_em)}: ${u.resumo}`);
+      (u.dicas||[]).forEach(d=>L.push(`• ${TIPC[d.tipo]||'🔵'} ${d.titulo} — ${d.texto}${d.acao?' 👉 '+d.acao:''}`)); }
   } else if(t==='strat'){
     const pe=precoEquilibrio('f25');
     L.push(`• Preço de equilíbrio da linha 25%: ${pe?R(pe):'—'}`);
