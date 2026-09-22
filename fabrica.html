@@ -377,6 +377,31 @@ body.com-rasc .shtoast{bottom:104px}
 .cons-hi summary b{color:var(--mut);font-weight:700;margin-right:6px}
 .cons-hi .cons-li{margin-top:10px}
 .cons-cnt{display:inline-flex;gap:6px;margin-left:6px;font-size:.74rem;color:var(--mut)}
+.termo{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.termo span{font-size:.76rem;font-weight:700;padding:4px 10px;border-radius:20px;border:1px solid var(--bdr);background:var(--surf2);cursor:help}
+.termo .alto{background:#FDE2E2;color:#8B1A1A;border-color:#F3B4B4} .termo .medio{background:var(--acl);color:#7A4E0C;border-color:#EBC98A} .termo .baixo{background:var(--gnl);color:var(--gn);border-color:#A8DDBF}
+:root[data-theme="dark"] .termo .alto{background:#3A0D0D;color:#FCA5A5;border-color:#6B1F1F}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .termo .alto{background:#3A0D0D;color:#FCA5A5;border-color:#6B1F1F}:root:not([data-theme="light"]) .termo .medio{color:#F5C46B}}
+:root[data-theme="dark"] .termo .medio{color:#F5C46B}
+.cx-sec{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);box-shadow:var(--sh);padding:14px 18px;margin-bottom:16px}
+.cx-sec h4{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-bottom:10px}
+.ind-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.ind{border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;background:var(--surf2)}
+.ind .n{font-size:.74rem;color:var(--mut);font-weight:700}
+.ind .v{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;margin:2px 0}
+.ind .d{font-size:.76rem;font-weight:700} .ind .d.fav{color:var(--gn)} .ind .d.desf{color:var(--rd)} .ind .d.neu{color:var(--mut)}
+.ind .o{font-size:.74rem;color:var(--mut);margin-top:4px;line-height:1.35}
+.pz-l{list-style:none;display:grid;gap:8px}
+.pz-l li{display:flex;gap:12px;align-items:flex-start}
+.pz-d{flex:0 0 58px;text-align:center;border-radius:8px;background:var(--bll);color:var(--bl);padding:5px 0;font-weight:700;line-height:1.1}
+.pz-d b{display:block;font-size:1.15rem} .pz-d small{font-size:.68rem;text-transform:uppercase}
+.pz-d.urg{background:#FDE2E2;color:#8B1A1A}
+.pz-t{font-size:.86rem;line-height:1.4} .pz-t span{display:block;font-size:.78rem;color:var(--mut)}
+.neg-l{padding-left:18px;display:grid;gap:6px;font-size:.86rem;line-height:1.45}
+.perg{font-family:'Playfair Display',serif;font-size:1.05rem;line-height:1.45;color:var(--txt);border-left:4px solid var(--ac);padding:4px 0 4px 12px}
+.cx-2{display:grid;grid-template-columns:1fr 1fr;gap:16px} @media(max-width:760px){.cx-2{grid-template-columns:1fr}}
+.cx-2 .cx-sec{margin-bottom:0} .cx-wrap{margin-bottom:16px}
+.sv-pos{color:var(--gn)} .sv-neg{color:var(--rd)} .sv-d{display:block;font-size:.72rem;color:var(--mut);font-weight:400}
 </style>
 </head>
 <body>
@@ -1185,6 +1210,12 @@ body.com-rasc .shtoast{bottom:104px}
     <h2 class="sh">Conselheiro — Análises Automáticas</h2>
     <p class="ss">Todo dia às 7h e às 17h o Claude lê os números <b>salvos</b> no painel, pesquisa bacalhau, câmbio, Habib's, impostos e energia, e deixa aqui as dicas de decisão.</p>
     <div id="conselheiro" class="cons"><p class="cons-vaz">Carregando…</p></div>
+    <div id="cons-extra"></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="sec-ttl">🧮 E se…? Sensibilidade do lucro <span style="font-weight:400;font-size:.8rem;color:var(--mut)">· calculado agora pelo app, com os números da tela</span></div>
+      <div class="tw"><table class="dtbl" id="sensitb"></table></div>
+      <p id="sensi-nota" style="font-size:.77rem;color:var(--mut);padding:8px 19px 14px"></p>
+    </div>
     <div id="cons-hist"></div>
     <div class="nt">Apoio para decisão, não substitui o contador (impostos) nem o advogado (contratos). Números marcados como "estimativa" são aproximados.</div>
   </div>
@@ -1246,7 +1277,7 @@ document.getElementById('nav').addEventListener('click',e=>{
   if(t==='tax')rTax();
   if(t==='strat')rReal();
   if(t==='risco')rRisco();
-  if(t==='cons'){ marcarConsVisto(); carregarConselheiro(); }
+  if(t==='cons'){ marcarConsVisto(); carregarConselheiro(); rSensi(); }
 });
 
 // Formula cards
@@ -1646,7 +1677,7 @@ function contagem(lista){
 }
 async function carregarConselheiro(){
   if(!SB) return;
-  const {data,error}=await SB.from('fabrica_dicas').select('criado_em,resumo,dicas,fontes').order('criado_em',{ascending:false}).limit(30);
+  const {data,error}=await SB.from('fabrica_dicas').select('criado_em,resumo,dicas,fontes,extras').order('criado_em',{ascending:false}).limit(30);
   const el=document.getElementById('conselheiro'), hist=document.getElementById('cons-hist'), mini=document.getElementById('cons-mini');
   if(error){ if(el) el.innerHTML='<p class="cons-vaz">Não foi possível carregar as análises.</p>'; return; }
   CONS=data||[];
@@ -1656,8 +1687,9 @@ async function carregarConselheiro(){
   }
   const u=CONS[0], fontes=fontesHTML(u.fontes);
   el.innerHTML=`<div class="cons-hd"><h3>🧭 Última análise</h3><span>${quandoBR(u.criado_em)} · próxima às ${new Date().getHours()<7||new Date().getHours()>=17?'7h':'17h'}</span></div>
-    <p class="cons-res">${esc(u.resumo)}</p><ul class="cons-li">${dicasHTML(u.dicas)}</ul>
+    <p class="cons-res">${esc(u.resumo)}</p>${termoHTML(u.extras)}<ul class="cons-li">${dicasHTML(u.dicas)}</ul>
     ${fontes?`<div class="cons-ft">Fontes: ${fontes}</div>`:''}`;
+  document.getElementById('cons-extra').innerHTML=extrasHTML(u.extras);
   const ant=CONS.slice(1);
   hist.innerHTML=ant.length?`<h3 class="cons-h3">Histórico (${ant.length})</h3>`+ant.map(a=>{const f=fontesHTML(a.fontes);
     return `<details class="cons-hi"><summary><b>${quandoBR(a.criado_em)}</b>${esc(a.resumo)} <span class="cons-cnt">${contagem(a.dicas)}</span></summary>
@@ -1668,6 +1700,64 @@ async function carregarConselheiro(){
   mini.hidden=false;
   let visto=null; try{ visto=localStorage.getItem(consVistoKey); }catch(_){}
   document.getElementById('cons-novo').hidden = !!visto && new Date(visto)>=new Date(u.criado_em);
+}
+const NIV={alto:'🔴 alto',medio:'🟠 médio',baixo:'🟢 baixo'};
+const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function extrasHTML(x){
+  if(!x||typeof x!=='object') return '';
+  let h='';
+  const ind=Array.isArray(x.indicadores)?x.indicadores:[];
+  if(ind.length) h+=`<div class="cx-sec"><h4>📈 Indicadores de mercado</h4><div class="ind-g">${ind.slice(0,8).map(i=>{
+      const c=i.impacto==='favoravel'?'fav':(i.impacto==='desfavoravel'?'desf':'neu'), seta=i.tendencia==='alta'?'▲':(i.tendencia==='baixa'?'▼':'●');
+      return `<div class="ind"><div class="n">${esc(i.nome)}</div><div class="v">${esc(i.valor)}</div><div class="d ${c}">${seta} ${esc(i.variacao||'')}</div>${i.nota?`<div class="o">${esc(i.nota)}</div>`:''}</div>`;}).join('')}</div></div>`;
+  const pz=(Array.isArray(x.prazos)?x.prazos:[]).filter(p=>p&&p.titulo);
+  const neg=(Array.isArray(x.negociacao)?x.negociacao:[]).filter(Boolean);
+  let a='',b='';
+  if(pz.length){
+    const hoje=new Date(); hoje.setHours(0,0,0,0);
+    a=`<div class="cx-sec"><h4>📅 Prazos e datas que importam</h4><ul class="pz-l">${pz.slice(0,6).map(p=>{
+      const d=/^\d{4}-\d{2}-\d{2}$/.test(p.data||'')?new Date(p.data+'T12:00:00'):null, dias=d?Math.round((d-hoje)/864e5):null;
+      return `<li><div class="pz-d${dias!==null&&dias<=10?' urg':''}">${d?`<b>${d.getDate()}</b><small>${MES[d.getMonth()]}</small>`:'<b>—</b>'}</div>
+        <div class="pz-t"><strong>${esc(p.titulo)}</strong>${dias!==null?` <em style="font-size:.75rem;color:var(--mut)">${dias<0?'passou':dias===0?'hoje':'em '+dias+' dia'+(dias>1?'s':'')}</em>`:''}${p.acao?`<span>👉 ${esc(p.acao)}</span>`:''}</div></li>`;}).join('')}</ul></div>`;
+  }
+  if(neg.length) b=`<div class="cx-sec"><h4>🤝 Argumentos para negociar com o Habib's</h4><ol class="neg-l">${neg.slice(0,6).map(n=>`<li>${esc(n)}</li>`).join('')}</ol></div>`;
+  if(a||b) h+=`<div class="cx-wrap ${a&&b?'cx-2':''}">${a}${b}</div>`;
+  if(x.pergunta) h+=`<div class="cx-sec"><h4>🤔 Pergunta para decidir</h4><p class="perg">${esc(x.pergunta)}</p></div>`;
+  return h;
+}
+function termoHTML(x){
+  const r=(x&&Array.isArray(x.riscos))?x.riscos:[];
+  if(!r.length) return '';
+  return `<div class="termo" aria-label="Termômetro de riscos">${r.slice(0,6).map(i=>{const n=NIV[i.nivel]?i.nivel:'medio';
+    return `<span class="${n}" title="${esc(i.motivo||'')}">${esc(i.area)}: ${NIV[n]}</span>`;}).join('')}</div>`;
+}
+// sensibilidade: mesma conta do painel, sem alterar nada salvo
+function liqSim(k,o){
+  o=o||{}; const pb=o.bac??REC.find(i=>i.id==='bac').preco, vol=o.vol??A.vol, pv=o.pv??F[k].pv;
+  const ing=REC.reduce((t,it)=>t+qtdDe(it,k)*(it.id==='bac'?pb:it.preco),0)/F[k].u;
+  const cv=ing/(1-A.per)+A.emb, rec=pv*vol, eb=rec-cv*vol-A.fix-rec*A.com;
+  return eb-rec*aliq(rec*12);
+}
+function rSensi(){
+  const el=document.getElementById('sensitb'); if(!el) return;
+  const K=Object.keys(F), bac=REC.find(i=>i.id==='bac').preco;
+  const cen=[
+    ['Hoje',{}],
+    ['Bacalhau +10%',{bac:bac*1.10}],
+    ['Bacalhau +20% (ex.: fim de ano)',{bac:bac*1.20}],
+    ['Bacalhau −10% (compra travada)',{bac:bac*0.90}],
+    ["Cliente pede 5% de desconto",{pv:'-5'}],
+    ['Volume cai para 70 mil',{vol:70000}],
+    ['Volume sobe para 150 mil',{vol:150000}],
+  ];
+  const base=K.map(k=>liqSim(k));
+  el.innerHTML=`<thead><tr><th>Cenário</th>${K.map(k=>`<th class="tr">Linha ${k.slice(1)}%</th>`).join('')}</tr></thead><tbody>`+
+    cen.map(([nm,o],i)=>`<tr><td${i===0?' style="font-weight:700"':''}>${nm}</td>${K.map((k,j)=>{
+      const oo={...o}; if(oo.pv==='-5') oo.pv=F[k].pv*0.95;
+      const v=liqSim(k,oo), d=v-base[j];
+      return `<td class="tr fn ${v<0?'sv-neg':'sv-pos'}">${R(v,0)}${i?`<span class="sv-d">${d>=0?'+':'−'}${R(Math.abs(d),0).replace('R$ ','R$ ')}</span>`:''}</td>`;}).join('')}</tr>`).join('')+'</tbody>';
+  const n=document.getElementById('sensi-nota');
+  if(n) n.textContent='Lucro líquido por mês, depois do imposto, com o custo fixo atual ('+R(A.fix,0)+'). 150 mil un/mês pode cruzar o sublimite do Simples (R$ 3,6 mi/ano) e pagar mais imposto, e exige ~'+Math.round(150000/(1-A.per)/F.f25.u/INS.dias)+' batches/dia (capacidade hoje: '+fmtCap(A.cap)+'). Bacalhau hoje: '+R(bac)+'/kg.';
 }
 function marcarConsVisto(){
   document.getElementById('cons-novo').hidden=true;
@@ -1726,6 +1816,8 @@ function testar(nome, a, b, tol=0.02){ VERIF.push({nome, a, b, ok:Math.abs(a-b)<
 
 function verificar(){
   VERIF.length=0;
+  // 0. tabela "E se…?" do Conselheiro usa a mesma conta da DRE
+  for (const k in F) testar(`Sensibilidade = DRE · ${NM[k]}`, liqSim(k), calc(k).liq, 1);
 
   // 1. custo do batch = soma item a item (caminho independente do reduce)
   for (const k in F){
@@ -2433,7 +2525,7 @@ function renderAll(){
     syncControls(); rPeso(); rRef(); rTextos();
     rAlert(); rVCards(); rBE(); rScl(); rProjTb();
     rCash(); rFichas(); rCompras(); rInsumos(); rTax(); rReal(); rFixBox(); rResist(); rRisco();
-    rFCards(); rSim(); rProj(); rVerif();
+    rFCards(); rSim(); rProj(); rSensi(); rVerif();
   } finally { _renderizando=false; }
 }
 
