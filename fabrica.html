@@ -542,6 +542,14 @@ body.com-rasc .shtoast{bottom:104px}
               onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">dias</span></span></div>
           <input type="range" id="i-dias" min="18" max="26" step="1" value="22" oninput="setDias(this.value)">
         </div>
+        <div class="cg" style="margin-top:10px">
+          <div class="cl"><span>Capacidade da estrutura</span>
+            <span class="pinw"><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="pin-cap"
+              aria-label="Capacidade em batches por dia" value="3" style="width:56px" oninput="setCap(this.value)"
+              onblur="document.getElementById('pin-cap').value=fmtCap(A.cap)"
+              onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">batches/dia</span></span></div>
+          <input type="range" id="i-cap" min="1" max="30" step="0.5" value="3" oninput="setCap(this.value)">
+        </div>
         <div class="mr" style="margin-top:6px"><span class="ml">Quebra de produção</span><span class="mv" id="i-quebra">3,0%</span></div>
         <div class="cg" style="margin-top:10px">
           <div class="cl"><span>Peso por bolinho</span>
@@ -618,7 +626,7 @@ body.com-rasc .shtoast{bottom:104px}
         <tbody id="prodtb"></tbody>
       </table></div>
       <p style="font-size:.77rem;color:var(--mut);padding:11px 19px">
-        A estrutura de 2 salas 5×3m comporta cerca de 3 batches/dia. Acima disso, exige planta ampliada.
+        A estrutura atual comporta <span class="capv">3</span> batches/dia (ajuste em Ficha de Custo). Acima disso, exige planta ampliada.
       </p>
     </div>
 
@@ -673,7 +681,7 @@ body.com-rasc .shtoast{bottom:104px}
     <h2 class="sh">Projeção de Produção — Mensal</h2>
     <p class="ss">O volume mensal é o mesmo de todas as abas. Aqui você escolhe o mix entre as linhas e vê quantos batches por dia ele exige. Volume, dias úteis e custo fixo são compartilhados com o restante do painel.</p>
     <div class="info" style="margin-bottom:18px">
-      <strong>🏭 Referência de capacidade:</strong> <span id="cap-ref"></span> A estrutura de 2 salas 5×3m comporta cerca de 3 batches/dia — os volumes acima disso exigem planta ampliada.
+      <strong>🏭 Referência de capacidade:</strong> <span id="cap-ref"></span> A estrutura atual comporta <span class="capv">3</span> batches/dia (ajuste em Ficha de Custo) — os volumes acima disso exigem planta ampliada.
     </div>
     <div class="dalert" id="proj-nota" hidden></div>
     <div class="pg">
@@ -1176,7 +1184,7 @@ const CH = [
   {id:'ch4',nom:'Delivery Direto (D2C)',desc:'iFood, Rappi, site próprio',cor:'#6D28D9'},
 ];
 let sim={fid:'f25',pr:{ch1:1.95,ch2:2.12,ch3:3.49,ch4:5.00}};   // volume vem de A.vol
-let prj={batches:12,mx25:60,mx35:30,avgp:3.00};                  // dias vem de INS.dias, fixo de A.fix
+let prj={mx25:60,mx35:30};                                          // dias vem de INS.dias, fixo de A.fix, volume de A.vol
 
 const R=(v,d=2)=>{ const t=Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}); return (v<0&&t.replace(/[0,.]/g,'')!==''?'− ':'')+'R$ '+t; };
 const N=v=>v.toLocaleString('pt-BR');
@@ -1276,19 +1284,9 @@ function rSim(){
 }
 
 // Proj
-function volDaProducao(){          // producao planejada -> unidades/mes
-  const m25=Math.min(prj.mx25,100)/100;
-  const m35=Math.min(prj.mx35,100-prj.mx25)/100;
-  const m50=Math.max(0,1-m25-m35);
-  const tb=prj.batches*INS.dias;
-  // unidades VENDÁVEIS: produção menos a quebra (mesma base de volume das outras abas)
-  return Math.round((Math.round(tb*m25)*F.f25.u + Math.round(tb*m35)*F.f35.u + Math.round(tb*m50)*F.f50.u)*(1-A.per));
-}
 function pu(k,v){
-  if(k==='avgprice')      prj.avgp=+v/100;
-  else if(k==='fixed')    { setFixTotal(+v); return; }   // escala as linhas de custo fixo
+  if(k==='fixed')    { setFixTotal(+v); return; }   // escala as linhas de custo fixo
   else if(k==='dias')     INS.dias=+v;         // dias uteis sao compartilhados
-  else if(k==='batches')  prj.batches=+v;
   else if(k==='mix25')    prj.mx25=+v;
   else if(k==='mix35')    prj.mx35=+v;
   renderAll();
@@ -1309,7 +1307,7 @@ function rProj(){
   const al=aliq(rev*12), imp=rev*al, liq=ebt-imp;
   const ec=liq>=0?'var(--gn)':'var(--rd)';
   window.__proj={tu,rev,cogs,liq,al,bd};
-  st('pb-v', bd.toFixed(1).replace('.',',')+(bd>CAP_DIA?' ⚠️ acima da capacidade ('+CAP_DIA+')':''));
+  st('pb-v', bd.toFixed(1).replace('.',',')+(bd>A.cap?' ⚠️ acima da capacidade ('+A.cap+')':''));
   sv('i-pvol',A.vol); sv('pin-pvol',N(A.vol));
 
   document.getElementById('pkpis').innerHTML=`
@@ -1341,15 +1339,21 @@ function rProj(){
 
 
 /* ===== PREMISSAS — fonte única de verdade do painel ===== */
-const A = { emb:0.05, com:0, per:0.03, fix:40637, pz:45, vol:100000, inv:290200, depMeses:60, peso:30 };
+const A = { emb:0.05, com:0, per:0.03, fix:40637, pz:45, vol:100000, inv:290200, depMeses:60, peso:30, cap:3 };  // cap = batches/dia que a estrutura comporta
 
 
 // quebra: perde-se a MASSA, nao a embalagem -> divide o ingrediente por (1-quebra)
 const cvar = f => F[f].custo/(1-A.per) + A.emb;
 
 // custo fixo acompanha a escala E o valor editado pelo usuario
-const ESC={100000:1, 200000:1.9686, 300000:2.9529};
-const fixoEsc = v => A.fix * (ESC[v] ?? 1);
+// fator da estrutura por volume (pontos da planilha); entre os pontos interpola, acima de 300k segue a mesma inclinação
+const ESC=[[100000,1],[200000,1.9686],[300000,2.9529]];
+function fatorEsc(v){
+  if(v<=ESC[0][0]) return 1;                                  // abaixo de 100k a estrutura mínima se mantém
+  for(let i=1;i<ESC.length;i++){ const [v0,f0]=ESC[i-1],[v1,f1]=ESC[i];
+    if(v<=v1||i===ESC.length-1) return f0+(f1-f0)*(v-v0)/(v1-v0); }
+}
+const fixoEsc = v => A.fix * fatorEsc(v);
 
 // CALCULO CENTRAL — todas as abas passam por aqui, para nao divergirem
 function calc(k, vol, fixo){
@@ -1400,10 +1404,10 @@ const instantaneo = () => ({
   insumos:REC.map(i=>({id:i.id,preco:i.preco})),
   fixos:FIX.map(i=>({id:i.id,valor:i.valor})),
   precos:Object.fromEntries(Object.keys(F).map(k=>[k,F[k].pv])),
-  A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses,peso:A.peso},
+  A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses,peso:A.peso,cap:A.cap},
   dias:INS.dias,
   canais:{...sim.pr},
-  producao:{batches:prj.batches,mx25:prj.mx25,mx35:prj.mx35},
+  producao:{mx25:prj.mx25,mx35:prj.mx35},
   ref:REF.k,
 });
 function aplicar(d){
@@ -1417,7 +1421,7 @@ function aplicar(d){
     for(const k in (d.A||{})) if(isFinite(d.A[k])) A[k]=d.A[k];
     if(isFinite(d.dias)) INS.dias=d.dias;
     for(const k in (d.canais||{})) if(k in sim.pr && isFinite(d.canais[k])) sim.pr[k]=d.canais[k];
-    const p=d.producao||{}; ['batches','mx25','mx35'].forEach(k=>{ if(isFinite(p[k])) prj[k]=p[k]; });
+    const p=d.producao||{}; ['mx25','mx35'].forEach(k=>{ if(isFinite(p[k])) prj[k]=p[k]; });
     recalcFix(); recalcF();
     return true;
   }catch(e){ return false; }
@@ -1599,7 +1603,10 @@ function carregarVersao(id){
 async function excluirVersao(id){
   const v=(window._versoes||[]).find(x=>x.id===id); if(!v) return;
   if(!confirm('Excluir a versão "'+v.nome+'"? Isso não pode ser desfeito.')) return;
-  await SB.from('fabrica_versoes').delete().eq('id',id); await listarVersoes();
+  // .select() devolve o que foi apagado: se vier vazio, o banco recusou (sem permissão) mesmo sem erro
+  const {data,error}=await SB.from('fabrica_versoes').delete().eq('id',id).select('id');
+  if(error||!data||!data.length){ alert('Não foi possível excluir a versão: '+(error?(error.code==='42501'?'sem permissão':error.message):'sem permissão ou versão já removida')); await listarVersoes(); return; }
+  toast('Versão "'+v.nome+'" excluída'); await listarVersoes();
 }
 
 /* ============================================================
@@ -1852,7 +1859,6 @@ function setFixTotal(v){
   recalcFix(); renderAll();
 }
 const qtdDe = (it,k) => it.id==='bac' ? F[k].bac : it.qtd;
-const CAP_DIA = 3;   // batches/dia que a estrutura atual comporta
 
 function batchCusto(k){ return REC.reduce((t,it)=>t+qtdDe(it,k)*it.preco,0); }
 function recalcF(){ for (const k in F){ F[k].u = F[k].kg*1000/A.peso; F[k].custo = batchCusto(k)/F[k].u; } }
@@ -1916,7 +1922,7 @@ function rTextos(){
   const bac=sh('bac'), bat=sh('bat'), aze=sh('aze');
   const RK=REF.k, q=1/(1-A.per), b35=A.vol*q/F[RK].u, itB=REC.find(x=>x.id==='bac');
   const tempero=['sls','ceb','alh'].reduce((t,id)=>{const it=REC.find(x=>x.id===id);return t+b35*qtdDe(it,RK)*it.preco;},0);
-  const capun=CAP_DIA*INS.dias*F.f25.u*(1-A.per);
+  const capun=A.cap*INS.dias*F.f25.u*(1-A.per);
   const bd=v=>Math.round(v*q/F.f25.u/INS.dias);
   const ton=300000*q*A.peso/1e6;
   const rows=[]; for(const k of K) for(const v of [100000,200000,300000]){ const r=calc(k,v,fixoEsc(v)); if(r.eb>0) rows.push({ie:r.imp/r.eb, mg:r.liq/r.rec}); }
@@ -1949,6 +1955,13 @@ function rPeso(){
   const cr=document.getElementById('cap-ref');
   if(cr){ const u=F.f25.u, q=1/(1-A.per), bd=v=>Math.round(v*q/u/INS.dias);
     cr.innerHTML=`cada batch da F25 rende ${N(Math.round(u))} un de ${fmtPeso(A.peso)} g (${F.f25.kg.toString().replace('.',',')} kg). Para <strong>100k un/mês</strong> são necessários ~${bd(100000)} batches/dia; para <strong>300k un/mês</strong>, ~${bd(300000)} batches/dia.`; }
+}
+const fmtCap=v=>String(+v.toFixed(1)).replace('.',',');
+function setCap(v){
+  const n=parseNum(v); const el=document.getElementById('pin-cap');
+  if(n===null||n<=0||n>100){ if(el) el.classList.add('bad'); return; }
+  if(el) el.classList.remove('bad');
+  A.cap=Math.round(n*2)/2; renderAll();
 }
 function setDias(v){
   const n=parseNum(v); const el=document.getElementById('pin-dias');
@@ -2144,7 +2157,7 @@ function rCompras(){
     <div class="bm"><div class="bml">Bacalhau/mês</div><div class="bmv" style="font-size:1.1rem;color:var(--ac)">${N(Math.round(bt35*f.bac))} kg</div><div class="bms">ref. ${LN}</div></div>
     <div class="bm"><div class="bml">Massa batata/mês</div><div class="bmv" style="font-size:1.1rem">${N(Math.round(bt35*f.bat))} kg</div><div class="bms">ref. ${LN}</div></div>
     <div class="bm"><div class="bml">Gasto Insumos</div><div class="bmv" style="font-size:1.1rem">${R(bt35*batchCusto(RK),0)}</div><div class="bms">por mês · ${LN}</div></div>
-    <div class="bm"><div class="bml">Batches/dia</div><div class="bmv" style="font-size:1.1rem;color:${bt35/INS.dias>CAP_DIA?'var(--rd)':'var(--gn)'}">${(bt35/INS.dias).toFixed(1)}</div><div class="bms">capacidade atual: ${CAP_DIA}</div></div>`;
+    <div class="bm"><div class="bml">Batches/dia</div><div class="bmv" style="font-size:1.1rem;color:${bt35/INS.dias>A.cap?'var(--rd)':'var(--gn)'}">${(bt35/INS.dias).toFixed(1)}</div><div class="bms">capacidade atual: ${A.cap}</div></div>`;
 
   document.getElementById('comprastb').innerHTML=REC.map(it=>{
     const cel=['f25','f35','f50'].map(k=>{
@@ -2161,7 +2174,7 @@ function rCompras(){
   })();
 
   document.getElementById('prodtb').innerHTML=Object.keys(F).map(k=>{
-    const f=F[k], b=A.vol*q/f.u, bd=b/INS.dias, ok=bd<=CAP_DIA;
+    const f=F[k], b=A.vol*q/f.u, bd=b/INS.dias, ok=bd<=A.cap;
     return `<tr><td><strong>${nm[k]}</strong></td><td class="tr fn">${N(Math.round(f.u))}</td>
       <td class="tr fn">${N(Math.round(b))}</td>
       <td class="tr fn" style="font-weight:700">${bd.toFixed(1)}</td>
@@ -2289,6 +2302,7 @@ function syncControls(){
   const svl=document.querySelector('#tab-sim input[type=range][oninput*="svol"]'); if(svl&&+svl.value!==A.vol) svl.value=A.vol;
   // dias uteis — ficha e projecao
   sv('i-dias',INS.dias); sv('pin-dias',INS.dias); st('pd-v',INS.dias);
+  sv('i-cap',A.cap); sv('pin-cap',fmtCap(A.cap)); document.querySelectorAll('.capv').forEach(e=>e.textContent=fmtCap(A.cap));
   const dsl=document.querySelector('#tab-proj input[oninput*="\'dias\'"]'); if(dsl) dsl.value=INS.dias;
   // custo fixo — caixa e projecao
   sv('a-fix',A.fix); st('a-fix-v','R$ '+N(Math.round(A.fix))); st('pfc-v','R$ '+N(Math.round(A.fix)));
@@ -2300,7 +2314,7 @@ function syncControls(){
   CH.forEach(c=>{ st('sp-'+c.id,R(sim.pr[c.id])); sv('spr-'+c.id,Math.round(sim.pr[c.id]*100)); });
   // projecao
   st('pm25-v',prj.mx25+'%'); st('pm35-v',prj.mx35+'%');
-  st('pm50-v',Math.max(0,100-prj.mx25-prj.mx35)+'%'); st('ppv-v',R(prj.avgp));
+  st('pm50-v',Math.max(0,100-prj.mx25-prj.mx35)+'%');
 }
 
 let _renderizando=false;
