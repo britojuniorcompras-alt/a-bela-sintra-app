@@ -333,7 +333,16 @@
     .nf-leitor-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: calc(14px + env(safe-area-inset-top)) 16px 12px 16px; color: #fff; font-size: 14px; font-weight: 700; }
     .nf-leitor-topo button { background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 12px; padding: 8px 12px; font-size: 15px; cursor: pointer; flex-shrink: 0; }
     .nf-leitor-area { flex: 1; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-    .nf-leitor-area video { width: 100% !important; height: auto !important; max-height: 100%; object-fit: cover; }
+    .nf-video-wrap { position: relative; width: 100%; max-height: 100%; }
+    .nf-video-wrap video { display: block; width: 100%; max-height: calc(100vh - 330px); object-fit: contain; background: #000; }
+    .nf-faixa { position: absolute; left: 3%; right: 3%; top: 32%; height: 36%; border: 3px solid #E86FA0; border-radius: 14px; box-shadow: 0 0 0 2000px rgba(0,0,0,0.35); pointer-events: none; }
+    .nf-faixa-linha { position: absolute; left: 4%; right: 4%; top: 50%; height: 2px; background: rgba(232,111,160,0.85); animation: nfVarre 1.6s ease-in-out infinite alternate; }
+    @keyframes nfVarre { from { top: 15%; } to { top: 85%; } }
+    .nf-video-wrap { overflow: hidden; }
+    .nf-zoom-box { display: flex; align-items: center; gap: 12px; padding: 10px 20px 0 20px; color: #fff; font-size: 13px; font-weight: 700; }
+    .nf-zoom-box input { flex: 1; accent-color: #E86FA0; }
+    .nf-leitor-acoes { padding: 4px 16px 0 16px; }
+    .nf-leitor-foto { display: block; text-align: center; background: rgba(255,255,255,0.14); color: #fff; border-radius: 14px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; }
     .nf-leitor-status { color: #F29BC0; text-align: center; font-size: 13.5px; font-weight: 700; padding: 10px 16px 0 16px; min-height: 20px; }
     .nf-leitor-dica { color: rgba(255,255,255,0.65); text-align: center; font-size: 12px; padding: 6px 20px; line-height: 1.4; }
     .nf-leitor-manual { display: flex; gap: 8px; padding: 10px 16px calc(16px + env(safe-area-inset-bottom)) 16px; }
@@ -403,7 +412,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v23set</div>
+                <div class="logo-subtitulo">Gestão de Compras · v23set-b</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -864,21 +873,32 @@
 
 <div id="nfLeitorOverlay" class="nf-leitor-overlay" style="display:none;">
     <div class="nf-leitor-topo">
-        <span id="nfLeitorTitulo">Aponte para o código de barras</span>
+        <span id="nfLeitorTitulo">Código de barras</span>
         <div style="display:flex; gap:8px;">
             <button id="nfBtnLanterna" onclick="nfAlternarLanterna()" style="display:none;">🔦</button>
             <button onclick="nfFecharLeitor()">✕</button>
         </div>
     </div>
-    <div id="nfLeitorArea" class="nf-leitor-area"></div>
+    <div class="nf-leitor-area">
+        <div class="nf-video-wrap" onclick="nfFocarDeNovo()">
+            <video id="nfVideo" playsinline muted autoplay></video>
+            <div class="nf-faixa"><div class="nf-faixa-linha"></div></div>
+        </div>
+    </div>
+    <div id="nfZoomBox" class="nf-zoom-box" style="display:none;">
+        <span>Zoom</span>
+        <input type="range" id="nfZoom" min="1" max="3" step="0.1" value="1" oninput="nfAplicarZoom(this.value)">
+    </div>
     <div id="nfLeitorStatus" class="nf-leitor-status"></div>
-    <div class="nf-leitor-dica">Deixe o código de barras deitado, dentro da faixa. Aproxime ou afaste devagar até focar. Luz boa ajuda muito.</div>
+    <div class="nf-leitor-dica">Código deitado, dentro da faixa, ocupando quase toda a largura. Se ficar borrado, afaste um pouco e aumente o zoom.</div>
+    <div class="nf-leitor-acoes">
+        <label class="nf-leitor-foto" onclick="nfPrepararFotoCodigo()">📸 Tirar foto do código<input type="file" accept="image/*" capture="environment" onchange="nfLerCodigoDeFoto(event)" style="display:none;"></label>
+    </div>
     <div class="nf-leitor-manual">
         <input type="text" id="nfCodigoManual" inputmode="numeric" placeholder="Ou digite os números do código">
         <button onclick="nfUsarCodigoManual()">Usar</button>
     </div>
 </div>
-<div id="nfLeitorArquivo" style="display:none;"></div>
 <!-- ===== FIM NOTAS FISCAIS ===== -->
 
 <div id="fichas-screen" class="screen">
@@ -6374,24 +6394,74 @@ function nfCarregarScript(urls, cb) {
         document.head.appendChild(s);
     })();
 }
-function nfGarantirLeitor(cb) {
-    if (window.Html5Qrcode) { cb(null); return; }
+// Leitor ZXing (versão WebAssembly, bem mais forte para código de barras comprido como o da DANFE)
+var nfZXingPronto = false;
+function nfGarantirZXing(cb) {
+    if (window.ZXingWASM && nfZXingPronto) { cb(null); return; }
+    var aposScript = function(err) {
+        if (err || !window.ZXingWASM) { cb(err || new Error('sem ZXing')); return; }
+        try {
+            var p = ZXingWASM.prepareZXingModule({ fireImmediately: true });
+            if (p && p.then) {
+                p.then(function() { nfZXingPronto = true; cb(null); }).catch(function(e) { cb(e); });
+            } else { nfZXingPronto = true; cb(null); }
+        } catch (e) { nfZXingPronto = true; cb(null); }
+    };
+    if (window.ZXingWASM) { aposScript(null); return; }
     nfCarregarScript([
-        'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js',
-        'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'
-    ], cb);
+        'https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.4/dist/iife/reader/index.js',
+        'https://fastly.jsdelivr.net/npm/zxing-wasm@3.1.4/dist/iife/reader/index.js'
+    ], aposScript);
 }
 function nfGarantirOCR(cb) {
     if (window.Tesseract) { cb(null); return; }
     nfCarregarScript(['https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'], cb);
 }
-function nfFormatosLeitura() {
-    var F = window.Html5QrcodeSupportedFormats;
-    return [F.CODE_128, F.ITF, F.QR_CODE];
+
+// Leitor nativo do celular (Android/Chrome tem; iPhone não) — usado junto com o ZXing
+var nfDetectorNativo = null, nfDetectorNativoChecado = false;
+function nfPrepararDetectorNativo(cb) {
+    if (nfDetectorNativoChecado) { cb(nfDetectorNativo); return; }
+    nfDetectorNativoChecado = true;
+    if (!('BarcodeDetector' in window)) { cb(null); return; }
+    try {
+        BarcodeDetector.getSupportedFormats().then(function(fs) {
+            var quero = ['code_128', 'itf', 'qr_code'].filter(function(f) { return fs.indexOf(f) >= 0; });
+            if (quero.indexOf('code_128') < 0) { cb(null); return; }
+            nfDetectorNativo = new BarcodeDetector({ formats: quero });
+            cb(nfDetectorNativo);
+        }).catch(function() { cb(null); });
+    } catch (e) { cb(null); }
 }
 
-// ---------- leitor pela câmera ----------
-function nfStatusLeitor(t) { document.getElementById('nfLeitorStatus').innerText = t || ''; }
+// Lê códigos de um canvas. qual: 'nativo' | 'zxing'; binarizador: variação do ZXing (cada uma acerta em situações diferentes)
+function nfLerCanvas(canvas, qual, binarizador) {
+    if (qual === 'nativo' && nfDetectorNativo) {
+        return nfDetectorNativo.detect(canvas).then(function(r) {
+            return r.map(function(x) { return x.rawValue; });
+        }).catch(function() { return []; });
+    }
+    if (window.ZXingWASM && nfZXingPronto) {
+        try {
+            var ctx = canvas.getContext('2d', { willReadFrequently: true });
+            var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            return ZXingWASM.readBarcodes(img, { formats: ['Code128', 'ITF', 'QRCode'], tryHarder: true, maxNumberOfSymbols: 3, binarizer: binarizador || 'LocalAverage' })
+                .then(function(r) { return r.filter(function(x) { return x.isValid !== false && x.text; }).map(function(x) { return x.text; }); })
+                .catch(function() { return []; });
+        } catch (e) { return Promise.resolve([]); }
+    }
+    return Promise.resolve([]);
+}
+
+// ---------- câmera ao vivo ----------
+var nfCam = { ativo: false, stream: null, track: null, timer: null, tentativas: 0, canvas: null, pausada: false };
+
+function nfStatusLeitor(t, clicavel) {
+    var el = document.getElementById('nfLeitorStatus');
+    el.innerText = t || '';
+    el.style.textDecoration = clicavel ? 'underline' : 'none';
+    el.onclick = clicavel ? function() { nfIniciarCamera(); } : null;
+}
 
 function nfAbrirLeitor(modo) {
     nfLeitorModo = modo;
@@ -6400,61 +6470,153 @@ function nfAbrirLeitor(modo) {
     nfLanternaLigada = false;
     document.getElementById('nfCodigoManual').value = '';
     document.getElementById('nfBtnLanterna').style.display = 'none';
+    document.getElementById('nfZoomBox').style.display = 'none';
     document.getElementById('nfLeitorTitulo').innerText = modo === 'boleto'
-        ? 'Aponte para o código de barras do boleto'
-        : 'Aponte para o código de barras da nota (DANFE)';
+        ? 'Código de barras do boleto'
+        : 'Código de barras da nota (DANFE)';
     document.getElementById('nfLeitorOverlay').style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    nfCam.ativo = true;
+    nfPrepararDetectorNativo(function() { });
+    nfGarantirZXing(function(err) {
+        if (err && !nfDetectorNativo && nfCam.ativo) {
+            nfStatusLeitor('Não consegui carregar o leitor (internet?). Digite os números do código abaixo.');
+        }
+    });
+    nfIniciarCamera();
+}
+
+function nfIniciarCamera() {
+    if (!nfCam.ativo) return;
+    nfPararStream();
+    nfCam.pausada = false;
+    nfCam.tentativas = 0;
     nfStatusLeitor('Abrindo a câmera...');
-
-    nfGarantirLeitor(function(err) {
-        if (err) { nfStatusLeitor('Não consegui carregar o leitor (sem internet?). Digite o código abaixo.'); return; }
-        if (document.getElementById('nfLeitorOverlay').style.display === 'none') return;
-        try {
-            nfLeitor = new Html5Qrcode('nfLeitorArea', {
-                formatsToSupport: nfFormatosLeitura(),
-                verbose: false,
-                experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-            });
-        } catch (e) { nfStatusLeitor('Seu navegador não permitiu abrir o leitor. Digite o código abaixo.'); return; }
-
-        nfLeitor.start(
-            { facingMode: 'environment' },
-            {
-                fps: 12,
-                qrbox: function(w, h) { return { width: Math.floor(w * 0.92), height: Math.floor(Math.min(h * 0.4, w * 0.42)) }; },
-                videoConstraints: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
-            },
-            nfAoLerCodigo,
-            function() { }
-        ).then(function() {
-            nfStatusLeitor('Procurando o código...');
-            try {
-                var cap = nfLeitor.getRunningTrackCapabilities();
-                if (cap && cap.torch) { document.getElementById('nfBtnLanterna').style.display = 'inline-block'; }
-            } catch (e) { }
-        }).catch(function() {
-            nfStatusLeitor('Não consegui abrir a câmera. Libere a permissão da câmera no navegador ou digite o código abaixo.');
-        });
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        nfStatusLeitor('Este navegador não libera a câmera ao vivo. Use "📸 Tirar foto do código" ou digite os números.');
+        return;
+    }
+    navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    }).then(function(stream) {
+        if (!nfCam.ativo) { stream.getTracks().forEach(function(t) { t.stop(); }); return; }
+        nfCam.stream = stream;
+        nfCam.track = stream.getVideoTracks()[0];
+        var v = document.getElementById('nfVideo');
+        v.setAttribute('playsinline', '');
+        v.muted = true;
+        v.srcObject = stream;
+        var p = v.play();
+        if (p && p.catch) p.catch(function() { });
+        nfConfigurarRecursosCamera();
+        nfStatusLeitor('Encaixe o código de barras dentro da faixa');
+        nfLoopLeitura();
+    }).catch(function() {
+        nfStatusLeitor('Não consegui abrir a câmera. Libere a permissão da câmera para o site, ou use "📸 Tirar foto do código".');
     });
 }
 
+function nfConfigurarRecursosCamera() {
+    var t = nfCam.track, cap = {};
+    try { cap = (t && t.getCapabilities) ? t.getCapabilities() : {}; } catch (e) { cap = {}; }
+    var avancado = [];
+    if (cap.focusMode && cap.focusMode.indexOf('continuous') >= 0) avancado.push({ focusMode: 'continuous' });
+    if (avancado.length) { try { t.applyConstraints({ advanced: avancado }).catch(function() { }); } catch (e) { } }
+    document.getElementById('nfBtnLanterna').style.display = cap.torch ? 'inline-block' : 'none';
+    var box = document.getElementById('nfZoomBox');
+    if (cap.zoom && cap.zoom.max > 1) {
+        var s = document.getElementById('nfZoom');
+        s.min = cap.zoom.min || 1;
+        s.max = Math.min(cap.zoom.max, 6);
+        s.step = cap.zoom.step || 0.1;
+        // Zoom 2x: dá pra segurar o celular mais longe (onde ele foca) com o código ainda grande na imagem
+        var inicial = Math.min(2, Number(s.max));
+        s.value = inicial;
+        nfAplicarZoom(inicial);
+        box.style.display = 'flex';
+    } else {
+        box.style.display = 'none';
+    }
+}
+function nfAplicarZoom(z) {
+    if (!nfCam.track) return;
+    try { nfCam.track.applyConstraints({ advanced: [{ zoom: Number(z) }] }).catch(function() { }); } catch (e) { }
+}
 function nfAlternarLanterna() {
-    if (!nfLeitor) return;
+    if (!nfCam.track) return;
     nfLanternaLigada = !nfLanternaLigada;
-    nfLeitor.applyVideoConstraints({ advanced: [{ torch: nfLanternaLigada }] }).catch(function() { });
+    try { nfCam.track.applyConstraints({ advanced: [{ torch: nfLanternaLigada }] }).catch(function() { }); } catch (e) { }
+}
+function nfFocarDeNovo() {
+    if (!nfCam.track) return;
+    var cap = {};
+    try { cap = nfCam.track.getCapabilities ? nfCam.track.getCapabilities() : {}; } catch (e) { }
+    if (cap.focusMode && cap.focusMode.indexOf('single-shot') >= 0) {
+        try {
+            nfCam.track.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] }).then(function() {
+                setTimeout(function() { try { nfCam.track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function() { }); } catch (e) { } }, 1200);
+            }).catch(function() { });
+        } catch (e) { }
+    }
 }
 
+function nfLoopLeitura() {
+    if (!nfCam.ativo || nfCam.pausada || !nfCam.stream) return;
+    var v = document.getElementById('nfVideo');
+    if (v.readyState < 2 || !v.videoWidth) { nfCam.timer = setTimeout(nfLoopLeitura, 150); return; }
+    if (!nfDetectorNativo && !(window.ZXingWASM && nfZXingPronto)) {
+        if (nfCam.tentativas === 0) nfStatusLeitor('Carregando o leitor...');
+        nfCam.timer = setTimeout(nfLoopLeitura, 250);
+        return;
+    }
+    nfCam.tentativas++;
+    if (nfCam.tentativas === 2) nfStatusLeitor('Procurando o código...');
+    if (nfCam.tentativas === 60) nfStatusLeitor('Dica: afaste um pouco e use o zoom, com o código ocupando a faixa inteira. Luz forte ajuda.');
+
+    var vw = v.videoWidth, vh = v.videoHeight;
+    // Cada tentativa usa uma variação diferente (recorte, ampliação e forma de separar preto/branco),
+    // porque código comprido e fino como o da DANFE às vezes só sai em uma delas.
+    var zxingOk = window.ZXingWASM && nfZXingPronto;
+    var usarNativo = nfDetectorNativo && (!zxingOk || nfCam.tentativas % 2 === 0);
+    var variantes = [
+        { inteira: false, escala: 1, bin: 'LocalAverage' },
+        { inteira: false, escala: 1.5, bin: 'LocalAverage' },
+        { inteira: false, escala: 1, bin: 'FixedThreshold' },
+        { inteira: true, escala: 1, bin: 'LocalAverage' },
+        { inteira: false, escala: 0.8, bin: 'GlobalHistogram' },
+        { inteira: false, escala: 1.5, bin: 'FixedThreshold' }
+    ];
+    var va = usarNativo ? { inteira: nfCam.tentativas % 6 === 0, escala: 1 } : variantes[Math.floor(nfCam.tentativas / (nfDetectorNativo ? 2 : 1)) % variantes.length];
+    var sx = 0, sw = vw, sh = va.inteira ? vh : Math.round(vh * 0.5), sy = va.inteira ? 0 : Math.round((vh - sh) / 2);
+    var escala = va.escala;
+    if (sw * escala > 3000) escala = 3000 / sw;
+    if (!nfCam.canvas) nfCam.canvas = document.createElement('canvas');
+    var c = nfCam.canvas;
+    c.width = Math.round(sw * escala); c.height = Math.round(sh * escala);
+    var ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+
+    nfLerCanvas(c, usarNativo ? 'nativo' : 'zxing', va.bin).then(function(textos) {
+        if (!nfCam.ativo || nfCam.pausada) return;
+        for (var i = 0; i < textos.length; i++) { if (nfAoLerCodigo(textos[i])) return; }
+        nfCam.timer = setTimeout(nfLoopLeitura, 30);
+    });
+}
+
+// Retorna true se o código lido foi aceito
 function nfAoLerCodigo(texto) {
-    if (nfLeitorOcupado) return;
+    if (nfLeitorOcupado) return true;
     var r = nfInterpretarCodigo(texto);
-    if (!r) { nfStatusLeitor('Lendo... segure firme'); return; }
-    // Código de boleto (ITF) às vezes sai com erro de leitura: exige 2 leituras iguais seguidas
-    if (r.tipo === 'boleto' && nfUltimaLeitura !== r.dados.barras) { nfUltimaLeitura = r.dados.barras; return; }
+    if (!r) { nfStatusLeitor('Lendo... segure firme'); return false; }
+    // Boleto (ITF) às vezes sai com erro de leitura: confirma com 2 leituras iguais
+    if (r.tipo === 'boleto' && nfUltimaLeitura !== r.dados.barras) { nfUltimaLeitura = r.dados.barras; return false; }
     nfLeitorOcupado = true;
     try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) { }
     nfFecharLeitor();
     nfAplicarLeitura(r, 'câmera');
+    return true;
 }
 
 function nfUsarCodigoManual() {
@@ -6467,14 +6629,112 @@ function nfUsarCodigoManual() {
     nfAplicarLeitura(r, 'digitado');
 }
 
+function nfPararStream() {
+    clearTimeout(nfCam.timer);
+    if (nfCam.stream) { nfCam.stream.getTracks().forEach(function(t) { try { t.stop(); } catch (e) { } }); }
+    nfCam.stream = null;
+    nfCam.track = null;
+    var v = document.getElementById('nfVideo');
+    if (v) { try { v.srcObject = null; } catch (e) { } }
+}
+
 function nfFecharLeitor() {
+    nfCam.ativo = false;
+    nfPararStream();
     document.getElementById('nfLeitorOverlay').style.display = 'none';
     document.body.style.overflow = '';
-    if (nfLeitor) {
-        var l = nfLeitor;
-        nfLeitor = null;
-        try { l.stop().then(function() { try { l.clear(); } catch (e) { } }).catch(function() { }); } catch (e) { }
-    }
+}
+
+// Botão "Tirar foto do código": usa a câmera normal do celular (foto nítida, com foco automático)
+function nfPrepararFotoCodigo() {
+    // libera a câmera ao vivo pra câmera do celular poder abrir
+    nfCam.pausada = true;
+    nfPararStream();
+    nfStatusLeitor('Câmera pausada — toque aqui para voltar à câmera ao vivo', true);
+}
+function nfLerCodigoDeFoto(evento) {
+    var arquivo = evento.target.files && evento.target.files[0];
+    evento.target.value = '';
+    if (!arquivo) return;
+    nfStatusLeitor('🔎 Procurando o código na foto...');
+    nfLerCodigosDoArquivo(arquivo).then(function(resultados) {
+        if (!nfCam.ativo) return;
+        var escolhido = null;
+        for (var i = 0; i < resultados.length; i++) {
+            if (resultados[i].tipo === nfLeitorModo) { escolhido = resultados[i]; break; }
+        }
+        if (!escolhido && resultados.length) escolhido = resultados[0];
+        if (escolhido) {
+            nfLeitorOcupado = true;
+            nfFecharLeitor();
+            resultados.forEach(function(r) { nfAplicarLeitura(r, 'foto'); });
+        } else {
+            nfStatusLeitor('Não achei o código nessa foto. Tire de novo mais perto, com o código deitado ocupando a largura da foto — ou toque aqui para voltar à câmera.', true);
+        }
+    });
+}
+
+// Procura códigos numa foto: imagem inteira e depois em faixas (bom para foto da nota inteira)
+function nfLerCodigosDoArquivo(arquivo) {
+    return new Promise(function(resolve) {
+        var resultados = [], vistos = {};
+        function guardar(textos) {
+            textos.forEach(function(t) {
+                var r = nfInterpretarCodigo(t);
+                if (!r) return;
+                var chave = r.tipo === 'nota' ? r.dados.chave : r.dados.barras;
+                if (vistos[chave]) return;
+                vistos[chave] = true;
+                resultados.push(r);
+            });
+        }
+        nfPrepararDetectorNativo(function() {
+            nfGarantirZXing(function() {
+                var fonte = window.createImageBitmap ? createImageBitmap(arquivo) : Promise.reject();
+                fonte.catch(function() {
+                    return new Promise(function(ok, falha) {
+                        var img = new Image();
+                        img.onload = function() { ok(img); };
+                        img.onerror = falha;
+                        img.src = URL.createObjectURL(arquivo);
+                    });
+                }).then(function(bmp) {
+                    var W = bmp.width, H = bmp.height;
+                    var tarefas = [];
+                    // 1) imagem inteira (até 2400px)
+                    tarefas.push({ sx: 0, sy: 0, sw: W, sh: H, max: 2400 });
+                    // 2) faixas horizontais sobrepostas, em resolução maior
+                    var faixas = 6, alt = Math.round(H * 0.3);
+                    for (var k = 0; k < faixas; k++) {
+                        tarefas.push({ sx: 0, sy: Math.round(k * (H - alt) / (faixas - 1)), sw: W, sh: alt, max: 3000 });
+                    }
+                    var idx = 0;
+                    function proxima() {
+                        // Já achou algo na imagem inteira ou numa faixa? Para.
+                        if (idx >= tarefas.length || (resultados.length && idx > 0)) { resolve(resultados); return; }
+                        var t = tarefas[idx++];
+                        var escala = Math.min(1, t.max / Math.max(t.sw, t.sh));
+                        var c = document.createElement('canvas');
+                        c.width = Math.round(t.sw * escala); c.height = Math.round(t.sh * escala);
+                        c.getContext('2d', { willReadFrequently: true }).drawImage(bmp, t.sx, t.sy, t.sw, t.sh, 0, 0, c.width, c.height);
+                        var leituras = [];
+                        if (nfDetectorNativo) leituras.push(function() { return nfLerCanvas(c, 'nativo'); });
+                        if (window.ZXingWASM && nfZXingPronto) {
+                            leituras.push(function() { return nfLerCanvas(c, 'zxing', 'LocalAverage'); });
+                            leituras.push(function() { return nfLerCanvas(c, 'zxing', 'FixedThreshold'); });
+                            leituras.push(function() { return nfLerCanvas(c, 'zxing', 'GlobalHistogram'); });
+                        }
+                        // uma variação por vez; para assim que achar
+                        (function rodar(j) {
+                            if (j >= leituras.length || resultados.length) { setTimeout(proxima, 0); return; }
+                            leituras[j]().then(function(l) { guardar(l); rodar(j + 1); });
+                        })(0);
+                    }
+                    proxima();
+                }).catch(function() { resolve(resultados); });
+            });
+        });
+    });
 }
 
 // Coloca no formulário o que foi lido
@@ -6616,23 +6876,16 @@ function nfSelecionarFoto(evento) {
         });
     });
 
-    // 2) Tenta ler o código de barras direto da foto
+    // 2) Procura códigos de barras (nota e boleto) na própria foto
     nfStatusForm('🔎 Procurando o código de barras na foto...');
-    nfGarantirLeitor(function(err) {
-        var depoisDoCodigo = function() { nfLerTextoDaFoto(arquivo, achados); };
-        if (err) { depoisDoCodigo(); return; }
-        try {
-            var leitorArq = new Html5Qrcode('nfLeitorArquivo', { formatsToSupport: nfFormatosLeitura(), verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
-            leitorArq.scanFile(arquivo, false).then(function(texto) {
-                var r = nfInterpretarCodigo(texto);
-                if (r && (r.tipo === 'nota' ? !nfForm.chave : true)) {
-                    nfAplicarLeitura(r, 'foto');
-                    achados.push(r.tipo === 'nota' ? 'código da nota' : 'código do boleto');
-                }
-                try { leitorArq.clear(); } catch (e) { }
-                depoisDoCodigo();
-            }).catch(function() { try { leitorArq.clear(); } catch (e) { } depoisDoCodigo(); });
-        } catch (e) { depoisDoCodigo(); }
+    nfLerCodigosDoArquivo(arquivo).then(function(resultados) {
+        if (!nfForm) return;
+        resultados.forEach(function(r) {
+            if (r.tipo === 'nota' && nfForm.chave) return;
+            nfAplicarLeitura(r, 'foto');
+            achados.push(r.tipo === 'nota' ? 'código da nota' : 'código do boleto');
+        });
+        nfLerTextoDaFoto(arquivo, achados);
     });
 }
 
