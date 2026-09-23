@@ -323,31 +323,24 @@
     .nf-setor-btn { display: flex; align-items: center; gap: 8px; background: var(--surface); color: var(--text); border: 2px solid transparent; border-radius: 14px; padding: 11px 10px; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; text-align: left; }
     .nf-setor-btn.ativo { border-color: var(--cor); background: color-mix(in srgb, var(--cor) 22%, var(--surface)); }
     .nf-foto-preview { position: relative; margin-bottom: 12px; }
-    .nf-foto-preview img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 16px; display: block; }
+    .nf-foto-preview img { width: 100%; max-height: 140px; object-fit: cover; border-radius: 16px; display: block; }
     .nf-foto-preview button { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 12px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
     .nf-acoes-existente { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 16px 0; }
     .nf-acao-btn { border: none; border-radius: 16px; padding: 13px; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; cursor: pointer; background: var(--surface); color: var(--text); }
     .nf-acao-pagar { background: rgba(95,184,138,0.22); color: #7FD6A6; }
     .nf-acao-excluir { background: transparent; color: #F5867A; border: 1px solid rgba(228,72,58,0.4); }
-    .nf-leitor-overlay { position: fixed; inset: 0; background: #000; z-index: 3000; display: flex; flex-direction: column; }
-    .nf-leitor-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: calc(14px + env(safe-area-inset-top)) 16px 12px 16px; color: #fff; font-size: 14px; font-weight: 700; }
-    .nf-leitor-topo button { background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 12px; padding: 8px 12px; font-size: 15px; cursor: pointer; flex-shrink: 0; }
-    .nf-leitor-area { flex: 1; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-    .nf-video-wrap { position: relative; width: 100%; max-height: 100%; }
-    .nf-video-wrap video { display: block; width: 100%; max-height: calc(100vh - 330px); object-fit: contain; background: #000; }
-    .nf-faixa { position: absolute; left: 3%; right: 3%; top: 32%; height: 36%; border: 3px solid #E86FA0; border-radius: 14px; box-shadow: 0 0 0 2000px rgba(0,0,0,0.35); pointer-events: none; }
-    .nf-faixa-linha { position: absolute; left: 4%; right: 4%; top: 50%; height: 2px; background: rgba(232,111,160,0.85); animation: nfVarre 1.6s ease-in-out infinite alternate; }
-    @keyframes nfVarre { from { top: 15%; } to { top: 85%; } }
-    .nf-video-wrap { overflow: hidden; }
-    .nf-zoom-box { display: flex; align-items: center; gap: 12px; padding: 10px 20px 0 20px; color: #fff; font-size: 13px; font-weight: 700; }
-    .nf-zoom-box input { flex: 1; accent-color: #E86FA0; }
-    .nf-leitor-acoes { padding: 4px 16px 0 16px; }
-    .nf-leitor-foto { display: block; text-align: center; background: rgba(255,255,255,0.14); color: #fff; border-radius: 14px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; }
-    .nf-leitor-status { color: #F29BC0; text-align: center; font-size: 13.5px; font-weight: 700; padding: 10px 16px 0 16px; min-height: 20px; }
-    .nf-leitor-dica { color: rgba(255,255,255,0.65); text-align: center; font-size: 12px; padding: 6px 20px; line-height: 1.4; }
-    .nf-leitor-manual { display: flex; gap: 8px; padding: 10px 16px calc(16px + env(safe-area-inset-bottom)) 16px; }
-    .nf-leitor-manual input { flex: 1; min-width: 0; border: none; border-radius: 14px; padding: 13px 14px; font-size: 14px; background: #222; color: #fff; outline: none; }
-    .nf-leitor-manual button { border: none; border-radius: 14px; padding: 0 16px; font-weight: 700; background: #E86FA0; color: #1B1420; cursor: pointer; }
+    .nf-passos { background: var(--surface); border-radius: 20px; padding: 16px; margin-bottom: 14px; box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
+    .nf-trilha { display: flex; gap: 6px; margin-bottom: 14px; }
+    .nf-trilha span { flex: 1; text-align: center; font-size: 11.5px; font-weight: 700; padding: 6px 4px; border-radius: 10px; background: rgba(0,0,0,0.2); color: var(--text-dim); }
+    .nf-trilha span.atual { background: #E86FA0; color: #1B1420; }
+    .nf-trilha span.feito { background: rgba(95,184,138,0.22); color: #7FD6A6; }
+    .nf-passo-titulo { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .nf-passo-texto { font-size: 13px; color: var(--text-dim); line-height: 1.45; margin-bottom: 12px; }
+    .nf-passo-btn { display: block; width: 100%; border: none; border-radius: 18px; padding: 17px; font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; background: linear-gradient(160deg, #E86FA0, #B94A7C); color: #fff; box-shadow: 0 6px 16px rgba(232,111,160,0.35); margin-bottom: 8px; }
+    .nf-passo-btn-sec { background: var(--surface-2); color: var(--text); box-shadow: none; font-size: 13.5px; padding: 14px; }
+    .nf-passo-link { display: block; width: 100%; background: none; border: none; color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; padding: 10px 0 0 0; cursor: pointer; text-decoration: underline; }
+    .nf-passos .nf-setor-btn { background: var(--surface-2); padding: 14px 10px; }
+    .nf-setor-btn small { color: var(--text-dim); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -412,7 +405,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v23set-b</div>
+                <div class="logo-subtitulo">Gestão de Compras · v23set-c</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -795,7 +788,6 @@
     </div>
     <div class="nf-resumo" id="nfResumo"></div>
     <div class="nf-controles">
-        <div class="nf-segmento" id="nfFiltros"></div>
         <div class="nf-segmento" id="nfVisoes"></div>
     </div>
     <div class="search-bar" style="position: static; padding: 12px 20px 0 20px;">
@@ -818,11 +810,9 @@
         <h2 id="nfEditTitulo">Protocolar nota</h2>
     </div>
     <div class="nf-form">
-        <div class="nf-atalhos" id="nfAtalhos">
-            <button class="nf-atalho nf-atalho-destaque" onclick="nfAbrirLeitor('nota')"><span>🧾</span>Ler código da nota</button>
-            <button class="nf-atalho" onclick="nfAbrirLeitor('boleto')"><span>💳</span>Ler boleto</button>
-            <label class="nf-atalho"><span>📸</span>Foto da nota<input type="file" accept="image/*" capture="environment" onchange="nfSelecionarFoto(event)" style="display:none;"></label>
-        </div>
+        <div id="nfPassos" class="nf-passos"></div>
+        <input type="file" id="nfInputNota" accept="image/*" capture="environment" onchange="nfFotoNota(event)" style="display:none;">
+        <input type="file" id="nfInputBoleto" accept="image/*" capture="environment" onchange="nfFotoBoleto(event)" style="display:none;">
         <div id="nfFotoStatus" class="nf-status" style="display:none;"></div>
         <div id="nfFotoPreview" class="nf-foto-preview" style="display:none;">
             <img id="nfFotoImg" src="" alt="Foto da nota" onclick="if(this.src) window.open(this.src, '_blank')">
@@ -852,9 +842,11 @@
         <div id="nfBoletosLista"></div>
         <button id="nfBtnAddVenc" class="ficha-add-ingrediente-btn" onclick="nfAdicionarBoletoManual()">+ Adicionar vencimento sem boleto</button>
 
-        <div class="nf-secao-titulo">Setor</div>
-        <div id="nfSetoresGrid" class="nf-setores-grid"></div>
-        <div id="nfSetorDica" class="nf-dica" style="margin-top: 8px;"></div>
+        <div id="nfSecaoSetor">
+            <div class="nf-secao-titulo">Setor</div>
+            <div id="nfSetoresGrid" class="nf-setores-grid"></div>
+            <div id="nfSetorDica" class="nf-dica" style="margin-top: 8px;"></div>
+        </div>
 
         <div class="nf-secao-titulo">Observação</div>
         <textarea id="nfObs" class="edit-obs" style="display:block;" placeholder="Opcional (ex: faltou item, devolução, desconto...)"></textarea>
@@ -864,41 +856,13 @@
             <button class="nf-acao-btn nf-acao-excluir" onclick="nfExcluirDetalhe()">Excluir nota</button>
         </div>
 
-        <div class="edit-actions">
+        <div class="edit-actions" id="nfAcoesSalvar">
             <button class="btn-cancel" onclick="nfVoltarLista()">Cancelar</button>
             <button class="btn-confirm" onclick="nfSalvarNota()">Salvar</button>
         </div>
     </div>
 </div>
 
-<div id="nfLeitorOverlay" class="nf-leitor-overlay" style="display:none;">
-    <div class="nf-leitor-topo">
-        <span id="nfLeitorTitulo">Código de barras</span>
-        <div style="display:flex; gap:8px;">
-            <button id="nfBtnLanterna" onclick="nfAlternarLanterna()" style="display:none;">🔦</button>
-            <button onclick="nfFecharLeitor()">✕</button>
-        </div>
-    </div>
-    <div class="nf-leitor-area">
-        <div class="nf-video-wrap" onclick="nfFocarDeNovo()">
-            <video id="nfVideo" playsinline muted autoplay></video>
-            <div class="nf-faixa"><div class="nf-faixa-linha"></div></div>
-        </div>
-    </div>
-    <div id="nfZoomBox" class="nf-zoom-box" style="display:none;">
-        <span>Zoom</span>
-        <input type="range" id="nfZoom" min="1" max="3" step="0.1" value="1" oninput="nfAplicarZoom(this.value)">
-    </div>
-    <div id="nfLeitorStatus" class="nf-leitor-status"></div>
-    <div class="nf-leitor-dica">Código deitado, dentro da faixa, ocupando quase toda a largura. Se ficar borrado, afaste um pouco e aumente o zoom.</div>
-    <div class="nf-leitor-acoes">
-        <label class="nf-leitor-foto" onclick="nfPrepararFotoCodigo()">📸 Tirar foto do código<input type="file" accept="image/*" capture="environment" onchange="nfLerCodigoDeFoto(event)" style="display:none;"></label>
-    </div>
-    <div class="nf-leitor-manual">
-        <input type="text" id="nfCodigoManual" inputmode="numeric" placeholder="Ou digite os números do código">
-        <button onclick="nfUsarCodigoManual()">Usar</button>
-    </div>
-</div>
 <!-- ===== FIM NOTAS FISCAIS ===== -->
 
 <div id="fichas-screen" class="screen">
@@ -6179,11 +6143,6 @@ var notasCache = nfLerNotasSeguro();
 var nfFiltro = 'pendentes';   // pendentes | pagas | todas
 var nfVisao = 'setor';        // setor | vencimento
 var nfForm = null;            // estado do formulário aberto
-var nfLeitor = null;
-var nfLeitorModo = 'nota';
-var nfLeitorOcupado = false;
-var nfUltimaLeitura = '';
-var nfLanternaLigada = false;
 var NF_DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 var NF_CNPJ_PROPRIO = '04439383000150';
 
@@ -6453,227 +6412,6 @@ function nfLerCanvas(canvas, qual, binarizador) {
     return Promise.resolve([]);
 }
 
-// ---------- câmera ao vivo ----------
-var nfCam = { ativo: false, stream: null, track: null, timer: null, tentativas: 0, canvas: null, pausada: false };
-
-function nfStatusLeitor(t, clicavel) {
-    var el = document.getElementById('nfLeitorStatus');
-    el.innerText = t || '';
-    el.style.textDecoration = clicavel ? 'underline' : 'none';
-    el.onclick = clicavel ? function() { nfIniciarCamera(); } : null;
-}
-
-function nfAbrirLeitor(modo) {
-    nfLeitorModo = modo;
-    nfLeitorOcupado = false;
-    nfUltimaLeitura = '';
-    nfLanternaLigada = false;
-    document.getElementById('nfCodigoManual').value = '';
-    document.getElementById('nfBtnLanterna').style.display = 'none';
-    document.getElementById('nfZoomBox').style.display = 'none';
-    document.getElementById('nfLeitorTitulo').innerText = modo === 'boleto'
-        ? 'Código de barras do boleto'
-        : 'Código de barras da nota (DANFE)';
-    document.getElementById('nfLeitorOverlay').style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    nfCam.ativo = true;
-    nfPrepararDetectorNativo(function() { });
-    nfGarantirZXing(function(err) {
-        if (err && !nfDetectorNativo && nfCam.ativo) {
-            nfStatusLeitor('Não consegui carregar o leitor (internet?). Digite os números do código abaixo.');
-        }
-    });
-    nfIniciarCamera();
-}
-
-function nfIniciarCamera() {
-    if (!nfCam.ativo) return;
-    nfPararStream();
-    nfCam.pausada = false;
-    nfCam.tentativas = 0;
-    nfStatusLeitor('Abrindo a câmera...');
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        nfStatusLeitor('Este navegador não libera a câmera ao vivo. Use "📸 Tirar foto do código" ou digite os números.');
-        return;
-    }
-    navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-    }).then(function(stream) {
-        if (!nfCam.ativo) { stream.getTracks().forEach(function(t) { t.stop(); }); return; }
-        nfCam.stream = stream;
-        nfCam.track = stream.getVideoTracks()[0];
-        var v = document.getElementById('nfVideo');
-        v.setAttribute('playsinline', '');
-        v.muted = true;
-        v.srcObject = stream;
-        var p = v.play();
-        if (p && p.catch) p.catch(function() { });
-        nfConfigurarRecursosCamera();
-        nfStatusLeitor('Encaixe o código de barras dentro da faixa');
-        nfLoopLeitura();
-    }).catch(function() {
-        nfStatusLeitor('Não consegui abrir a câmera. Libere a permissão da câmera para o site, ou use "📸 Tirar foto do código".');
-    });
-}
-
-function nfConfigurarRecursosCamera() {
-    var t = nfCam.track, cap = {};
-    try { cap = (t && t.getCapabilities) ? t.getCapabilities() : {}; } catch (e) { cap = {}; }
-    var avancado = [];
-    if (cap.focusMode && cap.focusMode.indexOf('continuous') >= 0) avancado.push({ focusMode: 'continuous' });
-    if (avancado.length) { try { t.applyConstraints({ advanced: avancado }).catch(function() { }); } catch (e) { } }
-    document.getElementById('nfBtnLanterna').style.display = cap.torch ? 'inline-block' : 'none';
-    var box = document.getElementById('nfZoomBox');
-    if (cap.zoom && cap.zoom.max > 1) {
-        var s = document.getElementById('nfZoom');
-        s.min = cap.zoom.min || 1;
-        s.max = Math.min(cap.zoom.max, 6);
-        s.step = cap.zoom.step || 0.1;
-        // Zoom 2x: dá pra segurar o celular mais longe (onde ele foca) com o código ainda grande na imagem
-        var inicial = Math.min(2, Number(s.max));
-        s.value = inicial;
-        nfAplicarZoom(inicial);
-        box.style.display = 'flex';
-    } else {
-        box.style.display = 'none';
-    }
-}
-function nfAplicarZoom(z) {
-    if (!nfCam.track) return;
-    try { nfCam.track.applyConstraints({ advanced: [{ zoom: Number(z) }] }).catch(function() { }); } catch (e) { }
-}
-function nfAlternarLanterna() {
-    if (!nfCam.track) return;
-    nfLanternaLigada = !nfLanternaLigada;
-    try { nfCam.track.applyConstraints({ advanced: [{ torch: nfLanternaLigada }] }).catch(function() { }); } catch (e) { }
-}
-function nfFocarDeNovo() {
-    if (!nfCam.track) return;
-    var cap = {};
-    try { cap = nfCam.track.getCapabilities ? nfCam.track.getCapabilities() : {}; } catch (e) { }
-    if (cap.focusMode && cap.focusMode.indexOf('single-shot') >= 0) {
-        try {
-            nfCam.track.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] }).then(function() {
-                setTimeout(function() { try { nfCam.track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function() { }); } catch (e) { } }, 1200);
-            }).catch(function() { });
-        } catch (e) { }
-    }
-}
-
-function nfLoopLeitura() {
-    if (!nfCam.ativo || nfCam.pausada || !nfCam.stream) return;
-    var v = document.getElementById('nfVideo');
-    if (v.readyState < 2 || !v.videoWidth) { nfCam.timer = setTimeout(nfLoopLeitura, 150); return; }
-    if (!nfDetectorNativo && !(window.ZXingWASM && nfZXingPronto)) {
-        if (nfCam.tentativas === 0) nfStatusLeitor('Carregando o leitor...');
-        nfCam.timer = setTimeout(nfLoopLeitura, 250);
-        return;
-    }
-    nfCam.tentativas++;
-    if (nfCam.tentativas === 2) nfStatusLeitor('Procurando o código...');
-    if (nfCam.tentativas === 60) nfStatusLeitor('Dica: afaste um pouco e use o zoom, com o código ocupando a faixa inteira. Luz forte ajuda.');
-
-    var vw = v.videoWidth, vh = v.videoHeight;
-    // Cada tentativa usa uma variação diferente (recorte, ampliação e forma de separar preto/branco),
-    // porque código comprido e fino como o da DANFE às vezes só sai em uma delas.
-    var zxingOk = window.ZXingWASM && nfZXingPronto;
-    var usarNativo = nfDetectorNativo && (!zxingOk || nfCam.tentativas % 2 === 0);
-    var variantes = [
-        { inteira: false, escala: 1, bin: 'LocalAverage' },
-        { inteira: false, escala: 1.5, bin: 'LocalAverage' },
-        { inteira: false, escala: 1, bin: 'FixedThreshold' },
-        { inteira: true, escala: 1, bin: 'LocalAverage' },
-        { inteira: false, escala: 0.8, bin: 'GlobalHistogram' },
-        { inteira: false, escala: 1.5, bin: 'FixedThreshold' }
-    ];
-    var va = usarNativo ? { inteira: nfCam.tentativas % 6 === 0, escala: 1 } : variantes[Math.floor(nfCam.tentativas / (nfDetectorNativo ? 2 : 1)) % variantes.length];
-    var sx = 0, sw = vw, sh = va.inteira ? vh : Math.round(vh * 0.5), sy = va.inteira ? 0 : Math.round((vh - sh) / 2);
-    var escala = va.escala;
-    if (sw * escala > 3000) escala = 3000 / sw;
-    if (!nfCam.canvas) nfCam.canvas = document.createElement('canvas');
-    var c = nfCam.canvas;
-    c.width = Math.round(sw * escala); c.height = Math.round(sh * escala);
-    var ctx = c.getContext('2d', { willReadFrequently: true });
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
-
-    nfLerCanvas(c, usarNativo ? 'nativo' : 'zxing', va.bin).then(function(textos) {
-        if (!nfCam.ativo || nfCam.pausada) return;
-        for (var i = 0; i < textos.length; i++) { if (nfAoLerCodigo(textos[i])) return; }
-        nfCam.timer = setTimeout(nfLoopLeitura, 30);
-    });
-}
-
-// Retorna true se o código lido foi aceito
-function nfAoLerCodigo(texto) {
-    if (nfLeitorOcupado) return true;
-    var r = nfInterpretarCodigo(texto);
-    if (!r) { nfStatusLeitor('Lendo... segure firme'); return false; }
-    // Boleto (ITF) às vezes sai com erro de leitura: confirma com 2 leituras iguais
-    if (r.tipo === 'boleto' && nfUltimaLeitura !== r.dados.barras) { nfUltimaLeitura = r.dados.barras; return false; }
-    nfLeitorOcupado = true;
-    try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) { }
-    nfFecharLeitor();
-    nfAplicarLeitura(r, 'câmera');
-    return true;
-}
-
-function nfUsarCodigoManual() {
-    var r = nfInterpretarCodigo(document.getElementById('nfCodigoManual').value);
-    if (!r) {
-        alert('Código não reconhecido. Confira os números.\n\nNota: 44 números da chave de acesso.\nBoleto: 47 números da linha digitável (ou 48 de contas de consumo).');
-        return;
-    }
-    nfFecharLeitor();
-    nfAplicarLeitura(r, 'digitado');
-}
-
-function nfPararStream() {
-    clearTimeout(nfCam.timer);
-    if (nfCam.stream) { nfCam.stream.getTracks().forEach(function(t) { try { t.stop(); } catch (e) { } }); }
-    nfCam.stream = null;
-    nfCam.track = null;
-    var v = document.getElementById('nfVideo');
-    if (v) { try { v.srcObject = null; } catch (e) { } }
-}
-
-function nfFecharLeitor() {
-    nfCam.ativo = false;
-    nfPararStream();
-    document.getElementById('nfLeitorOverlay').style.display = 'none';
-    document.body.style.overflow = '';
-}
-
-// Botão "Tirar foto do código": usa a câmera normal do celular (foto nítida, com foco automático)
-function nfPrepararFotoCodigo() {
-    // libera a câmera ao vivo pra câmera do celular poder abrir
-    nfCam.pausada = true;
-    nfPararStream();
-    nfStatusLeitor('Câmera pausada — toque aqui para voltar à câmera ao vivo', true);
-}
-function nfLerCodigoDeFoto(evento) {
-    var arquivo = evento.target.files && evento.target.files[0];
-    evento.target.value = '';
-    if (!arquivo) return;
-    nfStatusLeitor('🔎 Procurando o código na foto...');
-    nfLerCodigosDoArquivo(arquivo).then(function(resultados) {
-        if (!nfCam.ativo) return;
-        var escolhido = null;
-        for (var i = 0; i < resultados.length; i++) {
-            if (resultados[i].tipo === nfLeitorModo) { escolhido = resultados[i]; break; }
-        }
-        if (!escolhido && resultados.length) escolhido = resultados[0];
-        if (escolhido) {
-            nfLeitorOcupado = true;
-            nfFecharLeitor();
-            resultados.forEach(function(r) { nfAplicarLeitura(r, 'foto'); });
-        } else {
-            nfStatusLeitor('Não achei o código nessa foto. Tire de novo mais perto, com o código deitado ocupando a largura da foto — ou toque aqui para voltar à câmera.', true);
-        }
-    });
-}
-
 // Procura códigos numa foto: imagem inteira e depois em faixas (bom para foto da nota inteira)
 function nfLerCodigosDoArquivo(arquivo) {
     return new Promise(function(resolve) {
@@ -6761,14 +6499,14 @@ function nfAplicarLeitura(r, origem) {
         if (!emissao.value) {
             if (d.ano === hoje.getFullYear() && d.mes === hoje.getMonth() + 1) {
                 emissao.value = nfHojeIso();
-                document.getElementById('nfEmissaoDica').innerText = 'Dia preenchido com hoje (o código só traz mês/ano). Confira na nota — ou tire a foto da nota que eu leio a data.';
+                document.getElementById('nfEmissaoDica').innerText = 'Dia preenchido com hoje (o código só traz mês/ano). Estou lendo a data certa na foto...';
             } else {
-                document.getElementById('nfEmissaoDica').innerText = 'Emitida em ' + nfPad(d.mes) + '/' + d.ano + '. Informe o dia — ou tire a foto da nota que eu leio a data.';
+                document.getElementById('nfEmissaoDica').innerText = 'Emitida em ' + nfPad(d.mes) + '/' + d.ano + '. Estou lendo o dia na foto...';
             }
         }
         nfForm.mesChave = { ano: d.ano, mes: d.mes };
         nfBuscarRazaoParaForm(d.cnpj);
-        nfStatusForm('✅ Nota lida: NF ' + d.numero + ' · CNPJ ' + nfFormatarCnpj(d.cnpj) + '. Agora leia o boleto (se tiver).');
+        nfStatusForm('✅ Nota lida: NF ' + d.numero + ' · CNPJ ' + nfFormatarCnpj(d.cnpj));
     } else {
         var b = r.dados;
         var repetido = nfForm.boletos.some(function(x) { return x.barras && x.barras === b.barras; });
@@ -6779,8 +6517,7 @@ function nfAplicarLeitura(r, origem) {
         nfForm.boletos.push({ barras: b.barras, linha: b.linha, vencimento: b.vencimento, valor: b.valor });
         nfForm.boletos.sort(function(a, c) { return String(a.vencimento || '9999').localeCompare(String(c.vencimento || '9999')); });
         nfRenderizarBoletosForm();
-        nfStatusForm('✅ Boleto lido: vence ' + (b.vencimento ? nfDataBR(b.vencimento) : '(sem data no código — informe)') + ' · ' + nfMoeda(b.valor) +
-            (nfForm.editandoId ? '' : '. Tem mais parcelas? Toque em "Ler boleto" de novo.'));
+        nfStatusForm('✅ Boleto lido: vence ' + (b.vencimento ? nfDataBR(b.vencimento) : '(sem data no código — informe abaixo)') + ' · ' + nfMoeda(b.valor));
     }
 }
 
@@ -6846,17 +6583,155 @@ function nfBuscarRazaoDoCampo() {
     }
 }
 
-// ---------- foto da nota: guarda a foto + tenta ler código e data de emissão ----------
-function nfSelecionarFoto(evento) {
-    var arquivo = evento.target.files && evento.target.files[0];
-    evento.target.value = '';
-    if (!arquivo || !nfForm) return;
-    var achados = [];
-    nfStatusForm('📸 Preparando a foto...');
+// Atualiza notas já salvas quando algo termina em segundo plano (foto enviada, data lida)
+function nfCorrigirDepois(formRef, campos) {
+    if (!formRef.salvoIds || !formRef.salvoIds.length) return false;
+    formRef.salvoIds.forEach(function(id) {
+        var n = nfAcharNota(id);
+        if (n) Object.assign(n, campos);
+        supabasePatch('notas_fiscais', 'id=eq.' + encodeURIComponent(id), campos, function() { });
+    });
+    nfSalvarNotasLocal();
+    return true;
+}
 
-    // 1) Envia a foto comprimida pro armazenamento
+// ---------- fluxo por fotos: Foto 1 = nota · Foto 2 = boleto · depois o setor ----------
+function nfAbrirCameraNota() { var i = document.getElementById('nfInputNota'); i.value = ''; i.click(); }
+function nfAbrirCameraBoleto() { var i = document.getElementById('nfInputBoleto'); i.value = ''; i.click(); }
+
+function nfIrParaPasso(passo) {
+    if (!nfForm) return;
+    nfForm.passo = passo;
+    nfRenderizarPassos();
+    window.scrollTo(0, 0);
+}
+
+function nfRenderizarPassos() {
+    var el = document.getElementById('nfPassos');
+    if (!nfForm || nfForm.editandoId) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.style.display = 'block';
+    var p = nfForm.passo;
+    var etapas = [['nota', '1 Nota'], ['boleto', '2 Boleto'], ['setor', '3 Setor']];
+    var ordem = { nota: 0, boleto: 1, setor: 2 };
+    var trilha = '<div class="nf-trilha">' + etapas.map(function(e) {
+        var cls = ordem[e[0]] < ordem[p] ? 'feito' : (e[0] === p ? 'atual' : '');
+        return '<span class="' + cls + '">' + (ordem[e[0]] < ordem[p] ? '✓ ' : '') + e[1] + '</span>';
+    }).join('') + '</div>';
+    var corpo = '';
+    if (p === 'nota') {
+        corpo = '<div class="nf-passo-titulo">Foto 1 · Código de barras da nota</div>' +
+            '<div class="nf-passo-texto">Fotografe o código de barras da DANFE de perto, deitado e nítido.</div>' +
+            '<button class="nf-passo-btn" onclick="nfAbrirCameraNota()">📸 Fotografar nota</button>' +
+            '<button class="nf-passo-link" onclick="nfIrParaPasso(\'boleto\')">Preencher a nota à mão →</button>';
+    } else if (p === 'boleto') {
+        var qtd = nfForm.boletos.filter(function(b) { return b.linha; }).length;
+        corpo = '<div class="nf-passo-titulo">Foto 2 · Código de barras do boleto</div>' +
+            (qtd ? '<div class="nf-passo-texto">✅ ' + qtd + (qtd === 1 ? ' boleto lido.' : ' boletos lidos.') + ' Tem outra parcela?</div>'
+                 : '<div class="nf-passo-texto">Fotografe o código de barras do boleto.</div>') +
+            '<button class="nf-passo-btn" onclick="nfAbrirCameraBoleto()">📸 ' + (qtd ? 'Fotografar outra parcela' : 'Fotografar boleto') + '</button>' +
+            (qtd ? '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfIrParaPasso(\'setor\')">Continuar → escolher setor</button>'
+                 : '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfSemBoleto()">Sem boleto — preencher vencimento à mão</button>');
+    } else {
+        corpo = '<div class="nf-passo-titulo">Setor</div>' +
+            '<div class="nf-passo-texto">Confira os dados abaixo e toque no setor para salvar.</div>' +
+            '<div class="nf-setores-grid">' + nfSetores().map(function(s) {
+                var suger = nfForm.setor === s.id;
+                return '<button class="nf-setor-btn' + (suger ? ' ativo' : '') + '" style="--cor:' + s.cor + ';" onclick="nfSalvarNoSetor(\'' + s.id + '\')">' +
+                    '<span>' + s.icone + '</span><span>' + nfEsc(s.nome) + (suger ? ' <small>(sugerido)</small>' : '') + '</span></button>';
+            }).join('') + '</div>' +
+            '<button class="nf-passo-link" onclick="nfIrParaPasso(\'boleto\')">← Voltar ao boleto</button>';
+    }
+    el.innerHTML = trilha + corpo;
+}
+
+function nfSemBoleto() {
+    if (!nfForm) return;
+    if (!nfForm.boletos.length) nfForm.boletos.push({ barras: null, linha: null, vencimento: null, valor: null });
+    nfRenderizarBoletosForm();
+    nfIrParaPasso('setor');
+    setTimeout(function() {
+        var campo = document.querySelector('#nfBoletosLista input[type="date"]');
+        if (campo) { campo.scrollIntoView({ block: 'center' }); campo.focus(); }
+    }, 150);
+}
+
+function nfSalvarNoSetor(id) {
+    if (!nfForm) return;
+    nfForm.setor = id;
+    nfSalvarNota();
+}
+
+// Foto 1: nota
+function nfFotoNota(evento) {
+    var arquivo = evento.target.files && evento.target.files[0];
+    if (!arquivo || !nfForm) return;
+    nfStatusForm('🔎 Lendo o código da nota...');
+    nfEnviarFotoNota(arquivo);
+    nfLerCodigosDoArquivo(arquivo).then(function(resultados) {
+        if (!nfForm) return;
+        var achouNota = false;
+        resultados.forEach(function(r) {
+            if (r.tipo === 'nota') achouNota = true;
+            nfAplicarLeitura(r, 'foto');
+        });
+        if (achouNota) {
+            nfIrParaPasso('boleto');
+            // Em segundo plano: lê a data de emissão pelo texto da foto (se a nota já tiver sido salva, corrige depois)
+            var formRef = nfForm;
+            nfOCRArquivo(arquivo, function(texto) {
+                if (!texto) return;
+                var data = nfAcharDataEmissao(texto, formRef.mesChave);
+                if (!data) return;
+                if (nfForm === formRef) {
+                    document.getElementById('nfEmissao').value = data;
+                    document.getElementById('nfEmissaoDica').innerText = '📖 Data de emissão lida da foto — confira.';
+                }
+                nfCorrigirDepois(formRef, { data_emissao: data });
+            }, true);
+            return;
+        }
+        // Não achou o código de barras: tenta ler a chave impressa (texto)
+        nfStatusForm('Não achei o código de barras. Lendo os números impressos da foto (uns 20 segundos)...');
+        nfOCRArquivo(arquivo, function(texto) {
+            if (!nfForm) return;
+            var achou = texto ? nfExtrairDoTexto(texto) : {};
+            if (achou.nota) { nfIrParaPasso('boleto'); return; }
+            nfStatusForm('❌ Não consegui ler essa foto. Tire outra mais de perto, com o código de barras deitado ocupando a largura da foto — ou preencha à mão.');
+        });
+    });
+}
+
+// Foto 2: boleto (pode repetir para cada parcela)
+function nfFotoBoleto(evento) {
+    var arquivo = evento.target.files && evento.target.files[0];
+    if (!arquivo || !nfForm) return;
+    nfStatusForm('🔎 Lendo o código do boleto...');
+    nfLerCodigosDoArquivo(arquivo).then(function(resultados) {
+        if (!nfForm) return;
+        var boletos = resultados.filter(function(r) { return r.tipo === 'boleto'; });
+        if (boletos.length) {
+            boletos.forEach(function(r) { nfAplicarLeitura(r, 'foto'); });
+            nfRenderizarPassos();
+            return;
+        }
+        nfStatusForm('Não achei o código de barras. Lendo a linha digitável da foto (uns 20 segundos)...');
+        nfOCRArquivo(arquivo, function(texto) {
+            if (!nfForm) return;
+            var achou = texto ? nfExtrairDoTexto(texto, true) : {};
+            if (achou.boleto) { nfRenderizarPassos(); return; }
+            nfStatusForm('❌ Não consegui ler esse boleto. Tire outra foto mais de perto, com o código de barras deitado — ou toque em "Sem boleto" e preencha à mão.');
+        });
+    });
+}
+
+function nfEnviarFotoNota(arquivo) {
     comprimirImagem(arquivo, function(blob) {
-        if (!blob) return;
+        if (!blob || !nfForm) return;
+        var formRef = nfForm;
+        try {
+            document.getElementById('nfFotoImg').src = URL.createObjectURL(blob);
+            document.getElementById('nfFotoPreview').style.display = 'block';
+        } catch (e) { }
         var nome = 'nota_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg';
         fetch(SUPABASE_URL + '/storage/v1/object/notas-fotos/' + nome, {
             method: 'POST',
@@ -6864,28 +6739,9 @@ function nfSelecionarFoto(evento) {
             body: blob
         }).then(function(r) {
             if (!r.ok) throw new Error('status ' + r.status);
-            nfForm.fotoUrl = SUPABASE_URL + '/storage/v1/object/public/notas-fotos/' + nome;
-            document.getElementById('nfFotoImg').src = nfForm.fotoUrl;
-            document.getElementById('nfFotoPreview').style.display = 'block';
-        }).catch(function() {
-            try {
-                document.getElementById('nfFotoImg').src = URL.createObjectURL(blob);
-                document.getElementById('nfFotoPreview').style.display = 'block';
-            } catch (e) { }
-            achados.push('⚠️ a foto não foi salva na nuvem (sem internet?)');
-        });
-    });
-
-    // 2) Procura códigos de barras (nota e boleto) na própria foto
-    nfStatusForm('🔎 Procurando o código de barras na foto...');
-    nfLerCodigosDoArquivo(arquivo).then(function(resultados) {
-        if (!nfForm) return;
-        resultados.forEach(function(r) {
-            if (r.tipo === 'nota' && nfForm.chave) return;
-            nfAplicarLeitura(r, 'foto');
-            achados.push(r.tipo === 'nota' ? 'código da nota' : 'código do boleto');
-        });
-        nfLerTextoDaFoto(arquivo, achados);
+            formRef.fotoUrl = SUPABASE_URL + '/storage/v1/object/public/notas-fotos/' + nome;
+            nfCorrigirDepois(formRef, { foto_url: formRef.fotoUrl });
+        }).catch(function() { });
     });
 }
 
@@ -6910,74 +6766,54 @@ function nfPrepararImagemOCR(arquivo, cb) {
     leitor.readAsDataURL(arquivo);
 }
 
-function nfLerTextoDaFoto(arquivo, achados) {
-    nfStatusForm('📖 Lendo o texto da nota (na primeira vez pode levar uns 20–30 segundos)...');
+// Lê o texto da foto (OCR). silencioso = não mexe na mensagem da tela
+function nfOCRArquivo(arquivo, cb, silencioso) {
     nfGarantirOCR(function(err) {
-        if (err) { nfFinalizarFoto(achados, true); return; }
+        if (err) { cb(null); return; }
         nfPrepararImagemOCR(arquivo, function(canvas) {
-            if (!canvas) { nfFinalizarFoto(achados, true); return; }
+            if (!canvas) { cb(null); return; }
             var worker = null;
             Tesseract.createWorker('por').then(function(w) {
                 worker = w;
                 return w.recognize(canvas);
             }).then(function(res) {
-                var texto = (res && res.data && res.data.text) || '';
-                nfExtrairDoTexto(texto, achados);
                 if (worker) worker.terminate();
-                nfFinalizarFoto(achados, false);
+                cb((res && res.data && res.data.text) || '');
             }).catch(function() {
                 if (worker) { try { worker.terminate(); } catch (e) { } }
-                nfFinalizarFoto(achados, true);
+                cb(null);
             });
         });
     });
 }
 
-function nfExtrairDoTexto(texto, achados) {
-    if (!nfForm) return;
-    var linhas = texto.split(/\n/);
-
-    // Chave de acesso (impressa em grupos de 4 números) — se o código de barras não foi lido
-    if (!nfForm.chave) {
+// Procura no texto da foto: chave de acesso, linha digitável, CNPJ e data de emissão
+function nfExtrairDoTexto(texto, soBoleto) {
+    var achou = {};
+    if (!nfForm) return achou;
+    if (!soBoleto && !nfForm.chave) {
         var tudo = texto.replace(/[ \t.\-]/g, '');
         var cands = tudo.toUpperCase().match(/\d{6}[0-9A-Z]{12}\d{26}/g) || [];
         for (var i = 0; i < cands.length; i++) {
-            if (nfValidaChave(cands[i])) { nfAplicarLeitura({ tipo: 'nota', dados: nfParseChave(cands[i]) }, 'texto'); achados.push('chave de acesso'); break; }
+            if (nfValidaChave(cands[i])) { nfAplicarLeitura({ tipo: 'nota', dados: nfParseChave(cands[i]) }, 'texto'); achou.nota = true; break; }
         }
     }
-
-    // Linha digitável de boleto
+    var linhas = texto.split(/\n/);
     for (var j = 0; j < linhas.length; j++) {
         var dig = nfSoDigitos(linhas[j]);
-        if (dig.length >= 47) {
-            for (var ini = 0; ini + 47 <= dig.length; ini++) {
-                var r = nfInterpretarCodigo(dig.substr(ini, 47)) || (ini + 48 <= dig.length ? nfInterpretarCodigo(dig.substr(ini, 48)) : null);
-                if (r && r.tipo === 'boleto') { nfAplicarLeitura(r, 'texto'); achados.push('linha digitável do boleto'); break; }
-            }
+        for (var ini = 0; ini + 47 <= dig.length; ini++) {
+            var r = nfInterpretarCodigo(dig.substr(ini, 47)) || (ini + 48 <= dig.length ? nfInterpretarCodigo(dig.substr(ini, 48)) : null);
+            if (r && r.tipo === 'boleto') { nfAplicarLeitura(r, 'texto'); achou.boleto = true; break; }
         }
     }
-
-    // CNPJ do fornecedor (se ainda não tiver) — ignora o CNPJ do próprio restaurante
-    if (!nfLimpaCnpj(document.getElementById('nfCnpj').value)) {
-        var mc = texto.match(/\d{2}\.?\d{3}\.?\d{3}\s?\/\s?\d{4}\s?-\s?\d{2}/g) || [];
-        for (var k = 0; k < mc.length; k++) {
-            var cn = nfSoDigitos(mc[k]);
-            if (cn.length === 14 && cn !== NF_CNPJ_PROPRIO) {
-                document.getElementById('nfCnpj').value = nfFormatarCnpj(cn);
-                nfBuscarRazaoParaForm(cn);
-                achados.push('CNPJ');
-                break;
-            }
+    if (!soBoleto) {
+        var data = nfAcharDataEmissao(texto, nfForm.mesChave);
+        if (data) {
+            document.getElementById('nfEmissao').value = data;
+            document.getElementById('nfEmissaoDica').innerText = '📖 Data de emissão lida da foto — confira.';
         }
     }
-
-    // Data de emissão
-    var dataAchada = nfAcharDataEmissao(texto, nfForm.mesChave);
-    if (dataAchada) {
-        document.getElementById('nfEmissao').value = dataAchada;
-        document.getElementById('nfEmissaoDica').innerText = 'Data lida da foto — confira.';
-        achados.push('data de emissão ' + nfDataBR(dataAchada));
-    }
+    return achou;
 }
 
 function nfAcharDataEmissao(texto, mesChave) {
@@ -7000,17 +6836,6 @@ function nfAcharDataEmissao(texto, mesChave) {
     return cands[0].iso;
 }
 
-function nfFinalizarFoto(achados, falhouOCR) {
-    var partes = achados.filter(function(a) { return a.indexOf('⚠️') !== 0; });
-    var avisos = achados.filter(function(a) { return a.indexOf('⚠️') === 0; });
-    var msg;
-    if (partes.length) { msg = '✅ Li da foto: ' + partes.join(', ') + '. Confira os campos abaixo.'; }
-    else if (falhouOCR) { msg = 'Foto guardada. Não consegui ler o texto agora (internet?) — use "Ler código da nota" ou preencha à mão.'; }
-    else { msg = 'Foto guardada. Não consegui ler dados dela — tente "Ler código da nota" com a câmera.'; }
-    if (avisos.length) msg += '\n' + avisos.join('\n');
-    nfStatusForm(msg);
-}
-
 function nfRemoverFoto() {
     if (!nfForm) return;
     nfForm.fotoUrl = null;
@@ -7020,7 +6845,7 @@ function nfRemoverFoto() {
 
 // ---------- formulário ----------
 function nfNovoEstadoForm() {
-    return { editandoId: null, chave: null, serie: null, mesChave: null, boletos: [], setor: null, fotoUrl: null };
+    return { editandoId: null, chave: null, serie: null, mesChave: null, boletos: [], setor: null, fotoUrl: null, passo: 'nota', salvoIds: null };
 }
 
 function nfLimparCamposForm() {
@@ -7035,11 +6860,14 @@ function nfAbrirNovaNota() {
     nfLimparCamposForm();
     document.getElementById('nfEditTitulo').innerText = 'Protocolar nota';
     document.getElementById('nfAcoesExistente').style.display = 'none';
-    document.getElementById('nfAtalhos').style.display = 'grid';
     document.getElementById('nfBtnAddVenc').style.display = 'block';
+    document.getElementById('nfSecaoSetor').style.display = 'none';
+    document.getElementById('nfAcoesSalvar').style.display = 'none';
     nfRenderizarBoletosForm();
-    nfRenderizarSetoresForm();
+    nfRenderizarPassos();
     trocarTela('nota-edit-screen');
+    // já abre a câmera direto pra foto 1 (nota)
+    nfAbrirCameraNota();
 }
 
 function nfAbrirNota(id) {
@@ -7073,10 +6901,12 @@ function nfAbrirNota(id) {
     document.getElementById('nfEditTitulo').innerText = 'NF ' + (n.numero_nota || '');
     document.getElementById('nfAcoesExistente').style.display = 'flex';
     document.getElementById('nfBtnPagarDetalhe').innerText = n.status === 'pago' ? '↩︎ Desmarcar pagamento' : '✓ Marcar como pago';
-    document.getElementById('nfAtalhos').style.display = 'grid';
     document.getElementById('nfBtnAddVenc').style.display = 'none';
+    document.getElementById('nfSecaoSetor').style.display = 'block';
+    document.getElementById('nfAcoesSalvar').style.display = 'flex';
     nfRenderizarBoletosForm();
     nfRenderizarSetoresForm();
+    nfRenderizarPassos();
     trocarTela('nota-edit-screen');
 }
 
@@ -7089,7 +6919,7 @@ function nfRenderizarBoletosForm() {
     var cont = document.getElementById('nfBoletosLista');
     if (!nfForm) { cont.innerHTML = ''; return; }
     if (!nfForm.boletos.length) {
-        cont.innerHTML = '<div class="nf-dica" style="margin:0 2px 10px 2px;">Nenhum boleto ainda. Toque em "Ler boleto" lá em cima, ou adicione um vencimento sem boleto.</div>';
+        cont.innerHTML = '<div class="nf-dica" style="margin:0 2px 10px 2px;">Nenhum boleto ainda.</div>';
         return;
     }
     var total = nfForm.boletos.length;
@@ -7207,6 +7037,7 @@ function nfSalvarNota() {
             });
         });
         nfSalvarNotasLocal();
+        nfForm.salvoIds = novos.map(function(r) { return r.id; });
         var setorInfo = nfInfoSetor(nfForm.setor);
         var agoraData = new Date();
         registrarNoHistoricoCompartilhado({
@@ -7266,6 +7097,8 @@ function nfExcluirDetalhe() {
 // ---------- lista ----------
 function abrirNotasDireto() {
     trocarTela('notas-screen');
+    nfPrepararDetectorNativo(function() { });
+    nfGarantirZXing(function() { });
     nfRenderizarLista();
     sincronizarNotasSupabase(function() {
         if (document.getElementById('notas-screen').classList.contains('active')) nfRenderizarLista();
@@ -7399,10 +7232,8 @@ function nfRenderizarLista() {
         '<div class="nf-resumo-card nf-rc-semana" onclick="nfIrPara(\'vencimento\')"><div class="nf-rc-label">Próx. 7 dias</div><div class="nf-rc-num">' + semana.length + '</div><div class="nf-rc-valor">' + nfMoeda(nfSomar(semana)) + '</div></div>' +
         '<div class="nf-resumo-card nf-rc-total" onclick="nfIrPara(\'setor\')"><div class="nf-rc-label">Total a pagar</div><div class="nf-rc-num">' + nfMoeda(nfSomar(pend)) + '</div><div class="nf-rc-valor">' + pend.length + (pend.length === 1 ? ' boleto' : ' boletos') + '</div></div>';
 
-    var filtros = [['pendentes', 'A pagar'], ['pagas', 'Pagas'], ['todas', 'Todas']];
-    document.getElementById('nfFiltros').innerHTML = filtros.map(function(f) {
-        return '<button class="' + (nfFiltro === f[0] ? 'ativo' : '') + '" onclick="nfMudarFiltro(\'' + f[0] + '\')">' + f[1] + '</button>';
-    }).join('');
+    // Sem filtro de pagas/todas: a lista mostra o que falta pagar; na busca aparecem também as já pagas
+    nfFiltro = (document.getElementById('nfBusca').value || '').trim() ? 'todas' : 'pendentes';
     var visoes = [['setor', 'Por setor'], ['vencimento', 'Por vencimento']];
     document.getElementById('nfVisoes').innerHTML = visoes.map(function(v) {
         return '<button class="' + (nfVisao === v[0] ? 'ativo' : '') + '" onclick="nfMudarVisao(\'' + v[0] + '\')">' + v[1] + '</button>';
@@ -7414,7 +7245,7 @@ function nfRenderizarLista() {
     if (!lista.length) {
         cont.innerHTML = '<div class="nf-vazio">' + (notasCache.length
             ? 'Nada por aqui com esse filtro.'
-            : '🧾<br><br>Nenhuma nota protocolada ainda.<br>Toque em <b>📷 Protocolar nota</b> e aponte a câmera para o código de barras da nota e do boleto.') + '</div>';
+            : '🧾<br><br>Nenhuma nota protocolada ainda.<br>Toque em <b>📷 Protocolar nota</b>: foto 1 do código da nota, foto 2 do boleto e escolha o setor.') + '</div>';
         return;
     }
     var parcelas = nfParcelas();
