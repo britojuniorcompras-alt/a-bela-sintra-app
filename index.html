@@ -449,7 +449,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v23set-e</div>
+                <div class="logo-subtitulo">Gestão de Compras · v23set-f</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -6526,7 +6526,7 @@ function nfPrepararDetectorNativo(cb) {
 }
 
 // Lê códigos de um canvas. qual: 'nativo' | 'zxing'; binarizador: variação do ZXing (cada uma acerta em situações diferentes)
-function nfLerCanvas(canvas, qual, binarizador) {
+function nfLerCanvas(canvas, qual, binarizador, formatos) {
     if (qual === 'nativo' && nfDetectorNativo) {
         return nfDetectorNativo.detect(canvas).then(function(r) {
             return r.map(function(x) { return x.rawValue; });
@@ -6536,7 +6536,7 @@ function nfLerCanvas(canvas, qual, binarizador) {
         try {
             var ctx = canvas.getContext('2d', { willReadFrequently: true });
             var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            return ZXingWASM.readBarcodes(img, { formats: ['Code128', 'ITF', 'QRCode'], tryHarder: true, maxNumberOfSymbols: 3, binarizer: binarizador || 'LocalAverage' })
+            return ZXingWASM.readBarcodes(img, { formats: formatos || ['Code128', 'ITF', 'QRCode'], tryHarder: true, tryInvert: false, maxNumberOfSymbols: 2, binarizer: binarizador || 'LocalAverage' })
                 .then(function(r) { return r.filter(function(x) { return x.isValid !== false && x.text; }).map(function(x) { return x.text; }); })
                 .catch(function() { return []; });
         } catch (e) { return Promise.resolve([]); }
@@ -6545,63 +6545,75 @@ function nfLerCanvas(canvas, qual, binarizador) {
 }
 
 // Procura códigos numa foto: imagem inteira e depois em faixas (bom para foto da nota inteira)
-function nfLerCodigosDoArquivo(arquivo) {
+// Abre a foto uma única vez
+function nfAbrirImagem(arquivo) {
+    var viaImg = function() {
+        return new Promise(function(ok, falha) {
+            var img = new Image();
+            img.onload = function() { ok(img); };
+            img.onerror = falha;
+            img.src = URL.createObjectURL(arquivo);
+        });
+    };
+    if (!window.createImageBitmap) return viaImg();
+    return createImageBitmap(arquivo).catch(viaImg);
+}
+function nfCanvasDe(img, sx, sy, sw, sh, maxLado, filtro) {
+    var e = Math.min(1, maxLado / Math.max(sw, sh));
+    var c = document.createElement('canvas');
+    c.width = Math.round(sw * e); c.height = Math.round(sh * e);
+    var ctx = c.getContext('2d', { willReadFrequently: true });
+    if (filtro) ctx.filter = filtro;
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    return c;
+}
+
+// Procura o código na foto: começa pelo jeito mais rápido e só tenta os mais pesados se precisar.
+// tipo: 'nota' (Code128 da DANFE) | 'boleto' (ITF) | null (qualquer)
+function nfLerCodigosDoArquivo(arquivo, tipo, imgPronta) {
+    var formatos = tipo === 'nota' ? ['Code128', 'QRCode'] : (tipo === 'boleto' ? ['ITF'] : ['Code128', 'ITF', 'QRCode']);
+    var inicio = Date.now();
     return new Promise(function(resolve) {
-        var resultados = [], vistos = {};
-        function guardar(textos) {
-            textos.forEach(function(t) {
-                var r = nfInterpretarCodigo(t);
-                if (!r) return;
-                var chave = r.tipo === 'nota' ? r.dados.chave : r.dados.barras;
-                if (vistos[chave]) return;
-                vistos[chave] = true;
-                resultados.push(r);
-            });
-        }
         nfPrepararDetectorNativo(function() {
             nfGarantirZXing(function() {
-                var fonte = window.createImageBitmap ? createImageBitmap(arquivo) : Promise.reject();
-                fonte.catch(function() {
-                    return new Promise(function(ok, falha) {
-                        var img = new Image();
-                        img.onload = function() { ok(img); };
-                        img.onerror = falha;
-                        img.src = URL.createObjectURL(arquivo);
+                (imgPronta ? Promise.resolve(imgPronta) : nfAbrirImagem(arquivo)).then(function(img) {
+                    var W = img.width, H = img.height;
+                    var resultados = [], vistos = {};
+                    var achou = function() { return resultados.some(function(r) { return !tipo || r.tipo === tipo; }); };
+                    var guardar = function(textos) {
+                        textos.forEach(function(t) {
+                            var r = nfInterpretarCodigo(t);
+                            if (!r) return;
+                            var k = r.tipo === 'nota' ? r.dados.chave : r.dados.barras;
+                            if (vistos[k]) return;
+                            vistos[k] = true;
+                            resultados.push(r);
+                        });
+                    };
+                    var meio = Math.round(H * 0.5), quarto = Math.round(H * 0.25);
+                    var tentativas = [
+                        { r: [0, 0, W, H], max: 1600, q: 'nativo' },
+                        { r: [0, 0, W, H], max: 1400, q: 'zxing', bin: 'LocalAverage' },
+                        { r: [0, quarto, W, meio], max: 2400, q: 'zxing', bin: 'LocalAverage' },
+                        { r: [0, 0, W, H], max: 2000, q: 'zxing', bin: 'FixedThreshold' },
+                        { r: [0, 0, W, Math.round(H * 0.55)], max: 2600, q: 'zxing', bin: 'LocalAverage' },
+                        { r: [0, Math.round(H * 0.45), W, Math.round(H * 0.55)], max: 2600, q: 'zxing', bin: 'LocalAverage' },
+                        { r: [0, 0, W, H], max: 3000, q: 'nativo' },
+                        { r: [0, quarto, W, meio], max: 2400, q: 'zxing', bin: 'GlobalHistogram' }
+                    ].filter(function(t) {
+                        return t.q === 'nativo' ? !!nfDetectorNativo : !!(window.ZXingWASM && nfZXingPronto);
                     });
-                }).then(function(bmp) {
-                    var W = bmp.width, H = bmp.height;
-                    var tarefas = [];
-                    // 1) imagem inteira (até 2400px)
-                    tarefas.push({ sx: 0, sy: 0, sw: W, sh: H, max: 2400 });
-                    // 2) faixas horizontais sobrepostas, em resolução maior
-                    var faixas = 6, alt = Math.round(H * 0.3);
-                    for (var k = 0; k < faixas; k++) {
-                        tarefas.push({ sx: 0, sy: Math.round(k * (H - alt) / (faixas - 1)), sw: W, sh: alt, max: 3000 });
-                    }
-                    var idx = 0;
-                    function proxima() {
-                        // Já achou algo na imagem inteira ou numa faixa? Para.
-                        if (idx >= tarefas.length || (resultados.length && idx > 0)) { resolve(resultados); return; }
-                        var t = tarefas[idx++];
-                        var escala = Math.min(1, t.max / Math.max(t.sw, t.sh));
-                        var c = document.createElement('canvas');
-                        c.width = Math.round(t.sw * escala); c.height = Math.round(t.sh * escala);
-                        c.getContext('2d', { willReadFrequently: true }).drawImage(bmp, t.sx, t.sy, t.sw, t.sh, 0, 0, c.width, c.height);
-                        var leituras = [];
-                        if (nfDetectorNativo) leituras.push(function() { return nfLerCanvas(c, 'nativo'); });
-                        if (window.ZXingWASM && nfZXingPronto) {
-                            leituras.push(function() { return nfLerCanvas(c, 'zxing', 'LocalAverage'); });
-                            leituras.push(function() { return nfLerCanvas(c, 'zxing', 'FixedThreshold'); });
-                            leituras.push(function() { return nfLerCanvas(c, 'zxing', 'GlobalHistogram'); });
-                        }
-                        // uma variação por vez; para assim que achar
-                        (function rodar(j) {
-                            if (j >= leituras.length || resultados.length) { setTimeout(proxima, 0); return; }
-                            leituras[j]().then(function(l) { guardar(l); rodar(j + 1); });
-                        })(0);
-                    }
-                    proxima();
-                }).catch(function() { resolve(resultados); });
+                    var i = 0;
+                    (function proxima() {
+                        if (achou() || i >= tentativas.length || Date.now() - inicio > 15000) { resolve(resultados); return; }
+                        var t = tentativas[i++];
+                        var c = nfCanvasDe(img, t.r[0], t.r[1], t.r[2], t.r[3], t.max);
+                        nfLerCanvas(c, t.q, t.bin, formatos).then(function(l) {
+                            guardar(l);
+                            setTimeout(proxima, 0);
+                        });
+                    })();
+                }).catch(function() { resolve([]); });
             });
         });
     });
@@ -6734,6 +6746,7 @@ function nfAbrirCameraBoleto() { var i = document.getElementById('nfInputBoleto'
 function nfIrParaPasso(passo) {
     if (!nfForm) return;
     nfForm.passo = passo;
+    if (passo === 'setor' || passo === 'subgrupo') nfLerDataEmissaoDepois();
     nfRenderizarPassos();
     window.scrollTo(0, 0);
 }
@@ -6825,73 +6838,97 @@ function nfSubgrupoConhecido() {
 function nfFotoNota(evento) {
     var arquivo = evento.target.files && evento.target.files[0];
     if (!arquivo || !nfForm) return;
+    var formRef = nfForm;
     nfStatusForm('🔎 Lendo o código da nota...');
-    nfEnviarFotoNota(arquivo);
-    nfLerCodigosDoArquivo(arquivo).then(function(resultados) {
-        if (!nfForm) return;
-        var achouNota = false;
-        resultados.forEach(function(r) {
-            if (r.tipo === 'nota') achouNota = true;
-            nfAplicarLeitura(r, 'foto');
+    nfAbrirImagem(arquivo).then(function(img) {
+        nfLerCodigosDoArquivo(arquivo, 'nota', img).then(function(resultados) {
+            if (nfForm !== formRef) return;
+            var achouNota = false;
+            resultados.forEach(function(r) {
+                if (r.tipo === 'nota') achouNota = true;
+                nfAplicarLeitura(r, 'foto');
+            });
+            // guarda a foto (leve) depois da leitura, sem disputar o processador
+            setTimeout(function() { nfEnviarFotoNota(img, formRef); }, 50);
+            if (achouNota) {
+                // a data de emissão é lida pelo texto da foto mais tarde (no passo do setor), sem atrasar o boleto
+                formRef.ocrCanvas = nfCanvasDe(img, 0, 0, img.width, img.height, 1700, 'grayscale(1) contrast(1.35)');
+                nfIrParaPasso('boleto');
+                return;
+            }
+            // Não achou o código de barras: tenta ler a chave impressa (texto)
+            nfStatusForm('Não achei o código de barras. Lendo os números impressos da foto (pode levar uns 20 segundos)...');
+            nfOCRCanvas(nfCanvasDe(img, 0, 0, img.width, img.height, 1700, 'grayscale(1) contrast(1.35)'), function(texto) {
+                if (nfForm !== formRef) return;
+                var achou = texto ? nfExtrairDoTexto(texto) : {};
+                if (achou.nota) { nfIrParaPasso('boleto'); return; }
+                nfStatusForm('❌ Não consegui ler essa foto. Tire outra mais de perto, com o código de barras deitado ocupando a largura da foto — ou preencha à mão.');
+            });
         });
-        if (achouNota) {
-            nfIrParaPasso('boleto');
-            // Em segundo plano: lê a data de emissão pelo texto da foto (se a nota já tiver sido salva, corrige depois)
-            var formRef = nfForm;
-            nfOCRArquivo(arquivo, function(texto) {
-                if (!texto) return;
-                var data = nfAcharDataEmissao(texto, formRef.mesChave);
-                if (!data) return;
-                if (nfForm === formRef) {
-                    document.getElementById('nfEmissao').value = data;
-                    document.getElementById('nfEmissaoDica').innerText = '📖 Data de emissão lida da foto — confira.';
-                }
-                nfCorrigirDepois(formRef, { data_emissao: data });
-            }, true);
-            return;
-        }
-        // Não achou o código de barras: tenta ler a chave impressa (texto)
-        nfStatusForm('Não achei o código de barras. Lendo os números impressos da foto (uns 20 segundos)...');
-        nfOCRArquivo(arquivo, function(texto) {
-            if (!nfForm) return;
-            var achou = texto ? nfExtrairDoTexto(texto) : {};
-            if (achou.nota) { nfIrParaPasso('boleto'); return; }
-            nfStatusForm('❌ Não consegui ler essa foto. Tire outra mais de perto, com o código de barras deitado ocupando a largura da foto — ou preencha à mão.');
-        });
+    }).catch(function() {
+        nfStatusForm('❌ Não consegui abrir essa foto. Tente de novo.');
     });
+}
+
+// Lê a data de emissão pela foto da nota (em segundo plano, depois do boleto)
+function nfLerDataEmissaoDepois() {
+    var formRef = nfForm;
+    if (!formRef || !formRef.ocrCanvas || formRef.ocrIniciado) return;
+    formRef.ocrIniciado = true;
+    var canvas = formRef.ocrCanvas;
+    setTimeout(function() {
+        nfOCRCanvas(canvas, function(texto) {
+            formRef.ocrCanvas = null;
+            if (!texto) return;
+            var data = nfAcharDataEmissao(texto, formRef.mesChave);
+            if (!data) return;
+            if (nfForm === formRef) {
+                document.getElementById('nfEmissao').value = data;
+                document.getElementById('nfEmissaoDica').innerText = '📖 Data de emissão lida da foto — confira.';
+            }
+            nfCorrigirDepois(formRef, { data_emissao: data });
+        });
+    }, 300);
 }
 
 // Foto 2: boleto (pode repetir para cada parcela)
 function nfFotoBoleto(evento) {
     var arquivo = evento.target.files && evento.target.files[0];
     if (!arquivo || !nfForm) return;
+    var formRef = nfForm;
     nfStatusForm('🔎 Lendo o código do boleto...');
-    nfLerCodigosDoArquivo(arquivo).then(function(resultados) {
-        if (!nfForm) return;
-        var boletos = resultados.filter(function(r) { return r.tipo === 'boleto'; });
-        if (boletos.length) {
-            boletos.forEach(function(r) { nfAplicarLeitura(r, 'foto'); });
-            nfRenderizarPassos();
-            return;
-        }
-        nfStatusForm('Não achei o código de barras. Lendo a linha digitável da foto (uns 20 segundos)...');
-        nfOCRArquivo(arquivo, function(texto) {
-            if (!nfForm) return;
-            var achou = texto ? nfExtrairDoTexto(texto, true) : {};
-            if (achou.boleto) { nfRenderizarPassos(); return; }
-            nfStatusForm('❌ Não consegui ler esse boleto. Tire outra foto mais de perto, com o código de barras deitado — ou toque em "Sem boleto" e preencha à mão.');
+    nfAbrirImagem(arquivo).then(function(img) {
+        nfLerCodigosDoArquivo(arquivo, 'boleto', img).then(function(resultados) {
+            if (nfForm !== formRef) return;
+            var boletos = resultados.filter(function(r) { return r.tipo === 'boleto'; });
+            if (boletos.length) {
+                boletos.forEach(function(r) { nfAplicarLeitura(r, 'foto'); });
+                nfRenderizarPassos();
+                return;
+            }
+            nfStatusForm('Não achei o código de barras. Lendo a linha digitável da foto (pode levar uns 20 segundos)...');
+            nfOCRCanvas(nfCanvasDe(img, 0, 0, img.width, img.height, 1700, 'grayscale(1) contrast(1.35)'), function(texto) {
+                if (nfForm !== formRef) return;
+                var achou = texto ? nfExtrairDoTexto(texto, true) : {};
+                if (achou.boleto) { nfRenderizarPassos(); return; }
+                nfStatusForm('❌ Não consegui ler esse boleto. Tire outra foto mais de perto, com o código de barras deitado — ou toque em "Sem boleto" e preencha à mão.');
+            });
         });
+    }).catch(function() {
+        nfStatusForm('❌ Não consegui abrir essa foto. Tente de novo.');
     });
 }
 
-function nfEnviarFotoNota(arquivo) {
-    comprimirImagem(arquivo, function(blob) {
-        if (!blob || !nfForm) return;
-        var formRef = nfForm;
-        try {
-            document.getElementById('nfFotoImg').src = URL.createObjectURL(blob);
-            document.getElementById('nfFotoPreview').style.display = 'block';
-        } catch (e) { }
+function nfEnviarFotoNota(img, formRef) {
+    var c = nfCanvasDe(img, 0, 0, img.width, img.height, 1000);
+    c.toBlob(function(blob) {
+        if (!blob) return;
+        if (nfForm === formRef) {
+            try {
+                document.getElementById('nfFotoImg').src = URL.createObjectURL(blob);
+                document.getElementById('nfFotoPreview').style.display = 'block';
+            } catch (e) { }
+        }
         var nome = 'nota_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg';
         fetch(SUPABASE_URL + '/storage/v1/object/notas-fotos/' + nome, {
             method: 'POST',
@@ -6902,48 +6939,29 @@ function nfEnviarFotoNota(arquivo) {
             formRef.fotoUrl = SUPABASE_URL + '/storage/v1/object/public/notas-fotos/' + nome;
             nfCorrigirDepois(formRef, { foto_url: formRef.fotoUrl });
         }).catch(function() { });
-    });
+    }, 'image/jpeg', 0.6);
 }
 
-function nfPrepararImagemOCR(arquivo, cb) {
-    var leitor = new FileReader();
-    leitor.onload = function(e) {
-        var img = new Image();
-        img.onload = function() {
-            var max = 2000, w = img.width, h = img.height;
-            if (Math.max(w, h) > max) { var f = max / Math.max(w, h); w = Math.round(w * f); h = Math.round(h * f); }
-            var cv = document.createElement('canvas');
-            cv.width = w; cv.height = h;
-            var ctx = cv.getContext('2d');
-            ctx.filter = 'grayscale(1) contrast(1.35)';
-            ctx.drawImage(img, 0, 0, w, h);
-            cb(cv);
-        };
-        img.onerror = function() { cb(null); };
-        img.src = e.target.result;
-    };
-    leitor.onerror = function() { cb(null); };
-    leitor.readAsDataURL(arquivo);
-}
-
-// Lê o texto da foto (OCR). silencioso = não mexe na mensagem da tela
-function nfOCRArquivo(arquivo, cb, silencioso) {
-    nfGarantirOCR(function(err) {
-        if (err) { cb(null); return; }
-        nfPrepararImagemOCR(arquivo, function(canvas) {
-            if (!canvas) { cb(null); return; }
-            var worker = null;
-            Tesseract.createWorker('por').then(function(w) {
-                worker = w;
-                return w.recognize(canvas);
-            }).then(function(res) {
-                if (worker) worker.terminate();
-                cb((res && res.data && res.data.text) || '');
-            }).catch(function() {
-                if (worker) { try { worker.terminate(); } catch (e) { } }
-                cb(null);
+// OCR com um "leitor de texto" que fica carregado (não recarrega a cada foto) e uma fila (um por vez)
+var nfOcrWorkerP = null;
+var nfFilaOCR = Promise.resolve();
+function nfObterWorkerOCR() {
+    if (!nfOcrWorkerP) {
+        nfOcrWorkerP = new Promise(function(ok, falha) {
+            nfGarantirOCR(function(err) {
+                if (err || !window.Tesseract) { falha(err || new Error('sem OCR')); return; }
+                Tesseract.createWorker('por').then(ok, falha);
             });
         });
+        nfOcrWorkerP.catch(function() { nfOcrWorkerP = null; });
+    }
+    return nfOcrWorkerP;
+}
+function nfOCRCanvas(canvas, cb) {
+    nfFilaOCR = nfFilaOCR.then(function() {
+        return nfObterWorkerOCR().then(function(w) { return w.recognize(canvas); })
+            .then(function(res) { cb((res && res.data && res.data.text) || ''); })
+            .catch(function() { cb(null); });
     });
 }
 
@@ -7238,6 +7256,7 @@ function nfSalvarNota() {
         });
         nfSalvarNotasLocal();
         nfForm.salvoIds = novos.map(function(r) { return r.id; });
+        nfLerDataEmissaoDepois();
         var setorInfo = nfInfoSetor(nfForm.setor);
         var agoraData = new Date();
         registrarNoHistoricoCompartilhado({
@@ -7488,7 +7507,7 @@ function nfCardHtml(n, parcela) {
         '<span style="display:flex;gap:6px;">' +
         '<button class="nf-icone-btn" onclick="nfExcluirRapido(\'' + n.id + '\', event)" aria-label="Excluir">🗑️</button>' +
         '<button class="nf-icone-btn" onclick="event.stopPropagation(); nfAbrirNota(\'' + n.id + '\')" aria-label="Editar">✏️</button>' +
-        (n.status !== 'pago' ? '<button class="nf-pagar-btn" onclick="nfPagarDaLista(\'' + n.id + '\', event)">✓ Pago</button>' : '') + '</span>' +
+        '</span>' +
         '</div></div>';
 }
 
