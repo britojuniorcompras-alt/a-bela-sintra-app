@@ -385,6 +385,8 @@
     .nf-classificar-btns button, .nf-subgrupo-box button { border: none; border-radius: 12px; padding: 8px 10px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--surface-2); color: var(--text); }
     .nf-subgrupo-box { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); font-weight: 700; margin-top: 4px; }
     .nf-subgrupo-box button.ativo { background: #8FD14F; color: #1B1420; }
+    .bottom-bar .nf-btn-manual { background: var(--surface-2) !important; color: var(--text) !important; box-shadow: 0 6px 16px rgba(0,0,0,0.3) !important; font-size: 12px; letter-spacing: 0.3px; }
+    #nota-edit-screen .edit-obs { margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -449,7 +451,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v23set-f</div>
+                <div class="logo-subtitulo">Gestão de Compras · v23set-g</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -846,7 +848,10 @@
         <button class="btn-copiar" onclick="nfCompartilhar('copiar')">Copiar resumo</button>
     </div>
     <div class="bottom-bar">
-        <button onclick="nfAbrirNovaNota()">📷 Protocolar nota</button>
+        <div style="display:flex; gap:8px;">
+            <button style="flex:3;" onclick="nfAbrirNovaNota()">📷 Protocolar nota</button>
+            <button class="nf-btn-manual" style="flex:2;" onclick="nfAbrirManual()">✍️ Manual / recibo</button>
+        </div>
     </div>
 </div>
 
@@ -865,7 +870,8 @@
             <button onclick="nfRemoverFoto()">Remover foto</button>
         </div>
 
-        <div class="nf-secao-titulo">Nota fiscal</div>
+        <div class="nf-segmento" id="nfTipoDoc" style="margin-top: 4px;"></div>
+        <div class="nf-secao-titulo" id="nfSecaoDocTitulo">Nota fiscal</div>
         <label class="nf-label" for="nfRazao">Razão social do fornecedor</label>
         <input type="text" id="nfRazao" class="text-input" placeholder="Preenchida automaticamente pelo CNPJ">
         <div id="nfRazaoDica" class="nf-dica"></div>
@@ -896,14 +902,15 @@
         <div id="nfBoletosLista"></div>
         <button id="nfBtnAddVenc" class="ficha-add-ingrediente-btn" onclick="nfAdicionarBoletoManual()">+ Adicionar vencimento sem boleto</button>
 
+        <div class="nf-secao-titulo">Observação</div>
+        <textarea id="nfObs" class="edit-obs" style="display:block;" placeholder="Opcional (ex: faltou item, devolução, desconto...)"></textarea>
+
         <div id="nfSecaoSetor">
-            <div class="nf-secao-titulo">Setor</div>
+            <div class="nf-secao-titulo" id="nfSetorTitulo">Setor</div>
             <div id="nfSetoresGrid" class="nf-setores-grid"></div>
             <div id="nfSetorDica" class="nf-dica" style="margin-top: 8px;"></div>
         </div>
 
-        <div class="nf-secao-titulo">Observação</div>
-        <textarea id="nfObs" class="edit-obs" style="display:block;" placeholder="Opcional (ex: faltou item, devolução, desconto...)"></textarea>
 
         <div id="nfAcoesExistente" class="nf-acoes-existente" style="display:none;">
             <button id="nfBtnPagarDetalhe" class="nf-acao-btn nf-acao-pagar" onclick="nfAlternarPagoDetalhe()">✓ Marcar como pago</button>
@@ -6342,6 +6349,11 @@ function nfInfoSetor(id) {
     for (var i = 0; i < NF_ABAS.length; i++) { if (NF_ABAS[i].id === id) return NF_ABAS[i]; }
     return { id: 'semsetor', nome: 'Sem setor', aba: 'SEM SETOR', titulo: 'PROTOCOLO NF - SEM SETOR', icone: '❔', cor: '#A79FBE', ordem: 99 };
 }
+// "NF 123" ou "Recibo 45"
+function nfRotuloDoc(n) {
+    if (n.tipo_doc === 'recibo') return 'Recibo' + (n.numero_nota ? ' ' + n.numero_nota : '');
+    return 'NF ' + (n.numero_nota || '—');
+}
 // Dia em que a nota foi protocolada (AAAA-MM-DD, horário local)
 function nfDiaProtocolo(n) {
     if (n.protocolo_data) return String(n.protocolo_data).substr(0, 10);
@@ -6751,14 +6763,33 @@ function nfIrParaPasso(passo) {
     window.scrollTo(0, 0);
 }
 
+function nfRenderizarTipoDoc() {
+    var el = document.getElementById('nfTipoDoc');
+    if (!el || !nfForm) return;
+    var r = nfForm.tipoDoc === 'recibo';
+    el.innerHTML = '<button class="' + (r ? '' : 'ativo') + '" onclick="nfMudarTipoDoc(\'nf\')">🧾 Nota fiscal</button>' +
+        '<button class="' + (r ? 'ativo' : '') + '" onclick="nfMudarTipoDoc(\'recibo\')">📝 Recibo</button>';
+    document.getElementById('nfSecaoDocTitulo').innerText = r ? 'Recibo' : 'Nota fiscal';
+    document.querySelector('label[for="nfNumero"]').innerText = r ? 'Nº do recibo (opcional)' : 'Nº da nota';
+    document.querySelector('label[for="nfCnpj"]').innerText = r ? 'CNPJ / CPF (opcional)' : 'CNPJ';
+    document.querySelector('label[for="nfRazao"]').innerText = r ? 'Quem emitiu o recibo' : 'Razão social do fornecedor';
+    document.getElementById('nfRazao').placeholder = r ? 'Nome de quem recebeu o pagamento' : 'Preenchida automaticamente pelo CNPJ';
+}
+function nfMudarTipoDoc(t) {
+    if (!nfForm) return;
+    nfForm.tipoDoc = t;
+    nfRenderizarTipoDoc();
+}
+
 function nfRenderizarPassos() {
+    nfRenderizarTipoDoc();
     var el = document.getElementById('nfPassos');
     if (!nfForm || nfForm.editandoId) { el.style.display = 'none'; el.innerHTML = ''; return; }
     el.style.display = 'block';
     var p = nfForm.passo;
     var etapas = [['nota', '1 Nota'], ['boleto', '2 Boleto'], ['setor', '3 Setor']];
     var ordem = { nota: 0, boleto: 1, setor: 2, subgrupo: 2 };
-    var trilha = '<div class="nf-trilha">' + etapas.map(function(e) {
+    var trilha = (p === 'manual' || nfForm.manual) ? '' : '<div class="nf-trilha">' + etapas.map(function(e) {
         var cls = ordem[e[0]] < ordem[p] ? 'feito' : (ordem[e[0]] === ordem[p] ? 'atual' : '');
         return '<span class="' + cls + '">' + (ordem[e[0]] < ordem[p] ? '✓ ' : '') + e[1] + '</span>';
     }).join('') + '</div>';
@@ -6777,12 +6808,16 @@ function nfRenderizarPassos() {
             (qtd ? '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfIrParaPasso(\'setor\')">Continuar → escolher setor</button>'
                  : '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfSemBoleto()">Sem boleto — preencher vencimento à mão</button>' +
                    '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfPagoNoCartao()">💳 Pago no cartão</button>');
+    } else if (p === 'manual') {
+        corpo = '<div class="nf-passo-titulo">✍️ Lançamento manual</div>' +
+            '<div class="nf-passo-texto">Preencha os dados logo abaixo (fornecedor, valor, vencimento ou cartão) e depois toque no setor lá embaixo para salvar.</div>' +
+            '<label class="nf-passo-btn nf-passo-btn-sec" style="text-align:center;">📎 Anexar foto (opcional)<input type="file" accept="image/*" capture="environment" onchange="nfAnexarFoto(event)" style="display:none;"></label>';
     } else if (p === 'subgrupo') {
         corpo = '<div class="nf-passo-titulo">Gerais: Ceagesp ou Secos?</div>' +
             '<div class="nf-passo-texto">Para o controle mensal. Só pergunto na primeira nota deste fornecedor — depois o app lembra.</div>' +
             '<button class="nf-passo-btn" onclick="nfEscolherSubgrupo(\'ceagesp\')">🥬 Peixes e Ceagesp (hortifrúti, laticínios)</button>' +
             '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfEscolherSubgrupo(\'secos\')">🌾 Estoque de secos</button>' +
-            '<button class="nf-passo-link" onclick="nfIrParaPasso(\'setor\')">← Voltar aos setores</button>';
+            '<button class="nf-passo-link" onclick="nfIrParaPasso(nfForm.manual ? \'manual\' : \'setor\')">← Voltar aos setores</button>';
     } else {
         corpo = '<div class="nf-passo-titulo">Setor</div>' +
             '<div class="nf-passo-texto">Confira os dados abaixo e toque no setor para salvar.</div>' +
@@ -7023,7 +7058,7 @@ function nfRemoverFoto() {
 
 // ---------- formulário ----------
 function nfNovoEstadoForm() {
-    return { editandoId: null, chave: null, serie: null, mesChave: null, boletos: [], setor: null, fotoUrl: null, passo: 'nota', salvoIds: null, subgrupo: null };
+    return { editandoId: null, chave: null, serie: null, mesChave: null, boletos: [], setor: null, fotoUrl: null, passo: 'nota', salvoIds: null, subgrupo: null, tipoDoc: 'nf', manual: false };
 }
 
 function nfLimparCamposForm() {
@@ -7062,6 +7097,7 @@ function nfAbrirNota(id) {
     nfForm.boletos = [{ barras: null, linha: n.linha_digitavel || null, vencimento: n.vencimento || null, valor: n.valor, cartao: n.forma_pagto === 'cartao' }];
     nfForm.setor = nfInfoSetor(n.setor).id;
     nfForm.subgrupo = n.subgrupo || null;
+    nfForm.tipoDoc = n.tipo_doc || 'nf';
     document.getElementById('nfProtocoloData').value = nfDiaProtocolo(n) || '';
     document.getElementById('nfRazao').value = n.razao_social || '';
     document.getElementById('nfCnpj').value = nfFormatarCnpj(n.cnpj || '');
@@ -7080,7 +7116,7 @@ function nfAbrirNota(id) {
     if (n.status === 'pago' && n.pago_em) info.push('· Paga em ' + nfDataBR(String(n.pago_em).substr(0, 10)));
     if (info.length) nfStatusForm(info.join(' '));
 
-    document.getElementById('nfEditTitulo').innerText = 'NF ' + (n.numero_nota || '');
+    document.getElementById('nfEditTitulo').innerText = nfRotuloDoc(n);
     document.getElementById('nfAcoesExistente').style.display = 'flex';
     document.getElementById('nfBtnPagarDetalhe').innerText = n.status === 'pago' ? '↩︎ Desmarcar pagamento' : '✓ Marcar como pago';
     document.getElementById('nfBtnAddVenc').style.display = 'none';
@@ -7093,6 +7129,35 @@ function nfAbrirNota(id) {
 }
 
 var nfVoltarParaDia = null; // quando a edição foi aberta pelo relatório do dia
+function nfAbrirManual() {
+    nfForm = nfNovoEstadoForm();
+    nfForm.manual = true;
+    nfForm.passo = 'manual';
+    nfLimparCamposForm();
+    document.getElementById('nfEditTitulo').innerText = 'Lançamento manual';
+    document.getElementById('nfAcoesExistente').style.display = 'none';
+    document.getElementById('nfBtnAddVenc').style.display = 'block';
+    document.getElementById('nfSecaoSetor').style.display = 'block';
+    document.getElementById('nfAcoesSalvar').style.display = 'none';
+    document.getElementById('nfEmissao').value = nfHojeIso();
+    nfForm.boletos = [{ barras: null, linha: null, vencimento: null, valor: null }];
+    nfRenderizarBoletosForm();
+    nfRenderizarSetoresForm();
+    nfRenderizarPassos();
+    trocarTela('nota-edit-screen');
+    setTimeout(function() { document.getElementById('nfRazao').focus(); }, 200);
+}
+function nfAnexarFoto(evento) {
+    var arquivo = evento.target.files && evento.target.files[0];
+    if (!arquivo || !nfForm) return;
+    var formRef = nfForm;
+    nfStatusForm('📎 Anexando a foto...');
+    nfAbrirImagem(arquivo).then(function(img) {
+        nfEnviarFotoNota(img, formRef);
+        if (nfForm === formRef) nfStatusForm('📎 Foto anexada.');
+    }).catch(function() { nfStatusForm('❌ Não consegui abrir essa foto.'); });
+}
+
 function nfVoltarLista() {
     nfForm = null;
     if (nfVoltarParaDia) { var d = nfVoltarParaDia; nfVoltarParaDia = null; nfAbrirDia(d); return; }
@@ -7168,9 +7233,11 @@ function nfAdicionarBoletoManual() {
 
 function nfRenderizarSetoresForm() {
     var grid = document.getElementById('nfSetoresGrid');
+    document.getElementById('nfSetorTitulo').innerText = (nfForm && nfForm.manual && !nfForm.editandoId) ? 'Setor — toque para salvar' : 'Setor';
     grid.innerHTML = nfSetores().map(function(s) {
         var ativo = nfForm && nfForm.setor === s.id;
-        return '<button class="nf-setor-btn' + (ativo ? ' ativo' : '') + '" style="--cor:' + s.cor + ';" onclick="nfEscolherSetor(\'' + s.id + '\')">' +
+        var acao = (nfForm && nfForm.manual && !nfForm.editandoId) ? 'nfSalvarNoSetor' : 'nfEscolherSetor';
+        return '<button class="nf-setor-btn' + (ativo ? ' ativo' : '') + '" style="--cor:' + s.cor + ';" onclick="' + acao + '(\'' + s.id + '\')">' +
             '<span>' + s.icone + '</span><span>' + nfEsc(s.nome) + '</span></button>';
     }).join('') + (nfForm && nfForm.setor === 'gerais' ?
         '<div class="nf-subgrupo-box"><span>Controle mensal:</span>' +
@@ -7197,6 +7264,7 @@ function nfSalvarNota() {
 
     if (!razao && !numero) { alert('Leia o código da nota ou preencha pelo menos a razão social e o número.'); return; }
     if (!nfForm.setor) { alert('Escolha o setor da nota.'); return; }
+    if (nfForm.manual && !nfForm.editandoId && !nfForm.boletos.some(function(b) { return b.valor; })) { alert('Informe o valor.'); return; }
     var boletos = nfForm.boletos.slice();
     if (!boletos.length) {
         if (!confirm('Nenhum vencimento informado. Salvar a nota mesmo assim?')) return;
@@ -7214,6 +7282,7 @@ function nfSalvarNota() {
         data_emissao: emissao,
         setor: nfForm.setor,
         subgrupo: nfForm.setor === 'gerais' ? (nfForm.subgrupo || null) : null,
+        tipo_doc: nfForm.tipoDoc || 'nf',
         observacao: obs || null,
         foto_url: nfForm.fotoUrl || null,
         protocolo_data: document.getElementById('nfProtocoloData').value || nfHojeIso()
@@ -7263,7 +7332,7 @@ function nfSalvarNota() {
             data: agoraData.toLocaleDateString('pt-BR') + ' às ' + nfPad(agoraData.getHours()) + ':' + nfPad(agoraData.getMinutes()),
             setor: 'Notas Fiscais',
             tipo: 'notas',
-            itens: ['Nota protocolada: ' + (razao || 'Fornecedor') + ' — NF ' + (numero || '?') + ' — ' + setorInfo.nome].concat(novos.map(function(r) {
+            itens: [(base.tipo_doc === 'recibo' ? 'Recibo lançado: ' : 'Nota protocolada: ') + (razao || 'Fornecedor') + ' — ' + nfRotuloDoc(base) + ' — ' + setorInfo.nome].concat(novos.map(function(r) {
                 return '  ' + (r.forma_pagto === 'cartao' ? 'Cartão' : 'Venc. ' + (r.vencimento ? nfDataBR(r.vencimento) : 's/ data')) + ' — ' + nfMoeda(r.valor);
             }))
         });
@@ -7305,7 +7374,7 @@ function nfExcluirDetalhe() {
     if (!nfForm || !nfForm.editandoId) return;
     var n = nfAcharNota(nfForm.editandoId);
     if (!n) return;
-    if (!confirm('Excluir esta nota do protocolo?\n\n' + (n.razao_social || '') + ' — NF ' + (n.numero_nota || '') + '\n\nIsso não pode ser desfeito.')) return;
+    if (!confirm('Excluir esta nota do protocolo?\n\n' + (n.razao_social || '') + ' — ' + nfRotuloDoc(n) + '\n\nIsso não pode ser desfeito.')) return;
     notasCache = notasCache.filter(function(x) { return x.id !== n.id; });
     nfSalvarNotasLocal();
     supabaseDelete('notas_fiscais', 'id=eq.' + encodeURIComponent(n.id), function() { });
@@ -7316,7 +7385,7 @@ function nfExcluirRapido(id, ev) {
     if (ev) ev.stopPropagation();
     var n = nfAcharNota(id);
     if (!n) return;
-    if (!confirm('Excluir esta nota do protocolo?\n\n' + (n.razao_social || '') + ' — NF ' + (n.numero_nota || '') + ' — ' + nfMoeda(n.valor) + '\n\nIsso não pode ser desfeito.')) return;
+    if (!confirm('Excluir esta nota do protocolo?\n\n' + (n.razao_social || '') + ' — ' + nfRotuloDoc(n) + ' — ' + nfMoeda(n.valor) + '\n\nIsso não pode ser desfeito.')) return;
     notasCache = notasCache.filter(function(x) { return x.id !== id; });
     nfSalvarNotasLocal();
     supabaseDelete('notas_fiscais', 'id=eq.' + encodeURIComponent(id), function() { });
@@ -7494,7 +7563,7 @@ function nfCardHtml(n, parcela) {
     var setor = nfInfoSetor(n.setor);
     var etq = nfEtiquetaVencimento(n);
     var meta = [];
-    if (n.numero_nota) meta.push('NF ' + nfEsc(n.numero_nota));
+    if (n.numero_nota || n.tipo_doc === 'recibo') meta.push(nfEsc(nfRotuloDoc(n)));
     if (parcela) meta.push('Parcela ' + parcela);
     if (n.data_emissao) meta.push('Emissão ' + nfDataBR(n.data_emissao, true));
     if (nfVisao !== 'setor') meta.push(setor.icone + ' ' + nfEsc(setor.nome));
@@ -7535,7 +7604,7 @@ function nfTextoResumo() {
             if (nfVisao === 'setor' || n.status === 'pago') partes.push(n.vencimento ? nfDataBR(n.vencimento, true) : 's/ venc.');
             else partes.push(nfDataBR(n.vencimento, true) + ' (' + nfDiaSemana(n.vencimento) + ')');
             partes.push(n.razao_social || 'Fornecedor');
-            if (n.numero_nota) partes.push('NF ' + n.numero_nota);
+            if (n.numero_nota || n.tipo_doc === 'recibo') partes.push(nfRotuloDoc(n));
             partes.push(nfMoeda(n.valor));
             if (nfVisao !== 'setor') partes.push(nfInfoSetor(n.setor).nome);
             if (n.status === 'pago') partes.push('PAGO');
@@ -7643,7 +7712,7 @@ function nfAbrirDia(dia) {
                     var venc = n.forma_pagto === 'cartao' ? 'CARTÃO' : (n.vencimento ? nfDataBR(n.vencimento, true) : '—');
                     return '<div class="nf-linha-prot">' +
                         '<div class="nf-lp-venc">' + venc + '</div>' +
-                        '<div class="nf-lp-desc"><b>' + nfEsc(n.razao_social || 'Fornecedor sem nome') + '</b><span>NF ' + nfEsc(n.numero_nota || '—') + ' · Emissão ' + (n.data_emissao ? nfDataBR(n.data_emissao, true) : '—') + '</span></div>' +
+                        '<div class="nf-lp-desc"><b>' + nfEsc(n.razao_social || 'Fornecedor sem nome') + '</b><span>' + nfEsc(nfRotuloDoc(n)) + ' · Emissão ' + (n.data_emissao ? nfDataBR(n.data_emissao, true) : '—') + '</span></div>' +
                         '<div class="nf-lp-valor">' + nfMoeda(n.valor) + '</div>' +
                         '<div class="nf-lp-acoes">' +
                         '<button class="nf-icone-btn" onclick="nfEditarDoDia(\'' + n.id + '\')" aria-label="Editar">✏️</button>' +
@@ -7727,7 +7796,7 @@ function nfMontarPlanilha(dia) {
                 var numero = String(n.numero_nota || '');
                 row.getCell(1).value = n.forma_pagto === 'cartao' ? 'CARTÃO' : nfDataExcel(n.vencimento);
                 row.getCell(2).value = n.razao_social || '';
-                row.getCell(3).value = /^\d{1,15}$/.test(numero) ? Number(numero) : numero;
+                row.getCell(3).value = n.tipo_doc === 'recibo' ? ('RECIBO' + (numero ? ' ' + numero : '')) : (/^\d{1,15}$/.test(numero) ? Number(numero) : numero);
                 row.getCell(4).value = nfDataExcel(n.data_emissao);
                 row.getCell(5).value = (n.valor === null || n.valor === undefined || n.valor === '') ? null : Number(n.valor);
             }
