@@ -460,7 +460,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v23set-k</div>
+                <div class="logo-subtitulo">Gestão de Compras · v23set-l</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -6187,16 +6187,22 @@ function tocarSomAlerta() {
     } catch (erro) { /* dispositivos sem suporte a áudio simplesmente ficam em silêncio */ }
 }
 
+// Só pergunta UMA vez por aparelho, e só quando existe mesmo um alerta pra avisar.
+// (Antes isso era perguntado a cada toque na tela, e o navegador ficava insistindo.)
 function pedirPermissaoNotificacao() {
     if (!('Notification' in window)) { return; }
-    if (Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
+    if (Notification.permission !== 'default') { return; }
+    try {
+        if (localStorage.getItem('permissaoNotifPerguntadaABS') === 'sim') { return; }
+        localStorage.setItem('permissaoNotifPerguntadaABS', 'sim');
+    } catch (erro) { return; }
+    try { Notification.requestPermission(); } catch (erro) { }
 }
 
 function notificarUrgencia(titulo, corpo) {
     tocarSomAlerta();
     if (navigator.vibrate) { navigator.vibrate([80, 60, 80]); }
+    pedirPermissaoNotificacao();
     if ('Notification' in window && Notification.permission === 'granted') {
         try { new Notification(titulo, { body: corpo, icon: undefined }); } catch (erro) { /* alguns navegadores restringem notificação fora de contexto seguro */ }
     }
@@ -6252,7 +6258,6 @@ function verificarNovasUrgencias() {
 }
 
 document.addEventListener('click', function(evento) {
-    pedirPermissaoNotificacao();
     var alvo = evento.target.closest('button, .tab-btn, .product-item, .unit-btn, .btn-whatsapp-link, .btn-email-link, .back-btn, .back-btn-inline, .history-share-btn, .folder-item');
     if (alvo) {
         tocarSomClique();
