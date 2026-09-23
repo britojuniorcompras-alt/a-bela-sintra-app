@@ -267,6 +267,78 @@
     .grupo-nav-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px 6px 20px; background: var(--bg); }
     .grupo-nav-header .back-btn-inline { background: var(--surface); border: 1px solid var(--line); color: var(--text); font-size: 18px; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; flex-shrink: 0; }
     .grupo-nav-header span { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--text); }
+
+    /* ===== NOTAS FISCAIS ===== */
+    .hist-btn-notas { background: rgba(232,111,160,0.22); color: #F29BC0; box-shadow: 0 2px 8px rgba(232,111,160,0.25); }
+    .nf-resumo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px 20px 4px 20px; }
+    .nf-resumo-card { background: var(--surface); border-radius: 18px; padding: 12px 14px; box-shadow: 0 6px 16px rgba(0,0,0,0.3); cursor: pointer; }
+    .nf-resumo-card .nf-rc-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); }
+    .nf-resumo-card .nf-rc-num { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; margin-top: 2px; }
+    .nf-resumo-card .nf-rc-valor { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
+    .nf-rc-vencido .nf-rc-num { color: #F5867A; }
+    .nf-rc-hoje .nf-rc-num { color: #F2C94C; }
+    .nf-rc-semana .nf-rc-num { color: #F79868; }
+    .nf-rc-total .nf-rc-num { color: #7FD6A6; font-size: 17px; line-height: 1.6; }
+    .nf-controles { display: flex; flex-direction: column; gap: 8px; padding: 12px 20px 0 20px; }
+    .nf-segmento { display: flex; background: var(--surface); border-radius: 16px; padding: 4px; gap: 4px; }
+    .nf-segmento button { flex: 1; border: none; background: transparent; color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; padding: 9px 6px; border-radius: 12px; cursor: pointer; }
+    .nf-segmento button.ativo { background: #E86FA0; color: #1B1420; box-shadow: 0 3px 10px rgba(232,111,160,0.4); }
+    .nf-grupo-header { display: flex; align-items: center; gap: 8px; margin: 18px 2px 10px 2px; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; color: var(--text); }
+    .nf-grupo-header .nf-gh-bolinha { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .nf-grupo-header .nf-gh-info { margin-left: auto; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; color: var(--text-dim); }
+    .nf-card { background: var(--surface); border-radius: 18px; padding: 13px 14px; margin-bottom: 10px; box-shadow: 0 6px 16px rgba(0,0,0,0.35); border-left: 4px solid var(--cor, var(--line)); cursor: pointer; }
+    .nf-card:active { transform: translateY(1px); }
+    .nf-card-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .nf-card-nome { font-weight: 700; font-size: 14px; line-height: 1.3; word-break: break-word; }
+    .nf-card-valor { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; white-space: nowrap; }
+    .nf-card-meta { font-size: 12px; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
+    .nf-card-rodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+    .nf-badge { font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 12px; }
+    .nf-badge-vencido { background: rgba(228,72,58,0.22); color: #F5867A; }
+    .nf-badge-hoje { background: rgba(242,201,76,0.22); color: #F2C94C; }
+    .nf-badge-proximo { background: rgba(243,112,58,0.22); color: #F79868; }
+    .nf-badge-futuro { background: rgba(167,159,190,0.18); color: var(--text-dim); }
+    .nf-badge-pago { background: rgba(95,184,138,0.22); color: #7FD6A6; }
+    .nf-pagar-btn { border: none; background: rgba(95,184,138,0.2); color: #7FD6A6; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 12px; padding: 7px 12px; border-radius: 12px; cursor: pointer; }
+    .nf-vazio { text-align: center; color: var(--text-dim); padding: 40px 20px; font-size: 14px; line-height: 1.5; }
+    .nf-form { padding: 20px 20px 30px 20px; max-width: 520px; margin: 0 auto; }
+    .nf-atalhos { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .nf-atalho { display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--surface); color: var(--text); border: none; border-radius: 18px; padding: 14px 6px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.3); text-align: center; }
+    .nf-atalho span { font-size: 24px; }
+    .nf-atalho-destaque { background: linear-gradient(160deg, #E86FA0, #B94A7C); color: #fff; }
+    .nf-status { background: rgba(232,111,160,0.14); color: #F29BC0; border-radius: 14px; padding: 10px 14px; font-size: 13px; line-height: 1.45; margin-bottom: 12px; }
+    .nf-secao-titulo { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; margin: 18px 0 10px 0; color: var(--text); }
+    .nf-label { display: block; font-size: 12px; font-weight: 700; color: var(--text-dim); margin: 0 0 6px 2px; }
+    .nf-dica { font-size: 12px; color: var(--text-dim); margin: -8px 2px 12px 2px; line-height: 1.4; }
+    .nf-dica:empty { display: none; }
+    .nf-linha2 { display: flex; gap: 10px; }
+    .nf-linha2 > * { flex: 1; min-width: 0; }
+    .nf-form input[type="date"] { color-scheme: dark; }
+    .nf-boleto { background: var(--surface); border-radius: 16px; padding: 12px; margin-bottom: 10px; }
+    .nf-boleto-topo { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: var(--text-dim); margin-bottom: 8px; }
+    .nf-boleto-topo button { background: none; border: none; color: var(--text-dim); font-size: 18px; cursor: pointer; padding: 0 4px; }
+    .nf-boleto .text-input { background: var(--surface-2); margin-bottom: 8px; }
+    .nf-linha-digitavel { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-dim); word-break: break-all; background: rgba(0,0,0,0.18); border-radius: 10px; padding: 8px 10px; }
+    .nf-setores-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .nf-setor-btn { display: flex; align-items: center; gap: 8px; background: var(--surface); color: var(--text); border: 2px solid transparent; border-radius: 14px; padding: 11px 10px; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; text-align: left; }
+    .nf-setor-btn.ativo { border-color: var(--cor); background: color-mix(in srgb, var(--cor) 22%, var(--surface)); }
+    .nf-foto-preview { position: relative; margin-bottom: 12px; }
+    .nf-foto-preview img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 16px; display: block; }
+    .nf-foto-preview button { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 12px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .nf-acoes-existente { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 16px 0; }
+    .nf-acao-btn { border: none; border-radius: 16px; padding: 13px; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; cursor: pointer; background: var(--surface); color: var(--text); }
+    .nf-acao-pagar { background: rgba(95,184,138,0.22); color: #7FD6A6; }
+    .nf-acao-excluir { background: transparent; color: #F5867A; border: 1px solid rgba(228,72,58,0.4); }
+    .nf-leitor-overlay { position: fixed; inset: 0; background: #000; z-index: 3000; display: flex; flex-direction: column; }
+    .nf-leitor-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: calc(14px + env(safe-area-inset-top)) 16px 12px 16px; color: #fff; font-size: 14px; font-weight: 700; }
+    .nf-leitor-topo button { background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 12px; padding: 8px 12px; font-size: 15px; cursor: pointer; flex-shrink: 0; }
+    .nf-leitor-area { flex: 1; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .nf-leitor-area video { width: 100% !important; height: auto !important; max-height: 100%; object-fit: cover; }
+    .nf-leitor-status { color: #F29BC0; text-align: center; font-size: 13.5px; font-weight: 700; padding: 10px 16px 0 16px; min-height: 20px; }
+    .nf-leitor-dica { color: rgba(255,255,255,0.65); text-align: center; font-size: 12px; padding: 6px 20px; line-height: 1.4; }
+    .nf-leitor-manual { display: flex; gap: 8px; padding: 10px 16px calc(16px + env(safe-area-inset-bottom)) 16px; }
+    .nf-leitor-manual input { flex: 1; min-width: 0; border: none; border-radius: 14px; padding: 13px 14px; font-size: 14px; background: #222; color: #fff; outline: none; }
+    .nf-leitor-manual button { border: none; border-radius: 14px; padding: 0 16px; font-weight: 700; background: #E86FA0; color: #1B1420; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -331,7 +403,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v12ago</div>
+                <div class="logo-subtitulo">Gestão de Compras · v23set</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -349,6 +421,7 @@
         <button class="hist-btn hist-btn-eventos" id="btnEventosTopo" onclick="abrirEventosDireto()">🎉 Eventos</button>
         <button class="hist-btn hist-btn-fichas" id="btnFichasTopo" onclick="abrirFichasDireto()">📝 Fichas</button>
         <button class="hist-btn hist-btn-checklist" id="btnChecklistTopo" onclick="abrirChecklistDireto()">✅ Checklist</button>
+        <button class="hist-btn hist-btn-notas" id="btnNotasTopo" onclick="abrirNotasDireto()">🧾 Notas</button>
     </div>
 
     <div class="tabs-bar" id="tabsBar"></div>
@@ -703,6 +776,110 @@
 <!-- ===== FIM WIZARD ===== -->
 
 
+
+
+<!-- ===== NOTAS FISCAIS ===== -->
+<div id="notas-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
+        <h2>Notas Fiscais</h2>
+    </div>
+    <div class="nf-resumo" id="nfResumo"></div>
+    <div class="nf-controles">
+        <div class="nf-segmento" id="nfFiltros"></div>
+        <div class="nf-segmento" id="nfVisoes"></div>
+    </div>
+    <div class="search-bar" style="position: static; padding: 12px 20px 0 20px;">
+        <input type="text" id="nfBusca" placeholder="🔍 Buscar fornecedor, nº da nota ou CNPJ" oninput="nfRenderizarLista()">
+    </div>
+    <div class="product-list" id="nfLista"></div>
+    <div class="summary-footer" id="nfCompartilhar">
+        <button class="btn-whatsapp-link" onclick="nfCompartilhar('whatsapp')">Enviar resumo via WhatsApp</button>
+        <button class="btn-email-link" onclick="nfCompartilhar('email')">Enviar resumo por E-mail</button>
+        <button class="btn-copiar" onclick="nfCompartilhar('copiar')">Copiar resumo</button>
+    </div>
+    <div class="bottom-bar">
+        <button onclick="nfAbrirNovaNota()">📷 Protocolar nota</button>
+    </div>
+</div>
+
+<div id="nota-edit-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="nfVoltarLista()">←</button>
+        <h2 id="nfEditTitulo">Protocolar nota</h2>
+    </div>
+    <div class="nf-form">
+        <div class="nf-atalhos" id="nfAtalhos">
+            <button class="nf-atalho nf-atalho-destaque" onclick="nfAbrirLeitor('nota')"><span>🧾</span>Ler código da nota</button>
+            <button class="nf-atalho" onclick="nfAbrirLeitor('boleto')"><span>💳</span>Ler boleto</button>
+            <label class="nf-atalho"><span>📸</span>Foto da nota<input type="file" accept="image/*" capture="environment" onchange="nfSelecionarFoto(event)" style="display:none;"></label>
+        </div>
+        <div id="nfFotoStatus" class="nf-status" style="display:none;"></div>
+        <div id="nfFotoPreview" class="nf-foto-preview" style="display:none;">
+            <img id="nfFotoImg" src="" alt="Foto da nota" onclick="if(this.src) window.open(this.src, '_blank')">
+            <button onclick="nfRemoverFoto()">Remover foto</button>
+        </div>
+
+        <div class="nf-secao-titulo">Nota fiscal</div>
+        <label class="nf-label" for="nfRazao">Razão social do fornecedor</label>
+        <input type="text" id="nfRazao" class="text-input" placeholder="Preenchida automaticamente pelo CNPJ">
+        <div id="nfRazaoDica" class="nf-dica"></div>
+        <div class="nf-linha2">
+            <div>
+                <label class="nf-label" for="nfCnpj">CNPJ</label>
+                <input type="text" id="nfCnpj" class="text-input" placeholder="00.000.000/0000-00" onchange="nfBuscarRazaoDoCampo()">
+            </div>
+            <div>
+                <label class="nf-label" for="nfNumero">Nº da nota</label>
+                <input type="text" id="nfNumero" class="text-input" inputmode="numeric" placeholder="Número">
+            </div>
+        </div>
+        <label class="nf-label" for="nfEmissao">Data de emissão</label>
+        <input type="date" id="nfEmissao" class="text-input">
+        <div id="nfEmissaoDica" class="nf-dica"></div>
+        <div id="nfChaveDica" class="nf-dica"></div>
+
+        <div class="nf-secao-titulo">Boletos e vencimentos</div>
+        <div id="nfBoletosLista"></div>
+        <button id="nfBtnAddVenc" class="ficha-add-ingrediente-btn" onclick="nfAdicionarBoletoManual()">+ Adicionar vencimento sem boleto</button>
+
+        <div class="nf-secao-titulo">Setor</div>
+        <div id="nfSetoresGrid" class="nf-setores-grid"></div>
+        <div id="nfSetorDica" class="nf-dica" style="margin-top: 8px;"></div>
+
+        <div class="nf-secao-titulo">Observação</div>
+        <textarea id="nfObs" class="edit-obs" style="display:block;" placeholder="Opcional (ex: faltou item, devolução, desconto...)"></textarea>
+
+        <div id="nfAcoesExistente" class="nf-acoes-existente" style="display:none;">
+            <button id="nfBtnPagarDetalhe" class="nf-acao-btn nf-acao-pagar" onclick="nfAlternarPagoDetalhe()">✓ Marcar como pago</button>
+            <button class="nf-acao-btn nf-acao-excluir" onclick="nfExcluirDetalhe()">Excluir nota</button>
+        </div>
+
+        <div class="edit-actions">
+            <button class="btn-cancel" onclick="nfVoltarLista()">Cancelar</button>
+            <button class="btn-confirm" onclick="nfSalvarNota()">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<div id="nfLeitorOverlay" class="nf-leitor-overlay" style="display:none;">
+    <div class="nf-leitor-topo">
+        <span id="nfLeitorTitulo">Aponte para o código de barras</span>
+        <div style="display:flex; gap:8px;">
+            <button id="nfBtnLanterna" onclick="nfAlternarLanterna()" style="display:none;">🔦</button>
+            <button onclick="nfFecharLeitor()">✕</button>
+        </div>
+    </div>
+    <div id="nfLeitorArea" class="nf-leitor-area"></div>
+    <div id="nfLeitorStatus" class="nf-leitor-status"></div>
+    <div class="nf-leitor-dica">Deixe o código de barras deitado, dentro da faixa. Aproxime ou afaste devagar até focar. Luz boa ajuda muito.</div>
+    <div class="nf-leitor-manual">
+        <input type="text" id="nfCodigoManual" inputmode="numeric" placeholder="Ou digite os números do código">
+        <button onclick="nfUsarCodigoManual()">Usar</button>
+    </div>
+</div>
+<div id="nfLeitorArquivo" style="display:none;"></div>
+<!-- ===== FIM NOTAS FISCAIS ===== -->
 
 <div id="fichas-screen" class="screen">
     <div class="screen-header">
@@ -1876,6 +2053,13 @@ function montarDashboardResumo() {
     var compromissosHoje = compromissosCache[chaveHoje] || [];
     if (compromissosHoje.length > 0) {
         chips.push({ classe: 'dashboard-chip-agenda', emoji: '📅', texto: 'Hoje na agenda', count: compromissosHoje.length, onclick: "abrirAgendaDireto()" });
+    }
+
+    // Boletos de notas fiscais vencidos / vencendo em até 3 dias
+    if (typeof nfContagemAlertas === 'function') {
+        var alertasNf = nfContagemAlertas();
+        if (alertasNf.vencidos > 0) { chips.push({ classe: 'dashboard-chip-vencido', emoji: '🧾', texto: 'Boleto vencido', count: alertasNf.vencidos, onclick: "abrirNotasDireto()" }); }
+        if (alertasNf.proximos > 0) { chips.push({ classe: 'dashboard-chip-proximo', emoji: '🧾', texto: 'Boleto vencendo', count: alertasNf.proximos, onclick: "abrirNotasDireto()" }); }
     }
 
     if (chips.length === 0) {
@@ -4304,6 +4488,7 @@ function textoDoHistorico(entry) {
     var titulo;
     if (entry.tipo === 'checklist') { titulo = "Fornecedores confirmados"; }
     else if (entry.tipo === 'manutencao') { titulo = "Resumo de Manutenção"; }
+    else if (entry.tipo === 'notas') { titulo = "Notas Fiscais"; }
     else { titulo = "Pedido " + entry.setor; }
     return "*" + titulo + " - " + entry.data + "*\n\n" + entry.itens.join("\n");;
 }
@@ -5962,6 +6147,1112 @@ setInterval(function() {
     if (navigator.onLine) { processarFilaReenvio(); }
 }, 30000);
 atualizarAvisoOffline();
+</script>
+<script>
+
+// =====================================================================
+// NOTAS FISCAIS — protocolo de notas, leitura de código de barras
+// (DANFE + boleto), razão social pelo CNPJ e controle de vencimentos
+// =====================================================================
+var NF_STORAGE_KEY = 'notasFiscaisABS';
+var notasCache = nfLerNotasSeguro();
+var nfFiltro = 'pendentes';   // pendentes | pagas | todas
+var nfVisao = 'setor';        // setor | vencimento
+var nfForm = null;            // estado do formulário aberto
+var nfLeitor = null;
+var nfLeitorModo = 'nota';
+var nfLeitorOcupado = false;
+var nfUltimaLeitura = '';
+var nfLanternaLigada = false;
+var NF_DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+var NF_CNPJ_PROPRIO = '04439383000150';
+
+function nfLerNotasSeguro() {
+    try { var d = localStorage.getItem(NF_STORAGE_KEY); return d ? JSON.parse(d) : []; } catch (e) { return []; }
+}
+function nfSalvarNotasLocal() {
+    try { localStorage.setItem(NF_STORAGE_KEY, JSON.stringify(notasCache)); } catch (e) { }
+}
+
+// ---------- utilidades ----------
+function nfPad(n) { return (n < 10 ? '0' : '') + n; }
+function nfIsoDeData(d) { return d.getFullYear() + '-' + nfPad(d.getMonth() + 1) + '-' + nfPad(d.getDate()); }
+function nfHojeIso() { return nfIsoDeData(new Date()); }
+function nfDiasAte(iso) {
+    if (!iso) return null;
+    var p = String(iso).substr(0, 10).split('-');
+    var alvo = Date.UTC(+p[0], +p[1] - 1, +p[2]);
+    var h = new Date();
+    var hoje = Date.UTC(h.getFullYear(), h.getMonth(), h.getDate());
+    return Math.round((alvo - hoje) / 86400000);
+}
+function nfDataBR(iso, curta) {
+    if (!iso) return '—';
+    var p = String(iso).substr(0, 10).split('-');
+    return curta ? (p[2] + '/' + p[1]) : (p[2] + '/' + p[1] + '/' + p[0]);
+}
+function nfDiaSemana(iso) {
+    var p = String(iso).substr(0, 10).split('-');
+    return NF_DIAS_SEMANA[new Date(+p[0], +p[1] - 1, +p[2]).getDay()];
+}
+function nfMoeda(v) {
+    if (v === null || v === undefined || v === '' || isNaN(Number(v))) return '—';
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function nfValorParaCampo(v) {
+    if (v === null || v === undefined || v === '') return '';
+    return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function nfParseValor(s) {
+    s = String(s || '').replace(/[R$\s]/g, '');
+    if (!s) return null;
+    if (s.indexOf(',') >= 0) { s = s.replace(/\./g, '').replace(',', '.'); }
+    var n = parseFloat(s);
+    return isNaN(n) ? null : Math.round(n * 100) / 100;
+}
+function nfSoDigitos(s) { return String(s || '').replace(/\D/g, ''); }
+function nfLimpaCodigo(s) { return String(s || '').toUpperCase().replace(/[^0-9A-Z]/g, ''); }
+function nfLimpaCnpj(s) { return String(s || '').toUpperCase().replace(/[^0-9A-Z]/g, ''); }
+function nfFormatarCnpj(c) {
+    c = nfLimpaCnpj(c);
+    if (c.length !== 14) return c;
+    return c.substr(0, 2) + '.' + c.substr(2, 3) + '.' + c.substr(5, 3) + '/' + c.substr(8, 4) + '-' + c.substr(12, 2);
+}
+function nfEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+// ---------- setores ----------
+function nfSetores() {
+    var ids = ['hortifruti', 'naopereciveis', 'bebidas', 'limpeza', 'peixes', 'carnes', 'manutencao'];
+    var lista = [];
+    for (var i = 0; i < ids.length; i++) {
+        for (var j = 0; j < setores.length; j++) {
+            if (setores[j].id === ids[i]) { lista.push({ id: setores[j].id, nome: setores[j].nome, icone: setores[j].icone, cor: setores[j].accent || '#A79FBE' }); }
+        }
+    }
+    lista.push({ id: 'outros', nome: 'Outros', icone: '📦', cor: '#A79FBE' });
+    return lista;
+}
+function nfInfoSetor(id) {
+    var l = nfSetores();
+    for (var i = 0; i < l.length; i++) { if (l[i].id === id) return l[i]; }
+    return { id: 'semsetor', nome: 'Sem setor', icone: '❔', cor: '#A79FBE' };
+}
+
+// ---------- chave de acesso da NF-e (código de barras da DANFE) ----------
+function nfValidaChave(ch) {
+    if (!/^\d{6}[0-9A-Z]{12}\d{26}$/.test(ch)) return false;
+    var soma = 0, peso = 2;
+    for (var i = 42; i >= 0; i--) {
+        soma += (ch.charCodeAt(i) - 48) * peso;   // CNPJ alfanumérico: valor = código ASCII - 48
+        peso = peso === 9 ? 2 : peso + 1;
+    }
+    var resto = soma % 11;
+    var dv = resto < 2 ? 0 : 11 - resto;
+    if (dv !== +ch.charAt(43)) return false;
+    var mes = +ch.substr(4, 2);
+    var modelo = ch.substr(20, 2);
+    return mes >= 1 && mes <= 12 && (modelo === '55' || modelo === '65' || modelo === '57');
+}
+function nfParseChave(ch) {
+    return {
+        chave: ch,
+        ano: 2000 + (+ch.substr(2, 2)),
+        mes: +ch.substr(4, 2),
+        cnpj: ch.substr(6, 14),
+        modelo: ch.substr(20, 2),
+        serie: String(+ch.substr(22, 3)),
+        numero: String(+ch.substr(25, 9))
+    };
+}
+
+// ---------- boletos ----------
+function nfMod10(num) {
+    var soma = 0, peso = 2;
+    for (var i = num.length - 1; i >= 0; i--) {
+        var p = (+num.charAt(i)) * peso;
+        soma += p > 9 ? p - 9 : p;
+        peso = peso === 2 ? 1 : 2;
+    }
+    var r = soma % 10;
+    return r === 0 ? 0 : 10 - r;
+}
+function nfMod11Boleto(num) {
+    var soma = 0, peso = 2;
+    for (var i = num.length - 1; i >= 0; i--) { soma += (+num.charAt(i)) * peso; peso = peso === 9 ? 2 : peso + 1; }
+    var dv = 11 - (soma % 11);
+    return (dv === 0 || dv === 10 || dv === 11) ? 1 : dv;
+}
+function nfMod11Arrecadacao(num) {
+    var soma = 0, peso = 2;
+    for (var i = num.length - 1; i >= 0; i--) { soma += (+num.charAt(i)) * peso; peso = peso === 9 ? 2 : peso + 1; }
+    var resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+}
+function nfValidaBarrasBoleto(bc) {
+    if (!/^\d{44}$/.test(bc) || bc.charAt(0) === '8') return false;
+    return nfMod11Boleto(bc.substr(0, 4) + bc.substr(5)) === +bc.charAt(4);
+}
+function nfLinhaParaBarras(ld) {
+    return ld.substr(0, 4) + ld.substr(32, 1) + ld.substr(33, 14) + ld.substr(4, 5) + ld.substr(10, 10) + ld.substr(21, 10);
+}
+function nfBarrasParaLinha(bc) {
+    var c1 = bc.substr(0, 4) + bc.substr(19, 5), c2 = bc.substr(24, 10), c3 = bc.substr(34, 10);
+    return c1 + nfMod10(c1) + c2 + nfMod10(c2) + c3 + nfMod10(c3) + bc.charAt(4) + bc.substr(5, 14);
+}
+function nfFormatarLinha(ld) {
+    if (!ld) return '';
+    if (ld.length === 47) {
+        return ld.substr(0, 5) + '.' + ld.substr(5, 5) + ' ' + ld.substr(10, 5) + '.' + ld.substr(15, 6) + ' ' +
+            ld.substr(21, 5) + '.' + ld.substr(26, 6) + ' ' + ld.substr(32, 1) + ' ' + ld.substr(33, 14);
+    }
+    if (ld.length === 48) { return ld.substr(0, 12) + ' ' + ld.substr(12, 12) + ' ' + ld.substr(24, 12) + ' ' + ld.substr(36, 12); }
+    return ld;
+}
+// Fator de vencimento: 1000 = 03/07/2000 (ciclo antigo) ou 22/02/2025 (ciclo novo). Fica com a data mais próxima de hoje.
+function nfFatorParaData(f) {
+    if (!f) return null;
+    var dia = 86400000;
+    var d1 = Date.UTC(1997, 9, 7) + f * dia;
+    var d2 = Date.UTC(2025, 1, 22) + (f - 1000) * dia;
+    var agora = Date.now();
+    var escolhida = (f >= 1000 && Math.abs(d2 - agora) < Math.abs(d1 - agora)) ? d2 : d1;
+    var dt = new Date(escolhida);
+    return dt.getUTCFullYear() + '-' + nfPad(dt.getUTCMonth() + 1) + '-' + nfPad(dt.getUTCDate());
+}
+function nfDadosBoleto(bc) {
+    var valor = (+bc.substr(9, 10)) / 100;
+    return { barras: bc, linha: nfBarrasParaLinha(bc), vencimento: nfFatorParaData(+bc.substr(5, 4)), valor: valor > 0 ? valor : null };
+}
+function nfValidaArrecadacao(b) {
+    if (!/^8\d{43}$/.test(b)) return false;
+    var id = b.charAt(2), semDv = b.substr(0, 3) + b.substr(4);
+    if (id === '6' || id === '7') return nfMod10(semDv) === +b.charAt(3);
+    if (id === '8' || id === '9') return nfMod11Arrecadacao(semDv) === +b.charAt(3);
+    return false;
+}
+function nfDadosArrecadacao(b) {
+    var id = b.charAt(2), ld = '';
+    for (var i = 0; i < 4; i++) {
+        var bloco = b.substr(i * 11, 11);
+        ld += bloco + ((id === '6' || id === '7') ? nfMod10(bloco) : nfMod11Arrecadacao(bloco));
+    }
+    var valor = (+b.substr(4, 11)) / 100;
+    return { barras: b, linha: ld, vencimento: null, valor: valor > 0 ? valor : null };
+}
+
+// Recebe qualquer texto lido (código de barras, QR, digitado) e diz se é nota ou boleto
+function nfInterpretarCodigo(texto) {
+    var c = nfLimpaCodigo(texto);
+    if (c.length === 44 && nfValidaChave(c)) return { tipo: 'nota', dados: nfParseChave(c) };
+    // QR Code de NFC-e ou texto maior: procura uma chave válida dentro
+    if (c.length > 44) {
+        var m = String(texto).toUpperCase().match(/\d{6}[0-9A-Z]{12}\d{26}/g) || [];
+        for (var k = 0; k < m.length; k++) { if (nfValidaChave(m[k])) return { tipo: 'nota', dados: nfParseChave(m[k]) }; }
+    }
+    var d = nfSoDigitos(texto);
+    if (d.length === 44 && d.charAt(0) !== '8' && nfValidaBarrasBoleto(d)) return { tipo: 'boleto', dados: nfDadosBoleto(d) };
+    if (d.length === 47) {
+        var bc = nfLinhaParaBarras(d);
+        if (nfValidaBarrasBoleto(bc)) return { tipo: 'boleto', dados: nfDadosBoleto(bc) };
+    }
+    if (d.charAt(0) === '8' && (d.length === 44 || d.length === 48)) {
+        var b = d.length === 48 ? (d.substr(0, 11) + d.substr(12, 11) + d.substr(24, 11) + d.substr(36, 11)) : d;
+        if (nfValidaArrecadacao(b)) return { tipo: 'boleto', dados: nfDadosArrecadacao(b) };
+    }
+    return null;
+}
+
+// ---------- carregamento sob demanda das bibliotecas (não pesa na abertura do app) ----------
+function nfCarregarScript(urls, cb) {
+    var i = 0;
+    (function tentar() {
+        if (i >= urls.length) { cb(new Error('falha ao carregar')); return; }
+        var s = document.createElement('script');
+        s.src = urls[i++];
+        s.onload = function() { cb(null); };
+        s.onerror = function() { if (s.parentNode) s.parentNode.removeChild(s); tentar(); };
+        document.head.appendChild(s);
+    })();
+}
+function nfGarantirLeitor(cb) {
+    if (window.Html5Qrcode) { cb(null); return; }
+    nfCarregarScript([
+        'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js',
+        'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'
+    ], cb);
+}
+function nfGarantirOCR(cb) {
+    if (window.Tesseract) { cb(null); return; }
+    nfCarregarScript(['https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'], cb);
+}
+function nfFormatosLeitura() {
+    var F = window.Html5QrcodeSupportedFormats;
+    return [F.CODE_128, F.ITF, F.QR_CODE];
+}
+
+// ---------- leitor pela câmera ----------
+function nfStatusLeitor(t) { document.getElementById('nfLeitorStatus').innerText = t || ''; }
+
+function nfAbrirLeitor(modo) {
+    nfLeitorModo = modo;
+    nfLeitorOcupado = false;
+    nfUltimaLeitura = '';
+    nfLanternaLigada = false;
+    document.getElementById('nfCodigoManual').value = '';
+    document.getElementById('nfBtnLanterna').style.display = 'none';
+    document.getElementById('nfLeitorTitulo').innerText = modo === 'boleto'
+        ? 'Aponte para o código de barras do boleto'
+        : 'Aponte para o código de barras da nota (DANFE)';
+    document.getElementById('nfLeitorOverlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    nfStatusLeitor('Abrindo a câmera...');
+
+    nfGarantirLeitor(function(err) {
+        if (err) { nfStatusLeitor('Não consegui carregar o leitor (sem internet?). Digite o código abaixo.'); return; }
+        if (document.getElementById('nfLeitorOverlay').style.display === 'none') return;
+        try {
+            nfLeitor = new Html5Qrcode('nfLeitorArea', {
+                formatsToSupport: nfFormatosLeitura(),
+                verbose: false,
+                experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+            });
+        } catch (e) { nfStatusLeitor('Seu navegador não permitiu abrir o leitor. Digite o código abaixo.'); return; }
+
+        nfLeitor.start(
+            { facingMode: 'environment' },
+            {
+                fps: 12,
+                qrbox: function(w, h) { return { width: Math.floor(w * 0.92), height: Math.floor(Math.min(h * 0.4, w * 0.42)) }; },
+                videoConstraints: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+            },
+            nfAoLerCodigo,
+            function() { }
+        ).then(function() {
+            nfStatusLeitor('Procurando o código...');
+            try {
+                var cap = nfLeitor.getRunningTrackCapabilities();
+                if (cap && cap.torch) { document.getElementById('nfBtnLanterna').style.display = 'inline-block'; }
+            } catch (e) { }
+        }).catch(function() {
+            nfStatusLeitor('Não consegui abrir a câmera. Libere a permissão da câmera no navegador ou digite o código abaixo.');
+        });
+    });
+}
+
+function nfAlternarLanterna() {
+    if (!nfLeitor) return;
+    nfLanternaLigada = !nfLanternaLigada;
+    nfLeitor.applyVideoConstraints({ advanced: [{ torch: nfLanternaLigada }] }).catch(function() { });
+}
+
+function nfAoLerCodigo(texto) {
+    if (nfLeitorOcupado) return;
+    var r = nfInterpretarCodigo(texto);
+    if (!r) { nfStatusLeitor('Lendo... segure firme'); return; }
+    // Código de boleto (ITF) às vezes sai com erro de leitura: exige 2 leituras iguais seguidas
+    if (r.tipo === 'boleto' && nfUltimaLeitura !== r.dados.barras) { nfUltimaLeitura = r.dados.barras; return; }
+    nfLeitorOcupado = true;
+    try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) { }
+    nfFecharLeitor();
+    nfAplicarLeitura(r, 'câmera');
+}
+
+function nfUsarCodigoManual() {
+    var r = nfInterpretarCodigo(document.getElementById('nfCodigoManual').value);
+    if (!r) {
+        alert('Código não reconhecido. Confira os números.\n\nNota: 44 números da chave de acesso.\nBoleto: 47 números da linha digitável (ou 48 de contas de consumo).');
+        return;
+    }
+    nfFecharLeitor();
+    nfAplicarLeitura(r, 'digitado');
+}
+
+function nfFecharLeitor() {
+    document.getElementById('nfLeitorOverlay').style.display = 'none';
+    document.body.style.overflow = '';
+    if (nfLeitor) {
+        var l = nfLeitor;
+        nfLeitor = null;
+        try { l.stop().then(function() { try { l.clear(); } catch (e) { } }).catch(function() { }); } catch (e) { }
+    }
+}
+
+// Coloca no formulário o que foi lido
+function nfAplicarLeitura(r, origem) {
+    if (!nfForm) return;
+    if (r.tipo === 'nota') {
+        var d = r.dados;
+        var jaExiste = notasCache.filter(function(n) { return n.chave_acesso === d.chave && n.id !== nfForm.editandoId; });
+        if (jaExiste.length > 0 && !nfForm.editandoId) {
+            var ex = jaExiste[0];
+            var ok = confirm('⚠️ Essa nota já foi protocolada' + (ex.criado_em ? ' em ' + nfDataBR(String(ex.criado_em).substr(0, 10)) : '') +
+                (ex.criado_por ? ' por ' + ex.criado_por : '') + '.\n\n' + (ex.razao_social || '') + ' — NF ' + (ex.numero_nota || '') +
+                '\n\nQuer continuar mesmo assim?');
+            if (!ok) return;
+        }
+        nfForm.chave = d.chave;
+        nfForm.serie = d.serie;
+        document.getElementById('nfCnpj').value = nfFormatarCnpj(d.cnpj);
+        document.getElementById('nfNumero').value = d.numero;
+        document.getElementById('nfChaveDica').innerText = '🔑 Chave: ' + d.chave.replace(/(.{4})/g, '$1 ').trim();
+
+        var emissao = document.getElementById('nfEmissao');
+        var hoje = new Date();
+        if (!emissao.value) {
+            if (d.ano === hoje.getFullYear() && d.mes === hoje.getMonth() + 1) {
+                emissao.value = nfHojeIso();
+                document.getElementById('nfEmissaoDica').innerText = 'Dia preenchido com hoje (o código só traz mês/ano). Confira na nota — ou tire a foto da nota que eu leio a data.';
+            } else {
+                document.getElementById('nfEmissaoDica').innerText = 'Emitida em ' + nfPad(d.mes) + '/' + d.ano + '. Informe o dia — ou tire a foto da nota que eu leio a data.';
+            }
+        }
+        nfForm.mesChave = { ano: d.ano, mes: d.mes };
+        nfBuscarRazaoParaForm(d.cnpj);
+        nfStatusForm('✅ Nota lida: NF ' + d.numero + ' · CNPJ ' + nfFormatarCnpj(d.cnpj) + '. Agora leia o boleto (se tiver).');
+    } else {
+        var b = r.dados;
+        var repetido = nfForm.boletos.some(function(x) { return x.barras && x.barras === b.barras; });
+        if (repetido) { nfStatusForm('Esse boleto já está na lista.'); return; }
+        // Se só tem um vencimento em branco sem boleto, substitui
+        if (nfForm.boletos.length === 1 && !nfForm.boletos[0].barras && !nfForm.boletos[0].vencimento && !nfForm.boletos[0].valor) { nfForm.boletos = []; }
+        if (nfForm.editandoId && nfForm.boletos.length >= 1) { nfForm.boletos = []; }
+        nfForm.boletos.push({ barras: b.barras, linha: b.linha, vencimento: b.vencimento, valor: b.valor });
+        nfForm.boletos.sort(function(a, c) { return String(a.vencimento || '9999').localeCompare(String(c.vencimento || '9999')); });
+        nfRenderizarBoletosForm();
+        nfStatusForm('✅ Boleto lido: vence ' + (b.vencimento ? nfDataBR(b.vencimento) : '(sem data no código — informe)') + ' · ' + nfMoeda(b.valor) +
+            (nfForm.editandoId ? '' : '. Tem mais parcelas? Toque em "Ler boleto" de novo.'));
+    }
+}
+
+function nfStatusForm(t) {
+    var el = document.getElementById('nfFotoStatus');
+    if (!t) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.innerText = t;
+}
+
+// ---------- razão social pelo CNPJ ----------
+function nfUltimaNotaDoCnpj(cnpj) {
+    var melhor = null;
+    for (var i = 0; i < notasCache.length; i++) {
+        var n = notasCache[i];
+        if (n.cnpj === cnpj && (!melhor || String(n.criado_em || '') > String(melhor.criado_em || ''))) { melhor = n; }
+    }
+    return melhor;
+}
+function nfBuscarRazao(cnpj, cb) {
+    cnpj = nfLimpaCnpj(cnpj);
+    if (cnpj.length !== 14) { cb(null); return; }
+    var conhecida = nfUltimaNotaDoCnpj(cnpj);
+    if (conhecida && conhecida.razao_social) { cb({ razao: conhecida.razao_social, conhecido: true }); return; }
+    if (!/^\d{14}$/.test(cnpj)) { cb(null); return; }
+    fetch('https://brasilapi.com.br/api/cnpj/v1/' + cnpj)
+        .then(function(r) { if (!r.ok) throw new Error('status ' + r.status); return r.json(); })
+        .then(function(d) { cb({ razao: d.razao_social, fantasia: d.nome_fantasia }); })
+        .catch(function() {
+            fetch('https://publica.cnpj.ws/cnpj/' + cnpj)
+                .then(function(r) { if (!r.ok) throw new Error('status ' + r.status); return r.json(); })
+                .then(function(d) { cb({ razao: d.razao_social, fantasia: d.estabelecimento && d.estabelecimento.nome_fantasia }); })
+                .catch(function() { cb(null); });
+        });
+}
+function nfBuscarRazaoParaForm(cnpj) {
+    cnpj = nfLimpaCnpj(cnpj);
+    var dica = document.getElementById('nfRazaoDica');
+    var campo = document.getElementById('nfRazao');
+    // Sugere o setor que esse fornecedor costuma ter
+    var anterior = nfUltimaNotaDoCnpj(cnpj);
+    if (anterior && anterior.setor && nfForm && !nfForm.setor) {
+        nfForm.setor = anterior.setor;
+        nfRenderizarSetoresForm();
+        document.getElementById('nfSetorDica').innerText = 'Setor sugerido pelas notas anteriores desse fornecedor.';
+    }
+    if (campo.value.trim()) return;
+    dica.innerText = 'Buscando razão social pelo CNPJ...';
+    nfBuscarRazao(cnpj, function(res) {
+        if (res && res.razao) {
+            if (!campo.value.trim()) campo.value = res.razao;
+            dica.innerText = res.conhecido ? 'Fornecedor já conhecido.' : (res.fantasia ? 'Nome fantasia: ' + res.fantasia : '');
+        } else {
+            dica.innerText = 'Não achei a razão social automaticamente — digite, por favor.';
+        }
+    });
+}
+function nfBuscarRazaoDoCampo() {
+    var c = nfLimpaCnpj(document.getElementById('nfCnpj').value);
+    if (c.length === 14) {
+        document.getElementById('nfCnpj').value = nfFormatarCnpj(c);
+        nfBuscarRazaoParaForm(c);
+    }
+}
+
+// ---------- foto da nota: guarda a foto + tenta ler código e data de emissão ----------
+function nfSelecionarFoto(evento) {
+    var arquivo = evento.target.files && evento.target.files[0];
+    evento.target.value = '';
+    if (!arquivo || !nfForm) return;
+    var achados = [];
+    nfStatusForm('📸 Preparando a foto...');
+
+    // 1) Envia a foto comprimida pro armazenamento
+    comprimirImagem(arquivo, function(blob) {
+        if (!blob) return;
+        var nome = 'nota_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg';
+        fetch(SUPABASE_URL + '/storage/v1/object/notas-fotos/' + nome, {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'image/jpeg' },
+            body: blob
+        }).then(function(r) {
+            if (!r.ok) throw new Error('status ' + r.status);
+            nfForm.fotoUrl = SUPABASE_URL + '/storage/v1/object/public/notas-fotos/' + nome;
+            document.getElementById('nfFotoImg').src = nfForm.fotoUrl;
+            document.getElementById('nfFotoPreview').style.display = 'block';
+        }).catch(function() {
+            try {
+                document.getElementById('nfFotoImg').src = URL.createObjectURL(blob);
+                document.getElementById('nfFotoPreview').style.display = 'block';
+            } catch (e) { }
+            achados.push('⚠️ a foto não foi salva na nuvem (sem internet?)');
+        });
+    });
+
+    // 2) Tenta ler o código de barras direto da foto
+    nfStatusForm('🔎 Procurando o código de barras na foto...');
+    nfGarantirLeitor(function(err) {
+        var depoisDoCodigo = function() { nfLerTextoDaFoto(arquivo, achados); };
+        if (err) { depoisDoCodigo(); return; }
+        try {
+            var leitorArq = new Html5Qrcode('nfLeitorArquivo', { formatsToSupport: nfFormatosLeitura(), verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
+            leitorArq.scanFile(arquivo, false).then(function(texto) {
+                var r = nfInterpretarCodigo(texto);
+                if (r && (r.tipo === 'nota' ? !nfForm.chave : true)) {
+                    nfAplicarLeitura(r, 'foto');
+                    achados.push(r.tipo === 'nota' ? 'código da nota' : 'código do boleto');
+                }
+                try { leitorArq.clear(); } catch (e) { }
+                depoisDoCodigo();
+            }).catch(function() { try { leitorArq.clear(); } catch (e) { } depoisDoCodigo(); });
+        } catch (e) { depoisDoCodigo(); }
+    });
+}
+
+function nfPrepararImagemOCR(arquivo, cb) {
+    var leitor = new FileReader();
+    leitor.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var max = 2000, w = img.width, h = img.height;
+            if (Math.max(w, h) > max) { var f = max / Math.max(w, h); w = Math.round(w * f); h = Math.round(h * f); }
+            var cv = document.createElement('canvas');
+            cv.width = w; cv.height = h;
+            var ctx = cv.getContext('2d');
+            ctx.filter = 'grayscale(1) contrast(1.35)';
+            ctx.drawImage(img, 0, 0, w, h);
+            cb(cv);
+        };
+        img.onerror = function() { cb(null); };
+        img.src = e.target.result;
+    };
+    leitor.onerror = function() { cb(null); };
+    leitor.readAsDataURL(arquivo);
+}
+
+function nfLerTextoDaFoto(arquivo, achados) {
+    nfStatusForm('📖 Lendo o texto da nota (na primeira vez pode levar uns 20–30 segundos)...');
+    nfGarantirOCR(function(err) {
+        if (err) { nfFinalizarFoto(achados, true); return; }
+        nfPrepararImagemOCR(arquivo, function(canvas) {
+            if (!canvas) { nfFinalizarFoto(achados, true); return; }
+            var worker = null;
+            Tesseract.createWorker('por').then(function(w) {
+                worker = w;
+                return w.recognize(canvas);
+            }).then(function(res) {
+                var texto = (res && res.data && res.data.text) || '';
+                nfExtrairDoTexto(texto, achados);
+                if (worker) worker.terminate();
+                nfFinalizarFoto(achados, false);
+            }).catch(function() {
+                if (worker) { try { worker.terminate(); } catch (e) { } }
+                nfFinalizarFoto(achados, true);
+            });
+        });
+    });
+}
+
+function nfExtrairDoTexto(texto, achados) {
+    if (!nfForm) return;
+    var linhas = texto.split(/\n/);
+
+    // Chave de acesso (impressa em grupos de 4 números) — se o código de barras não foi lido
+    if (!nfForm.chave) {
+        var tudo = texto.replace(/[ \t.\-]/g, '');
+        var cands = tudo.toUpperCase().match(/\d{6}[0-9A-Z]{12}\d{26}/g) || [];
+        for (var i = 0; i < cands.length; i++) {
+            if (nfValidaChave(cands[i])) { nfAplicarLeitura({ tipo: 'nota', dados: nfParseChave(cands[i]) }, 'texto'); achados.push('chave de acesso'); break; }
+        }
+    }
+
+    // Linha digitável de boleto
+    for (var j = 0; j < linhas.length; j++) {
+        var dig = nfSoDigitos(linhas[j]);
+        if (dig.length >= 47) {
+            for (var ini = 0; ini + 47 <= dig.length; ini++) {
+                var r = nfInterpretarCodigo(dig.substr(ini, 47)) || (ini + 48 <= dig.length ? nfInterpretarCodigo(dig.substr(ini, 48)) : null);
+                if (r && r.tipo === 'boleto') { nfAplicarLeitura(r, 'texto'); achados.push('linha digitável do boleto'); break; }
+            }
+        }
+    }
+
+    // CNPJ do fornecedor (se ainda não tiver) — ignora o CNPJ do próprio restaurante
+    if (!nfLimpaCnpj(document.getElementById('nfCnpj').value)) {
+        var mc = texto.match(/\d{2}\.?\d{3}\.?\d{3}\s?\/\s?\d{4}\s?-\s?\d{2}/g) || [];
+        for (var k = 0; k < mc.length; k++) {
+            var cn = nfSoDigitos(mc[k]);
+            if (cn.length === 14 && cn !== NF_CNPJ_PROPRIO) {
+                document.getElementById('nfCnpj').value = nfFormatarCnpj(cn);
+                nfBuscarRazaoParaForm(cn);
+                achados.push('CNPJ');
+                break;
+            }
+        }
+    }
+
+    // Data de emissão
+    var dataAchada = nfAcharDataEmissao(texto, nfForm.mesChave);
+    if (dataAchada) {
+        document.getElementById('nfEmissao').value = dataAchada;
+        document.getElementById('nfEmissaoDica').innerText = 'Data lida da foto — confira.';
+        achados.push('data de emissão ' + nfDataBR(dataAchada));
+    }
+}
+
+function nfAcharDataEmissao(texto, mesChave) {
+    var re = /(\d{2})\s?[\/.\-]\s?(\d{2})\s?[\/.\-]\s?(\d{4})/g, m, cands = [];
+    while ((m = re.exec(texto))) {
+        var d = +m[1], mo = +m[2], y = +m[3];
+        if (d < 1 || d > 31 || mo < 1 || mo > 12) continue;
+        var iso = y + '-' + nfPad(mo) + '-' + nfPad(d);
+        var dias = nfDiasAte(iso);
+        if (dias > 0 || dias < -400) continue;
+        if (mesChave && (y !== mesChave.ano || mo !== mesChave.mes)) continue;
+        cands.push({ iso: iso, pos: m.index });
+    }
+    if (!cands.length) return null;
+    var idx = texto.toUpperCase().search(/EMISS/);
+    if (idx >= 0) {
+        for (var i = 0; i < cands.length; i++) { if (cands[i].pos > idx && cands[i].pos - idx < 200) return cands[i].iso; }
+    }
+    cands.sort(function(a, b) { return a.iso.localeCompare(b.iso); });
+    return cands[0].iso;
+}
+
+function nfFinalizarFoto(achados, falhouOCR) {
+    var partes = achados.filter(function(a) { return a.indexOf('⚠️') !== 0; });
+    var avisos = achados.filter(function(a) { return a.indexOf('⚠️') === 0; });
+    var msg;
+    if (partes.length) { msg = '✅ Li da foto: ' + partes.join(', ') + '. Confira os campos abaixo.'; }
+    else if (falhouOCR) { msg = 'Foto guardada. Não consegui ler o texto agora (internet?) — use "Ler código da nota" ou preencha à mão.'; }
+    else { msg = 'Foto guardada. Não consegui ler dados dela — tente "Ler código da nota" com a câmera.'; }
+    if (avisos.length) msg += '\n' + avisos.join('\n');
+    nfStatusForm(msg);
+}
+
+function nfRemoverFoto() {
+    if (!nfForm) return;
+    nfForm.fotoUrl = null;
+    document.getElementById('nfFotoImg').src = '';
+    document.getElementById('nfFotoPreview').style.display = 'none';
+}
+
+// ---------- formulário ----------
+function nfNovoEstadoForm() {
+    return { editandoId: null, chave: null, serie: null, mesChave: null, boletos: [], setor: null, fotoUrl: null };
+}
+
+function nfLimparCamposForm() {
+    ['nfRazao', 'nfCnpj', 'nfNumero', 'nfEmissao', 'nfObs'].forEach(function(id) { document.getElementById(id).value = ''; });
+    ['nfRazaoDica', 'nfEmissaoDica', 'nfChaveDica', 'nfSetorDica'].forEach(function(id) { document.getElementById(id).innerText = ''; });
+    nfStatusForm('');
+    nfRemoverFoto();
+}
+
+function nfAbrirNovaNota() {
+    nfForm = nfNovoEstadoForm();
+    nfLimparCamposForm();
+    document.getElementById('nfEditTitulo').innerText = 'Protocolar nota';
+    document.getElementById('nfAcoesExistente').style.display = 'none';
+    document.getElementById('nfAtalhos').style.display = 'grid';
+    document.getElementById('nfBtnAddVenc').style.display = 'block';
+    nfRenderizarBoletosForm();
+    nfRenderizarSetoresForm();
+    trocarTela('nota-edit-screen');
+}
+
+function nfAbrirNota(id) {
+    var n = null;
+    for (var i = 0; i < notasCache.length; i++) { if (notasCache[i].id === id) n = notasCache[i]; }
+    if (!n) return;
+    nfForm = nfNovoEstadoForm();
+    nfLimparCamposForm();
+    nfForm.editandoId = n.id;
+    nfForm.chave = n.chave_acesso || null;
+    nfForm.serie = n.serie || null;
+    nfForm.setor = n.setor || null;
+    nfForm.boletos = [{ barras: null, linha: n.linha_digitavel || null, vencimento: n.vencimento || null, valor: n.valor }];
+    document.getElementById('nfRazao').value = n.razao_social || '';
+    document.getElementById('nfCnpj').value = nfFormatarCnpj(n.cnpj || '');
+    document.getElementById('nfNumero').value = n.numero_nota || '';
+    document.getElementById('nfEmissao').value = n.data_emissao ? String(n.data_emissao).substr(0, 10) : '';
+    document.getElementById('nfObs').value = n.observacao || '';
+    if (n.chave_acesso) document.getElementById('nfChaveDica').innerText = '🔑 Chave: ' + n.chave_acesso.replace(/(.{4})/g, '$1 ').trim();
+    if (n.foto_url) {
+        nfForm.fotoUrl = n.foto_url;
+        document.getElementById('nfFotoImg').src = n.foto_url;
+        document.getElementById('nfFotoPreview').style.display = 'block';
+    }
+    var info = [];
+    if (n.criado_por) info.push('Protocolada por ' + n.criado_por);
+    if (n.criado_em) info.push('em ' + nfDataBR(String(n.criado_em).substr(0, 10)));
+    if (n.status === 'pago' && n.pago_em) info.push('· Paga em ' + nfDataBR(String(n.pago_em).substr(0, 10)));
+    if (info.length) nfStatusForm(info.join(' '));
+
+    document.getElementById('nfEditTitulo').innerText = 'NF ' + (n.numero_nota || '');
+    document.getElementById('nfAcoesExistente').style.display = 'flex';
+    document.getElementById('nfBtnPagarDetalhe').innerText = n.status === 'pago' ? '↩︎ Desmarcar pagamento' : '✓ Marcar como pago';
+    document.getElementById('nfAtalhos').style.display = 'grid';
+    document.getElementById('nfBtnAddVenc').style.display = 'none';
+    nfRenderizarBoletosForm();
+    nfRenderizarSetoresForm();
+    trocarTela('nota-edit-screen');
+}
+
+function nfVoltarLista() {
+    nfForm = null;
+    abrirNotasDireto();
+}
+
+function nfRenderizarBoletosForm() {
+    var cont = document.getElementById('nfBoletosLista');
+    if (!nfForm) { cont.innerHTML = ''; return; }
+    if (!nfForm.boletos.length) {
+        cont.innerHTML = '<div class="nf-dica" style="margin:0 2px 10px 2px;">Nenhum boleto ainda. Toque em "Ler boleto" lá em cima, ou adicione um vencimento sem boleto.</div>';
+        return;
+    }
+    var total = nfForm.boletos.length;
+    cont.innerHTML = nfForm.boletos.map(function(b, i) {
+        return '<div class="nf-boleto">' +
+            '<div class="nf-boleto-topo"><span>' + (total > 1 ? 'Parcela ' + (i + 1) + '/' + total : (b.linha ? 'Boleto' : 'Vencimento')) + '</span>' +
+            (nfForm.editandoId ? '' : '<button onclick="nfRemoverBoleto(' + i + ')" aria-label="Remover">×</button>') + '</div>' +
+            '<div class="nf-linha2">' +
+            '<div><label class="nf-label">Vencimento</label><input type="date" class="text-input" value="' + (b.vencimento || '') + '" onchange="nfAtualizarBoleto(' + i + ', \'vencimento\', this.value)"></div>' +
+            '<div><label class="nf-label">Valor (R$)</label><input type="text" inputmode="decimal" class="text-input" placeholder="0,00" value="' + nfValorParaCampo(b.valor) + '" onchange="nfAtualizarBoleto(' + i + ', \'valor\', this.value)"></div>' +
+            '</div>' +
+            (b.linha ? '<div class="nf-linha-digitavel" onclick="copiarTextoGenerico(\'' + b.linha + '\', \'✅ Linha digitável copiada!\')">' + nfFormatarLinha(b.linha) + '  📋</div>' : '') +
+            '</div>';
+    }).join('');
+}
+
+function nfAtualizarBoleto(i, campo, valor) {
+    if (!nfForm || !nfForm.boletos[i]) return;
+    if (campo === 'valor') { nfForm.boletos[i].valor = nfParseValor(valor); }
+    else { nfForm.boletos[i].vencimento = valor || null; }
+}
+function nfRemoverBoleto(i) {
+    if (!nfForm) return;
+    nfForm.boletos.splice(i, 1);
+    nfRenderizarBoletosForm();
+}
+function nfAdicionarBoletoManual() {
+    if (!nfForm) return;
+    nfForm.boletos.push({ barras: null, linha: null, vencimento: null, valor: null });
+    nfRenderizarBoletosForm();
+}
+
+function nfRenderizarSetoresForm() {
+    var grid = document.getElementById('nfSetoresGrid');
+    grid.innerHTML = nfSetores().map(function(s) {
+        var ativo = nfForm && nfForm.setor === s.id;
+        return '<button class="nf-setor-btn' + (ativo ? ' ativo' : '') + '" style="--cor:' + s.cor + ';" onclick="nfEscolherSetor(\'' + s.id + '\')">' +
+            '<span>' + s.icone + '</span><span>' + nfEsc(s.nome) + '</span></button>';
+    }).join('');
+}
+function nfEscolherSetor(id) {
+    if (!nfForm) return;
+    nfForm.setor = id;
+    document.getElementById('nfSetorDica').innerText = '';
+    nfRenderizarSetoresForm();
+}
+
+function nfSalvarNota() {
+    if (!nfForm) return;
+    // pega valores digitados que ainda não dispararam "change"
+    var inputs = document.querySelectorAll('#nfBoletosLista .nf-boleto');
+    for (var q = 0; q < inputs.length; q++) {
+        var campos = inputs[q].querySelectorAll('input');
+        if (nfForm.boletos[q] && campos.length >= 2) {
+            nfForm.boletos[q].vencimento = campos[0].value || null;
+            nfForm.boletos[q].valor = nfParseValor(campos[1].value);
+        }
+    }
+    var razao = document.getElementById('nfRazao').value.trim();
+    var cnpj = nfLimpaCnpj(document.getElementById('nfCnpj').value);
+    var numero = document.getElementById('nfNumero').value.trim();
+    var emissao = document.getElementById('nfEmissao').value || null;
+    var obs = document.getElementById('nfObs').value.trim();
+
+    if (!razao && !numero) { alert('Leia o código da nota ou preencha pelo menos a razão social e o número.'); return; }
+    if (!nfForm.setor) { alert('Escolha o setor da nota.'); return; }
+    var boletos = nfForm.boletos.slice();
+    if (!boletos.length) {
+        if (!confirm('Nenhum vencimento informado. Salvar a nota mesmo assim?')) return;
+        boletos = [{ linha: null, vencimento: null, valor: null }];
+    }
+    var semVenc = boletos.filter(function(b) { return !b.vencimento; }).length;
+    if (semVenc && boletos.length && !confirm(semVenc === 1 && boletos.length === 1 ? 'A nota está sem data de vencimento. Salvar assim?' : semVenc + ' vencimento(s) sem data. Salvar assim?')) return;
+
+    var base = {
+        chave_acesso: nfForm.chave || null,
+        cnpj: cnpj || null,
+        razao_social: razao || null,
+        numero_nota: numero || null,
+        serie: nfForm.serie || null,
+        data_emissao: emissao,
+        setor: nfForm.setor,
+        observacao: obs || null,
+        foto_url: nfForm.fotoUrl || null
+    };
+
+    if (nfForm.editandoId) {
+        var b0 = boletos[0];
+        var alteracao = Object.assign({}, base, { vencimento: b0.vencimento || null, valor: b0.valor, linha_digitavel: b0.linha || null });
+        for (var i = 0; i < notasCache.length; i++) {
+            if (notasCache[i].id === nfForm.editandoId) { notasCache[i] = Object.assign({}, notasCache[i], alteracao); }
+        }
+        nfSalvarNotasLocal();
+        supabasePatch('notas_fiscais', 'id=eq.' + encodeURIComponent(nfForm.editandoId), alteracao, function(err) {
+            if (err) console.warn('Nota salva localmente, sincroniza depois:', err);
+        });
+    } else {
+        var agora = new Date().toISOString();
+        var novos = boletos.map(function(b) {
+            return Object.assign({}, base, {
+                id: gerarIdUnico(),
+                vencimento: b.vencimento || null,
+                valor: b.valor,
+                linha_digitavel: b.linha || null,
+                status: 'pendente',
+                pago_em: null,
+                criado_por: usuarioAtual || null,
+                criado_em: agora
+            });
+        });
+        novos.forEach(function(reg) {
+            notasCache.push(reg);
+            supabasePost('notas_fiscais', reg, function(err) {
+                if (err) console.warn('Nota salva localmente, sincroniza depois:', err);
+            });
+        });
+        nfSalvarNotasLocal();
+        var setorInfo = nfInfoSetor(nfForm.setor);
+        var agoraData = new Date();
+        registrarNoHistoricoCompartilhado({
+            data: agoraData.toLocaleDateString('pt-BR') + ' às ' + nfPad(agoraData.getHours()) + ':' + nfPad(agoraData.getMinutes()),
+            setor: 'Notas Fiscais',
+            tipo: 'notas',
+            itens: ['Nota protocolada: ' + (razao || 'Fornecedor') + ' — NF ' + (numero || '?') + ' — ' + setorInfo.nome].concat(novos.map(function(r) {
+                return '  Venc. ' + (r.vencimento ? nfDataBR(r.vencimento) : 's/ data') + ' — ' + nfMoeda(r.valor);
+            }))
+        });
+    }
+    montarDashboardResumo();
+    nfVoltarLista();
+}
+
+function nfAcharNota(id) {
+    for (var i = 0; i < notasCache.length; i++) { if (notasCache[i].id === id) return notasCache[i]; }
+    return null;
+}
+
+function nfMarcarPago(id, pago) {
+    var n = nfAcharNota(id);
+    if (!n) return;
+    var alteracao = pago ? { status: 'pago', pago_em: new Date().toISOString() } : { status: 'pendente', pago_em: null };
+    Object.assign(n, alteracao);
+    nfSalvarNotasLocal();
+    supabasePatch('notas_fiscais', 'id=eq.' + encodeURIComponent(id), alteracao, function() { });
+    montarDashboardResumo();
+}
+function nfPagarDaLista(id, ev) {
+    if (ev) ev.stopPropagation();
+    var n = nfAcharNota(id);
+    if (!n) return;
+    if (!confirm('Marcar como pago?\n\n' + (n.razao_social || '') + ' — NF ' + (n.numero_nota || '') + '\n' + nfMoeda(n.valor) + (n.vencimento ? ' · venc. ' + nfDataBR(n.vencimento) : ''))) return;
+    nfMarcarPago(id, true);
+    nfRenderizarLista();
+}
+function nfAlternarPagoDetalhe() {
+    if (!nfForm || !nfForm.editandoId) return;
+    var n = nfAcharNota(nfForm.editandoId);
+    if (!n) return;
+    nfMarcarPago(n.id, n.status !== 'pago');
+    nfVoltarLista();
+}
+function nfExcluirDetalhe() {
+    if (!nfForm || !nfForm.editandoId) return;
+    var n = nfAcharNota(nfForm.editandoId);
+    if (!n) return;
+    if (!confirm('Excluir esta nota do protocolo?\n\n' + (n.razao_social || '') + ' — NF ' + (n.numero_nota || '') + '\n\nIsso não pode ser desfeito.')) return;
+    notasCache = notasCache.filter(function(x) { return x.id !== n.id; });
+    nfSalvarNotasLocal();
+    supabaseDelete('notas_fiscais', 'id=eq.' + encodeURIComponent(n.id), function() { });
+    montarDashboardResumo();
+    nfVoltarLista();
+}
+
+// ---------- lista ----------
+function abrirNotasDireto() {
+    trocarTela('notas-screen');
+    nfRenderizarLista();
+    sincronizarNotasSupabase(function() {
+        if (document.getElementById('notas-screen').classList.contains('active')) nfRenderizarLista();
+    });
+}
+
+function sincronizarNotasSupabase(cb) {
+    supabaseGet('notas_fiscais', 'select=*&order=vencimento.asc.nullslast', function(err, dados) {
+        if (err || !Array.isArray(dados)) { if (cb) cb(); return; }
+        var fila = lerFilaReenvioSegura();
+        var aguardando = {};
+        fila.forEach(function(a) { if (a.tabela === 'notas_fiscais' && a.metodo === 'POST' && a.registro) aguardando[a.registro.id] = true; });
+        var noServidor = {};
+        dados.forEach(function(d) { noServidor[d.id] = true; });
+        var locaisPendentes = notasCache.filter(function(n) { return !noServidor[n.id] && aguardando[n.id]; });
+        notasCache = dados.concat(locaisPendentes);
+        nfSalvarNotasLocal();
+        montarDashboardResumo();
+        if (cb) cb();
+    });
+}
+
+function nfContagemAlertas() {
+    var r = { vencidos: 0, proximos: 0 };
+    var lista = notasCache || [];
+    for (var i = 0; i < lista.length; i++) {
+        if (lista[i].status === 'pago' || !lista[i].vencimento) continue;
+        var d = nfDiasAte(lista[i].vencimento);
+        if (d < 0) r.vencidos++;
+        else if (d <= 3) r.proximos++;
+    }
+    return r;
+}
+
+function nfEtiquetaVencimento(n) {
+    if (n.status === 'pago') return { classe: 'nf-badge-pago', texto: '✓ Pago' + (n.pago_em ? ' em ' + nfDataBR(String(n.pago_em).substr(0, 10), true) : '') };
+    if (!n.vencimento) return { classe: 'nf-badge-futuro', texto: 'Sem vencimento' };
+    var d = nfDiasAte(n.vencimento);
+    var data = nfDataBR(n.vencimento, String(n.vencimento).substr(0, 4) === String(new Date().getFullYear()));
+    if (d < 0) return { classe: 'nf-badge-vencido', texto: 'Vencido há ' + (-d) + (d === -1 ? ' dia' : ' dias') + ' · ' + data };
+    if (d === 0) return { classe: 'nf-badge-hoje', texto: 'Vence hoje · ' + data };
+    if (d === 1) return { classe: 'nf-badge-proximo', texto: 'Vence amanhã · ' + data };
+    if (d <= 7) return { classe: 'nf-badge-proximo', texto: 'Vence em ' + d + ' dias · ' + data };
+    return { classe: 'nf-badge-futuro', texto: 'Vence ' + data + ' (' + nfDiaSemana(n.vencimento) + ')' };
+}
+
+function nfParcelas() {
+    // descobre "Parcela 1/3" agrupando por fornecedor + número da nota
+    var grupos = {};
+    notasCache.forEach(function(n) {
+        if (!n.numero_nota) return;
+        var k = (n.cnpj || n.razao_social || '') + '|' + n.numero_nota;
+        (grupos[k] = grupos[k] || []).push(n);
+    });
+    var mapa = {};
+    Object.keys(grupos).forEach(function(k) {
+        var g = grupos[k];
+        if (g.length < 2) return;
+        g.sort(function(a, b) { return String(a.vencimento || '9999').localeCompare(String(b.vencimento || '9999')); });
+        g.forEach(function(n, i) { mapa[n.id] = (i + 1) + '/' + g.length; });
+    });
+    return mapa;
+}
+
+function nfOrdenarPorVenc(a, b) {
+    var va = a.vencimento || '9999-12-31', vb = b.vencimento || '9999-12-31';
+    if (va !== vb) return va < vb ? -1 : 1;
+    return String(a.razao_social || '').localeCompare(String(b.razao_social || ''));
+}
+
+function nfListaFiltrada() {
+    var busca = (document.getElementById('nfBusca').value || '').toLowerCase().trim();
+    var buscaDig = nfSoDigitos(busca);
+    return notasCache.filter(function(n) {
+        if (nfFiltro === 'pendentes' && n.status === 'pago') return false;
+        if (nfFiltro === 'pagas' && n.status !== 'pago') return false;
+        if (!busca) return true;
+        var alvo = ((n.razao_social || '') + ' ' + (n.numero_nota || '') + ' ' + (n.observacao || '') + ' ' + nfInfoSetor(n.setor).nome).toLowerCase();
+        if (alvo.indexOf(busca) >= 0) return true;
+        return buscaDig.length >= 3 && ((n.cnpj || '').indexOf(buscaDig) >= 0 || (n.numero_nota || '').indexOf(buscaDig) >= 0);
+    });
+}
+
+// Monta os grupos da visão atual (usado na tela e no resumo enviado)
+function nfMontarGrupos(lista) {
+    var grupos = [];
+    if (nfVisao === 'setor') {
+        var mapa = {};
+        lista.forEach(function(n) { var s = n.setor || 'semsetor'; (mapa[s] = mapa[s] || []).push(n); });
+        var ordem = nfSetores().map(function(s) { return s.id; }).concat(['semsetor']);
+        ordem.forEach(function(sid) {
+            if (!mapa[sid]) return;
+            var info = nfInfoSetor(sid);
+            grupos.push({ titulo: info.nome, icone: info.icone, cor: info.cor, itens: mapa[sid].sort(nfOrdenarPorVenc) });
+        });
+    } else {
+        var ordenada = lista.slice().sort(nfOrdenarPorVenc);
+        if (nfFiltro === 'pagas') {
+            ordenada.sort(function(a, b) { return String(b.pago_em || '').localeCompare(String(a.pago_em || '')); });
+            grupos.push({ titulo: 'Pagas (mais recentes primeiro)', icone: '✓', cor: '#7FD6A6', itens: ordenada });
+            return grupos;
+        }
+        var faixas = [
+            { titulo: 'Vencidos', icone: '🔴', cor: '#E85D5D', teste: function(d) { return d !== null && d < 0; } },
+            { titulo: 'Vencem hoje', icone: '🟡', cor: '#F2C94C', teste: function(d) { return d === 0; } },
+            { titulo: 'Próximos 7 dias', icone: '🟠', cor: '#F3703A', teste: function(d) { return d !== null && d >= 1 && d <= 7; } },
+            { titulo: 'Mais adiante', icone: '📅', cor: '#9B8FD1', teste: function(d) { return d !== null && d > 7; } },
+            { titulo: 'Sem vencimento', icone: '❔', cor: '#A79FBE', teste: function(d) { return d === null; } }
+        ];
+        faixas.forEach(function(f) {
+            var itens = ordenada.filter(function(n) { return n.status !== 'pago' && f.teste(nfDiasAte(n.vencimento)); });
+            if (itens.length) grupos.push({ titulo: f.titulo, icone: f.icone, cor: f.cor, itens: itens });
+        });
+        var pagas = ordenada.filter(function(n) { return n.status === 'pago'; });
+        if (pagas.length) grupos.push({ titulo: 'Pagas', icone: '✓', cor: '#7FD6A6', itens: pagas });
+    }
+    return grupos;
+}
+
+function nfSomar(lista) { return lista.reduce(function(s, n) { return s + (Number(n.valor) || 0); }, 0); }
+
+function nfRenderizarLista() {
+    // Resumo no topo (sempre sobre as pendentes)
+    var pend = notasCache.filter(function(n) { return n.status !== 'pago'; });
+    var venc = pend.filter(function(n) { var d = nfDiasAte(n.vencimento); return d !== null && d < 0; });
+    var hoje = pend.filter(function(n) { return nfDiasAte(n.vencimento) === 0; });
+    var semana = pend.filter(function(n) { var d = nfDiasAte(n.vencimento); return d !== null && d >= 1 && d <= 7; });
+    document.getElementById('nfResumo').innerHTML =
+        '<div class="nf-resumo-card nf-rc-vencido" onclick="nfIrPara(\'vencimento\')"><div class="nf-rc-label">Vencidos</div><div class="nf-rc-num">' + venc.length + '</div><div class="nf-rc-valor">' + nfMoeda(nfSomar(venc)) + '</div></div>' +
+        '<div class="nf-resumo-card nf-rc-hoje" onclick="nfIrPara(\'vencimento\')"><div class="nf-rc-label">Vencem hoje</div><div class="nf-rc-num">' + hoje.length + '</div><div class="nf-rc-valor">' + nfMoeda(nfSomar(hoje)) + '</div></div>' +
+        '<div class="nf-resumo-card nf-rc-semana" onclick="nfIrPara(\'vencimento\')"><div class="nf-rc-label">Próx. 7 dias</div><div class="nf-rc-num">' + semana.length + '</div><div class="nf-rc-valor">' + nfMoeda(nfSomar(semana)) + '</div></div>' +
+        '<div class="nf-resumo-card nf-rc-total" onclick="nfIrPara(\'setor\')"><div class="nf-rc-label">Total a pagar</div><div class="nf-rc-num">' + nfMoeda(nfSomar(pend)) + '</div><div class="nf-rc-valor">' + pend.length + (pend.length === 1 ? ' boleto' : ' boletos') + '</div></div>';
+
+    var filtros = [['pendentes', 'A pagar'], ['pagas', 'Pagas'], ['todas', 'Todas']];
+    document.getElementById('nfFiltros').innerHTML = filtros.map(function(f) {
+        return '<button class="' + (nfFiltro === f[0] ? 'ativo' : '') + '" onclick="nfMudarFiltro(\'' + f[0] + '\')">' + f[1] + '</button>';
+    }).join('');
+    var visoes = [['setor', 'Por setor'], ['vencimento', 'Por vencimento']];
+    document.getElementById('nfVisoes').innerHTML = visoes.map(function(v) {
+        return '<button class="' + (nfVisao === v[0] ? 'ativo' : '') + '" onclick="nfMudarVisao(\'' + v[0] + '\')">' + v[1] + '</button>';
+    }).join('');
+
+    var lista = nfListaFiltrada();
+    var cont = document.getElementById('nfLista');
+    document.getElementById('nfCompartilhar').style.display = lista.length ? 'flex' : 'none';
+    if (!lista.length) {
+        cont.innerHTML = '<div class="nf-vazio">' + (notasCache.length
+            ? 'Nada por aqui com esse filtro.'
+            : '🧾<br><br>Nenhuma nota protocolada ainda.<br>Toque em <b>📷 Protocolar nota</b> e aponte a câmera para o código de barras da nota e do boleto.') + '</div>';
+        return;
+    }
+    var parcelas = nfParcelas();
+    var grupos = nfMontarGrupos(lista);
+    cont.innerHTML = grupos.map(function(g) {
+        var abertas = g.itens.filter(function(n) { return n.status !== 'pago'; });
+        return '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:' + g.cor + ';"></span><span>' + g.icone + ' ' + nfEsc(g.titulo) + '</span>' +
+            '<span class="nf-gh-info">' + g.itens.length + ' · ' + nfMoeda(nfSomar(abertas.length ? abertas : g.itens)) + '</span></div>' +
+            g.itens.map(function(n) { return nfCardHtml(n, parcelas[n.id]); }).join('');
+    }).join('');
+}
+
+function nfCardHtml(n, parcela) {
+    var setor = nfInfoSetor(n.setor);
+    var etq = nfEtiquetaVencimento(n);
+    var meta = [];
+    if (n.numero_nota) meta.push('NF ' + nfEsc(n.numero_nota));
+    if (parcela) meta.push('Parcela ' + parcela);
+    if (n.data_emissao) meta.push('Emissão ' + nfDataBR(n.data_emissao, true));
+    if (nfVisao !== 'setor') meta.push(setor.icone + ' ' + nfEsc(setor.nome));
+    if (n.foto_url) meta.push('📸');
+    if (n.observacao) meta.push('💬 ' + nfEsc(n.observacao));
+    return '<div class="nf-card" style="--cor:' + setor.cor + ';" onclick="nfAbrirNota(\'' + n.id + '\')">' +
+        '<div class="nf-card-topo"><div class="nf-card-nome">' + nfEsc(n.razao_social || 'Fornecedor sem nome') + '</div><div class="nf-card-valor">' + nfMoeda(n.valor) + '</div></div>' +
+        '<div class="nf-card-meta">' + meta.join(' · ') + '</div>' +
+        '<div class="nf-card-rodape"><span class="nf-badge ' + etq.classe + '">' + etq.texto + '</span>' +
+        (n.status !== 'pago' ? '<button class="nf-pagar-btn" onclick="nfPagarDaLista(\'' + n.id + '\', event)">✓ Pago</button>' : '') +
+        '</div></div>';
+}
+
+function nfMudarFiltro(f) { nfFiltro = f; nfRenderizarLista(); }
+function nfMudarVisao(v) { nfVisao = v; nfRenderizarLista(); }
+function nfIrPara(v) { nfFiltro = 'pendentes'; nfVisao = v; nfRenderizarLista(); }
+
+// ---------- resumo pra enviar ----------
+function nfTextoResumo() {
+    var lista = nfListaFiltrada();
+    var agora = new Date();
+    var dataStr = agora.toLocaleDateString('pt-BR');
+    var horaStr = nfPad(agora.getHours()) + ':' + nfPad(agora.getMinutes());
+    var tituloFiltro = nfFiltro === 'pendentes' ? 'BOLETOS A PAGAR' : (nfFiltro === 'pagas' ? 'BOLETOS PAGOS' : 'NOTAS FISCAIS');
+    var linhas = [];
+    var texto = '🧾 *' + tituloFiltro + ' — ' + (nfVisao === 'setor' ? 'por setor' : 'por vencimento') + '*\n' +
+        'Gerado em ' + dataStr + ' às ' + horaStr + (usuarioAtual ? ' por ' + usuarioAtual : '') + '\n';
+
+    nfMontarGrupos(lista).forEach(function(g) {
+        var cab = '\n*' + g.icone + ' ' + g.titulo.toUpperCase() + '* (' + g.itens.length + ') — ' + nfMoeda(nfSomar(g.itens));
+        texto += cab + '\n';
+        linhas.push(cab.trim());
+        g.itens.forEach(function(n) {
+            var partes = [];
+            if (nfVisao === 'setor' || n.status === 'pago') partes.push(n.vencimento ? nfDataBR(n.vencimento, true) : 's/ venc.');
+            else partes.push(nfDataBR(n.vencimento, true) + ' (' + nfDiaSemana(n.vencimento) + ')');
+            partes.push(n.razao_social || 'Fornecedor');
+            if (n.numero_nota) partes.push('NF ' + n.numero_nota);
+            partes.push(nfMoeda(n.valor));
+            if (nfVisao !== 'setor') partes.push(nfInfoSetor(n.setor).nome);
+            if (n.status === 'pago') partes.push('PAGO');
+            var l = '• ' + partes.join(' — ');
+            if (n.linha_digitavel && n.status !== 'pago') l += '\n   Linha: ' + nfFormatarLinha(n.linha_digitavel);
+            texto += l + '\n';
+            linhas.push(l);
+        });
+    });
+    var totalLinha = '*TOTAL: ' + nfMoeda(nfSomar(lista)) + '* (' + lista.length + (lista.length === 1 ? ' boleto' : ' boletos') + ')';
+    texto += '\n' + totalLinha + '\n\n' + dadosFiscaisTexto();
+    linhas.push(totalLinha);
+    return { texto: texto, itens: linhas, dataStr: dataStr, horaStr: horaStr, titulo: tituloFiltro };
+}
+
+function nfCompartilhar(meio) {
+    var lista = nfListaFiltrada();
+    if (!lista.length) { alert('Nenhuma nota na lista para enviar.'); return; }
+    var dados = nfTextoResumo();
+    var ok = true;
+    if (meio === 'whatsapp') { window.open(linkWhatsApp(dados.texto), '_blank'); }
+    else if (meio === 'email') { window.location.href = linkEmail(dados.titulo + ' - ' + dados.dataStr, dados.texto); }
+    else { ok = copiarTextoGenerico(dados.texto, '✅ Resumo das notas copiado!'); }
+    if (ok) {
+        registrarNoHistoricoCompartilhado({
+            data: dados.dataStr + ' às ' + dados.horaStr,
+            setor: 'Notas Fiscais (resumo enviado)',
+            tipo: 'notas',
+            itens: dados.itens
+        });
+    }
+}
+
+// sincroniza em segundo plano ao abrir o app, pra alimentar os alertas do painel
+setTimeout(function() { try { sincronizarNotasSupabase(); } catch (e) { } }, 1500);
+
 </script>
 </body>
 </html>
