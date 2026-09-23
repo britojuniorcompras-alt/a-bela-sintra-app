@@ -341,6 +341,24 @@
     .nf-passo-link { display: block; width: 100%; background: none; border: none; color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; padding: 10px 0 0 0; cursor: pointer; text-decoration: underline; }
     .nf-passos .nf-setor-btn { background: var(--surface-2); padding: 14px 10px; }
     .nf-setor-btn small { color: var(--text-dim); font-weight: 600; }
+    .nf-protocolos-btn { border: none; border-radius: 16px; padding: 13px; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; cursor: pointer; background: rgba(95,184,138,0.2); color: #7FD6A6; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+    .nf-icone-btn { border: none; background: rgba(255,255,255,0.07); border-radius: 12px; padding: 6px 9px; font-size: 14px; cursor: pointer; }
+    .nf-boleto-topo .nf-trocar-btn { border: none; background: rgba(255,255,255,0.08); color: var(--text); border-radius: 10px; padding: 5px 9px; font-size: 11.5px; font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+    .nf-excel-acoes { display: flex; gap: 8px; padding: 16px 20px 0 20px; }
+    .nf-excel-btn { flex: 1; border: none; border-radius: 16px; padding: 14px 8px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; background: #1D6F42; color: #fff; box-shadow: 0 6px 16px rgba(29,111,66,0.4); }
+    .nf-excel-btn-sec { background: var(--surface); color: var(--text); box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
+    .nf-excel-btn:disabled { opacity: 0.5; }
+    .nf-tabela { background: var(--surface); border-radius: 16px; overflow: hidden; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
+    .nf-linha-prot { display: grid; grid-template-columns: 52px 1fr auto; grid-template-areas: "venc desc valor" "venc desc acoes"; gap: 2px 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); align-items: center; }
+    .nf-linha-prot:last-child { border-bottom: none; }
+    .nf-lp-venc { grid-area: venc; font-size: 12px; font-weight: 700; color: #F29BC0; text-align: center; }
+    .nf-lp-desc { grid-area: desc; min-width: 0; font-size: 13px; line-height: 1.35; }
+    .nf-lp-desc b { display: block; word-break: break-word; }
+    .nf-lp-desc span { font-size: 11.5px; color: var(--text-dim); }
+    .nf-lp-valor { grid-area: valor; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 13.5px; white-space: nowrap; text-align: right; }
+    .nf-lp-acoes { grid-area: acoes; display: flex; gap: 6px; justify-content: flex-end; }
+    .nf-dia-total { text-align: center; padding: 18px 0 6px 0; color: var(--text-dim); font-size: 14px; }
+    .nf-dia-total b { color: var(--text); }
 </style>
 </head>
 <body>
@@ -405,7 +423,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v23set-c</div>
+                <div class="logo-subtitulo">Gestão de Compras · v23set-d</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -788,6 +806,7 @@
     </div>
     <div class="nf-resumo" id="nfResumo"></div>
     <div class="nf-controles">
+        <button class="nf-protocolos-btn" onclick="nfAbrirProtocolos()">📅 Protocolos por dia · Planilha Excel</button>
         <div class="nf-segmento" id="nfVisoes"></div>
     </div>
     <div class="search-bar" style="position: static; padding: 12px 20px 0 20px;">
@@ -833,8 +852,16 @@
                 <input type="text" id="nfNumero" class="text-input" inputmode="numeric" placeholder="Número">
             </div>
         </div>
-        <label class="nf-label" for="nfEmissao">Data de emissão</label>
-        <input type="date" id="nfEmissao" class="text-input">
+        <div class="nf-linha2">
+            <div>
+                <label class="nf-label" for="nfEmissao">Data de emissão</label>
+                <input type="date" id="nfEmissao" class="text-input">
+            </div>
+            <div>
+                <label class="nf-label" for="nfProtocoloData">Data do protocolo</label>
+                <input type="date" id="nfProtocoloData" class="text-input">
+            </div>
+        </div>
         <div id="nfEmissaoDica" class="nf-dica"></div>
         <div id="nfChaveDica" class="nf-dica"></div>
 
@@ -861,6 +888,28 @@
             <button class="btn-confirm" onclick="nfSalvarNota()">Salvar</button>
         </div>
     </div>
+</div>
+
+<div id="protocolos-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="abrirNotasDireto()">←</button>
+        <h2>Protocolos por dia</h2>
+    </div>
+    <div style="padding: 14px 20px 0 20px; font-size: 13px; color: var(--text-dim); line-height: 1.45;">Toque no dia para ver, editar ou excluir notas e gerar a planilha no formato de sempre (uma aba por setor).</div>
+    <div class="product-list" id="nfDiasLista"></div>
+</div>
+
+<div id="protocolo-dia-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="nfAbrirProtocolos()">←</button>
+        <h2 id="nfDiaTitulo">Protocolo</h2>
+    </div>
+    <div class="nf-excel-acoes">
+        <button class="nf-excel-btn" onclick="nfExcelDoDia('baixar')">📥 Baixar planilha Excel</button>
+        <button class="nf-excel-btn nf-excel-btn-sec" onclick="nfExcelDoDia('enviar')">📤 Enviar planilha</button>
+    </div>
+    <div id="nfDiaAviso" class="nf-status" style="display:none; margin: 10px 20px 0 20px;"></div>
+    <div class="product-list" id="nfDiaLista"></div>
 </div>
 
 <!-- ===== FIM NOTAS FISCAIS ===== -->
@@ -6199,22 +6248,35 @@ function nfFormatarCnpj(c) {
 }
 function nfEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
-// ---------- setores ----------
-function nfSetores() {
-    var ids = ['hortifruti', 'naopereciveis', 'bebidas', 'limpeza', 'peixes', 'carnes', 'manutencao'];
-    var lista = [];
-    for (var i = 0; i < ids.length; i++) {
-        for (var j = 0; j < setores.length; j++) {
-            if (setores[j].id === ids[i]) { lista.push({ id: setores[j].id, nome: setores[j].nome, icone: setores[j].icone, cor: setores[j].accent || '#A79FBE' }); }
-        }
-    }
-    lista.push({ id: 'outros', nome: 'Outros', icone: '📦', cor: '#A79FBE' });
-    return lista;
-}
+// ---------- setores = abas da planilha de protocolo ----------
+// 'ordem' = ordem das abas no Excel (igual à planilha que a equipe já usa)
+var NF_ABAS = [
+    { id: 'gerais',     nome: 'Gerais',                aba: 'GERAIS',                 titulo: 'PROTOCOLO NF GERAIS - BETTENCAS',                    icone: '🛒', cor: '#8FD14F', ordem: 4 },
+    { id: 'carnes',     nome: 'Carnes e Aves',         aba: 'CARNES E AVES',          titulo: 'PROTOCOLO NF CARNES E AVES - BETTENCAS',             icone: '🥩', cor: '#C97B63', ordem: 12 },
+    { id: 'peixes',     nome: 'Peixes e Frutos do Mar', aba: 'PEIXES E FRUTOS DO MAR', titulo: 'PROTOCOLO NF PEIXES E FRUTOS DO MAR - BETTENCAS',   icone: '🐟', cor: '#3FB8AF', ordem: 3 },
+    { id: 'refri',      nome: 'Refri e Cervejas',      aba: 'REFRI E CERVEJAS',       titulo: 'PROTOCOLO NF REFRI. E CERVEJAS - BETTENCAS',         icone: '🍺', cor: '#6BA3E8', ordem: 6 },
+    { id: 'aguas',      nome: 'Águas',                 aba: 'ÁGUAS',                  titulo: 'PROTOCOLO NF ÁGUAS - BETTENCAS',                     icone: '💧', cor: '#5BC0EB', ordem: 13 },
+    { id: 'vinhos',     nome: 'Vinhos',                aba: 'VINHOS',                 titulo: 'PROTOCOLO NF VINHOS - BETTENCAS',                    icone: '🍷', cor: '#C0506E', ordem: 5 },
+    { id: 'destilados', nome: 'Destilados',            aba: 'DESTILADOS',             titulo: 'PROTOCOLO NF DESTILADOS - BETTENCAS',                icone: '🥃', cor: '#D4A24C', ordem: 9 },
+    { id: 'azeite',     nome: 'Azeite',                aba: 'AZEITE',                 titulo: 'PROTOCOLO NF AZEITE - BETTENCAS',                    icone: '🫒', cor: '#B5B04A', ordem: 1 },
+    { id: 'limpeza',    nome: 'Mat. de Limpeza',       aba: 'MAT. DE LIMPEZA',        titulo: 'PROTOCOLO NF MATERIAL DE LIMPEZA - BETTENCAS',       icone: '🧴', cor: '#D1A87F', ordem: 7 },
+    { id: 'grafica',    nome: 'Gráfica e Embalagens',  aba: 'GRAFICA E EMBALAGENS',   titulo: 'PROTOCOLO NF GRAF. EMBALAGENS, UNIFORMES e UTENSILIOS - BETTENCAS', icone: '📦', cor: '#9B8FD1', ordem: 10 },
+    { id: 'manutencao', nome: 'Manutenção',            aba: 'MANUTENÇÃO',             titulo: 'PROTOCOLO NF MANUTENÇÃO - BETTENCAS',                icone: '🛠️', cor: '#E85D5D', ordem: 8 },
+    { id: 'nenzao',     nome: 'Nenzão',                aba: 'NENZÃO',                 titulo: 'PROTOCOLO NF NENZÃO - BETTENCAS',                    icone: '👤', cor: '#F2A93B', ordem: 11 },
+    { id: 'bonificada', nome: 'Bonificada',            aba: 'BONIFICADA',             titulo: 'PROTOCOLO NF BONIFICADA - BETTENCAS',                icone: '🎁', cor: '#7FD6A6', ordem: 2 }
+];
+var NF_SETOR_ANTIGO = { hortifruti: 'gerais', naopereciveis: 'gerais', outros: 'gerais', bebidas: 'refri' };
+function nfSetores() { return NF_ABAS; }
 function nfInfoSetor(id) {
-    var l = nfSetores();
-    for (var i = 0; i < l.length; i++) { if (l[i].id === id) return l[i]; }
-    return { id: 'semsetor', nome: 'Sem setor', icone: '❔', cor: '#A79FBE' };
+    id = NF_SETOR_ANTIGO[id] || id;
+    for (var i = 0; i < NF_ABAS.length; i++) { if (NF_ABAS[i].id === id) return NF_ABAS[i]; }
+    return { id: 'semsetor', nome: 'Sem setor', aba: 'SEM SETOR', titulo: 'PROTOCOLO NF - SEM SETOR', icone: '❔', cor: '#A79FBE', ordem: 99 };
+}
+// Dia em que a nota foi protocolada (AAAA-MM-DD, horário local)
+function nfDiaProtocolo(n) {
+    if (n.protocolo_data) return String(n.protocolo_data).substr(0, 10);
+    if (n.criado_em) return nfIsoDeData(new Date(n.criado_em));
+    return null;
 }
 
 // ---------- chave de acesso da NF-e (código de barras da DANFE) ----------
@@ -6560,7 +6622,7 @@ function nfBuscarRazaoParaForm(cnpj) {
     // Sugere o setor que esse fornecedor costuma ter
     var anterior = nfUltimaNotaDoCnpj(cnpj);
     if (anterior && anterior.setor && nfForm && !nfForm.setor) {
-        nfForm.setor = anterior.setor;
+        nfForm.setor = nfInfoSetor(anterior.setor).id;
         nfRenderizarSetoresForm();
         document.getElementById('nfSetorDica').innerText = 'Setor sugerido pelas notas anteriores desse fornecedor.';
     }
@@ -6630,7 +6692,8 @@ function nfRenderizarPassos() {
                  : '<div class="nf-passo-texto">Fotografe o código de barras do boleto.</div>') +
             '<button class="nf-passo-btn" onclick="nfAbrirCameraBoleto()">📸 ' + (qtd ? 'Fotografar outra parcela' : 'Fotografar boleto') + '</button>' +
             (qtd ? '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfIrParaPasso(\'setor\')">Continuar → escolher setor</button>'
-                 : '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfSemBoleto()">Sem boleto — preencher vencimento à mão</button>');
+                 : '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfSemBoleto()">Sem boleto — preencher vencimento à mão</button>' +
+                   '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfPagoNoCartao()">💳 Pago no cartão</button>');
     } else {
         corpo = '<div class="nf-passo-titulo">Setor</div>' +
             '<div class="nf-passo-texto">Confira os dados abaixo e toque no setor para salvar.</div>' +
@@ -6850,6 +6913,7 @@ function nfNovoEstadoForm() {
 
 function nfLimparCamposForm() {
     ['nfRazao', 'nfCnpj', 'nfNumero', 'nfEmissao', 'nfObs'].forEach(function(id) { document.getElementById(id).value = ''; });
+    document.getElementById('nfProtocoloData').value = nfHojeIso();
     ['nfRazaoDica', 'nfEmissaoDica', 'nfChaveDica', 'nfSetorDica'].forEach(function(id) { document.getElementById(id).innerText = ''; });
     nfStatusForm('');
     nfRemoverFoto();
@@ -6880,7 +6944,9 @@ function nfAbrirNota(id) {
     nfForm.chave = n.chave_acesso || null;
     nfForm.serie = n.serie || null;
     nfForm.setor = n.setor || null;
-    nfForm.boletos = [{ barras: null, linha: n.linha_digitavel || null, vencimento: n.vencimento || null, valor: n.valor }];
+    nfForm.boletos = [{ barras: null, linha: n.linha_digitavel || null, vencimento: n.vencimento || null, valor: n.valor, cartao: n.forma_pagto === 'cartao' }];
+    nfForm.setor = nfInfoSetor(n.setor).id;
+    document.getElementById('nfProtocoloData').value = nfDiaProtocolo(n) || '';
     document.getElementById('nfRazao').value = n.razao_social || '';
     document.getElementById('nfCnpj').value = nfFormatarCnpj(n.cnpj || '');
     document.getElementById('nfNumero').value = n.numero_nota || '';
@@ -6910,8 +6976,10 @@ function nfAbrirNota(id) {
     trocarTela('nota-edit-screen');
 }
 
+var nfVoltarParaDia = null; // quando a edição foi aberta pelo relatório do dia
 function nfVoltarLista() {
     nfForm = null;
+    if (nfVoltarParaDia) { var d = nfVoltarParaDia; nfVoltarParaDia = null; nfAbrirDia(d); return; }
     abrirNotasDireto();
 }
 
@@ -6924,16 +6992,46 @@ function nfRenderizarBoletosForm() {
     }
     var total = nfForm.boletos.length;
     cont.innerHTML = nfForm.boletos.map(function(b, i) {
+        var rotulo = b.cartao ? '💳 Pago no cartão' : (total > 1 ? 'Parcela ' + (i + 1) + '/' + total : (b.linha ? 'Boleto' : 'Vencimento'));
+        var trocar = b.linha ? '' : '<button class="nf-trocar-btn" onclick="nfTrocarCartao(' + i + ')">' + (b.cartao ? '📅 Trocar p/ vencimento' : '💳 Foi no cartão') + '</button>';
         return '<div class="nf-boleto">' +
-            '<div class="nf-boleto-topo"><span>' + (total > 1 ? 'Parcela ' + (i + 1) + '/' + total : (b.linha ? 'Boleto' : 'Vencimento')) + '</span>' +
-            (nfForm.editandoId ? '' : '<button onclick="nfRemoverBoleto(' + i + ')" aria-label="Remover">×</button>') + '</div>' +
+            '<div class="nf-boleto-topo"><span>' + rotulo + '</span><span style="display:flex;align-items:center;gap:6px;">' + trocar +
+            (nfForm.editandoId ? '' : '<button onclick="nfRemoverBoleto(' + i + ')" aria-label="Remover">×</button>') + '</span></div>' +
             '<div class="nf-linha2">' +
-            '<div><label class="nf-label">Vencimento</label><input type="date" class="text-input" value="' + (b.vencimento || '') + '" onchange="nfAtualizarBoleto(' + i + ', \'vencimento\', this.value)"></div>' +
-            '<div><label class="nf-label">Valor (R$)</label><input type="text" inputmode="decimal" class="text-input" placeholder="0,00" value="' + nfValorParaCampo(b.valor) + '" onchange="nfAtualizarBoleto(' + i + ', \'valor\', this.value)"></div>' +
+            (b.cartao ? '' : '<div><label class="nf-label">Vencimento</label><input type="date" data-campo="venc" class="text-input" value="' + (b.vencimento || '') + '" onchange="nfAtualizarBoleto(' + i + ', \'vencimento\', this.value)"></div>') +
+            '<div><label class="nf-label">Valor (R$)</label><input type="text" data-campo="valor" inputmode="decimal" class="text-input" placeholder="0,00" value="' + nfValorParaCampo(b.valor) + '" onchange="nfAtualizarBoleto(' + i + ', \'valor\', this.value)"></div>' +
             '</div>' +
             (b.linha ? '<div class="nf-linha-digitavel" onclick="copiarTextoGenerico(\'' + b.linha + '\', \'✅ Linha digitável copiada!\')">' + nfFormatarLinha(b.linha) + '  📋</div>' : '') +
             '</div>';
     }).join('');
+}
+function nfLerBoletosDaTela() {
+    var caixas = document.querySelectorAll('#nfBoletosLista .nf-boleto');
+    for (var q = 0; q < caixas.length; q++) {
+        var b = nfForm.boletos[q];
+        if (!b) continue;
+        var v = caixas[q].querySelector('[data-campo="venc"]');
+        var val = caixas[q].querySelector('[data-campo="valor"]');
+        if (v) b.vencimento = v.value || null;
+        if (val) b.valor = nfParseValor(val.value);
+    }
+}
+function nfTrocarCartao(i) {
+    if (!nfForm || !nfForm.boletos[i]) return;
+    nfLerBoletosDaTela();
+    nfForm.boletos[i].cartao = !nfForm.boletos[i].cartao;
+    if (nfForm.boletos[i].cartao) nfForm.boletos[i].vencimento = null;
+    nfRenderizarBoletosForm();
+}
+function nfPagoNoCartao() {
+    if (!nfForm) return;
+    nfForm.boletos = [{ barras: null, linha: null, vencimento: null, valor: null, cartao: true }];
+    nfRenderizarBoletosForm();
+    nfIrParaPasso('setor');
+    setTimeout(function() {
+        var campo = document.querySelector('#nfBoletosLista [data-campo="valor"]');
+        if (campo) { campo.scrollIntoView({ block: 'center' }); campo.focus(); }
+    }, 150);
 }
 
 function nfAtualizarBoleto(i, campo, valor) {
@@ -6970,14 +7068,7 @@ function nfEscolherSetor(id) {
 function nfSalvarNota() {
     if (!nfForm) return;
     // pega valores digitados que ainda não dispararam "change"
-    var inputs = document.querySelectorAll('#nfBoletosLista .nf-boleto');
-    for (var q = 0; q < inputs.length; q++) {
-        var campos = inputs[q].querySelectorAll('input');
-        if (nfForm.boletos[q] && campos.length >= 2) {
-            nfForm.boletos[q].vencimento = campos[0].value || null;
-            nfForm.boletos[q].valor = nfParseValor(campos[1].value);
-        }
-    }
+    nfLerBoletosDaTela();
     var razao = document.getElementById('nfRazao').value.trim();
     var cnpj = nfLimpaCnpj(document.getElementById('nfCnpj').value);
     var numero = document.getElementById('nfNumero').value.trim();
@@ -6991,7 +7082,7 @@ function nfSalvarNota() {
         if (!confirm('Nenhum vencimento informado. Salvar a nota mesmo assim?')) return;
         boletos = [{ linha: null, vencimento: null, valor: null }];
     }
-    var semVenc = boletos.filter(function(b) { return !b.vencimento; }).length;
+    var semVenc = boletos.filter(function(b) { return !b.vencimento && !b.cartao; }).length;
     if (semVenc && boletos.length && !confirm(semVenc === 1 && boletos.length === 1 ? 'A nota está sem data de vencimento. Salvar assim?' : semVenc + ' vencimento(s) sem data. Salvar assim?')) return;
 
     var base = {
@@ -7003,12 +7094,17 @@ function nfSalvarNota() {
         data_emissao: emissao,
         setor: nfForm.setor,
         observacao: obs || null,
-        foto_url: nfForm.fotoUrl || null
+        foto_url: nfForm.fotoUrl || null,
+        protocolo_data: document.getElementById('nfProtocoloData').value || nfHojeIso()
     };
+    function formaDe(b) { return b.cartao ? 'cartao' : (b.linha ? 'boleto' : 'manual'); }
 
     if (nfForm.editandoId) {
         var b0 = boletos[0];
-        var alteracao = Object.assign({}, base, { vencimento: b0.vencimento || null, valor: b0.valor, linha_digitavel: b0.linha || null });
+        var alteracao = Object.assign({}, base, { vencimento: b0.cartao ? null : (b0.vencimento || null), valor: b0.valor, linha_digitavel: b0.linha || null, forma_pagto: formaDe(b0) });
+        var anterior = nfAcharNota(nfForm.editandoId);
+        if (b0.cartao) { alteracao.status = 'pago'; if (!anterior || !anterior.pago_em) alteracao.pago_em = new Date().toISOString(); }
+        else if (anterior && anterior.forma_pagto === 'cartao') { alteracao.status = 'pendente'; alteracao.pago_em = null; }
         for (var i = 0; i < notasCache.length; i++) {
             if (notasCache[i].id === nfForm.editandoId) { notasCache[i] = Object.assign({}, notasCache[i], alteracao); }
         }
@@ -7021,11 +7117,12 @@ function nfSalvarNota() {
         var novos = boletos.map(function(b) {
             return Object.assign({}, base, {
                 id: gerarIdUnico(),
-                vencimento: b.vencimento || null,
+                vencimento: b.cartao ? null : (b.vencimento || null),
                 valor: b.valor,
                 linha_digitavel: b.linha || null,
-                status: 'pendente',
-                pago_em: null,
+                forma_pagto: formaDe(b),
+                status: b.cartao ? 'pago' : 'pendente',
+                pago_em: b.cartao ? agora : null,
                 criado_por: usuarioAtual || null,
                 criado_em: agora
             });
@@ -7045,7 +7142,7 @@ function nfSalvarNota() {
             setor: 'Notas Fiscais',
             tipo: 'notas',
             itens: ['Nota protocolada: ' + (razao || 'Fornecedor') + ' — NF ' + (numero || '?') + ' — ' + setorInfo.nome].concat(novos.map(function(r) {
-                return '  Venc. ' + (r.vencimento ? nfDataBR(r.vencimento) : 's/ data') + ' — ' + nfMoeda(r.valor);
+                return '  ' + (r.forma_pagto === 'cartao' ? 'Cartão' : 'Venc. ' + (r.vencimento ? nfDataBR(r.vencimento) : 's/ data')) + ' — ' + nfMoeda(r.valor);
             }))
         });
     }
@@ -7093,6 +7190,18 @@ function nfExcluirDetalhe() {
     montarDashboardResumo();
     nfVoltarLista();
 }
+function nfExcluirRapido(id, ev) {
+    if (ev) ev.stopPropagation();
+    var n = nfAcharNota(id);
+    if (!n) return;
+    if (!confirm('Excluir esta nota do protocolo?\n\n' + (n.razao_social || '') + ' — NF ' + (n.numero_nota || '') + ' — ' + nfMoeda(n.valor) + '\n\nIsso não pode ser desfeito.')) return;
+    notasCache = notasCache.filter(function(x) { return x.id !== id; });
+    nfSalvarNotasLocal();
+    supabaseDelete('notas_fiscais', 'id=eq.' + encodeURIComponent(id), function() { });
+    montarDashboardResumo();
+    if (document.getElementById('protocolo-dia-screen').classList.contains('active')) nfAbrirDia(nfDiaAberto);
+    else nfRenderizarLista();
+}
 
 // ---------- lista ----------
 function abrirNotasDireto() {
@@ -7134,6 +7243,7 @@ function nfContagemAlertas() {
 }
 
 function nfEtiquetaVencimento(n) {
+    if (n.forma_pagto === 'cartao') return { classe: 'nf-badge-pago', texto: '💳 Cartão' };
     if (n.status === 'pago') return { classe: 'nf-badge-pago', texto: '✓ Pago' + (n.pago_em ? ' em ' + nfDataBR(String(n.pago_em).substr(0, 10), true) : '') };
     if (!n.vencimento) return { classe: 'nf-badge-futuro', texto: 'Sem vencimento' };
     var d = nfDiasAte(n.vencimento);
@@ -7187,7 +7297,7 @@ function nfMontarGrupos(lista) {
     var grupos = [];
     if (nfVisao === 'setor') {
         var mapa = {};
-        lista.forEach(function(n) { var s = n.setor || 'semsetor'; (mapa[s] = mapa[s] || []).push(n); });
+        lista.forEach(function(n) { var s = nfInfoSetor(n.setor).id; (mapa[s] = mapa[s] || []).push(n); });
         var ordem = nfSetores().map(function(s) { return s.id; }).concat(['semsetor']);
         ordem.forEach(function(sid) {
             if (!mapa[sid]) return;
@@ -7272,7 +7382,10 @@ function nfCardHtml(n, parcela) {
         '<div class="nf-card-topo"><div class="nf-card-nome">' + nfEsc(n.razao_social || 'Fornecedor sem nome') + '</div><div class="nf-card-valor">' + nfMoeda(n.valor) + '</div></div>' +
         '<div class="nf-card-meta">' + meta.join(' · ') + '</div>' +
         '<div class="nf-card-rodape"><span class="nf-badge ' + etq.classe + '">' + etq.texto + '</span>' +
-        (n.status !== 'pago' ? '<button class="nf-pagar-btn" onclick="nfPagarDaLista(\'' + n.id + '\', event)">✓ Pago</button>' : '') +
+        '<span style="display:flex;gap:6px;">' +
+        '<button class="nf-icone-btn" onclick="nfExcluirRapido(\'' + n.id + '\', event)" aria-label="Excluir">🗑️</button>' +
+        '<button class="nf-icone-btn" onclick="event.stopPropagation(); nfAbrirNota(\'' + n.id + '\')" aria-label="Editar">✏️</button>' +
+        (n.status !== 'pago' ? '<button class="nf-pagar-btn" onclick="nfPagarDaLista(\'' + n.id + '\', event)">✓ Pago</button>' : '') + '</span>' +
         '</div></div>';
 }
 
@@ -7336,6 +7449,250 @@ function nfCompartilhar(meio) {
 
 // sincroniza em segundo plano ao abrir o app, pra alimentar os alertas do painel
 setTimeout(function() { try { sincronizarNotasSupabase(); } catch (e) { } }, 1500);
+
+// =====================================================================
+// PROTOCOLO POR DIA + RELATÓRIO EXCEL (mesmo formato da planilha da equipe)
+// =====================================================================
+var nfDiaAberto = null;
+
+function nfDiasDeProtocolo() {
+    var mapa = {};
+    notasCache.forEach(function(n) {
+        var d = nfDiaProtocolo(n);
+        if (!d) return;
+        (mapa[d] = mapa[d] || []).push(n);
+    });
+    return Object.keys(mapa).sort().reverse().map(function(d) { return { dia: d, notas: mapa[d] }; });
+}
+
+function nfAbrirProtocolos() {
+    var cont = document.getElementById('nfDiasLista');
+    var dias = nfDiasDeProtocolo();
+    if (!dias.length) {
+        cont.innerHTML = '<div class="nf-vazio">Nenhuma nota protocolada ainda.</div>';
+    } else {
+        cont.innerHTML = dias.map(function(g) {
+            var abas = {};
+            g.notas.forEach(function(n) { abas[nfInfoSetor(n.setor).id] = true; });
+            var icones = NF_ABAS.filter(function(a) { return abas[a.id]; }).map(function(a) { return a.icone; }).join(' ');
+            return '<div class="nf-card nf-dia-card" style="--cor:#E86FA0;" onclick="nfAbrirDia(\'' + g.dia + '\')">' +
+                '<div class="nf-card-topo"><div class="nf-card-nome">📅 ' + nfDiaSemana(g.dia) + ', ' + nfDataBR(g.dia) + '</div>' +
+                '<div class="nf-card-valor">' + nfMoeda(nfSomar(g.notas)) + '</div></div>' +
+                '<div class="nf-card-meta">' + g.notas.length + (g.notas.length === 1 ? ' nota' : ' notas') + ' · ' + icones + '</div></div>';
+        }).join('');
+    }
+    trocarTela('protocolos-screen');
+    sincronizarNotasSupabase(function() {
+        if (document.getElementById('protocolos-screen').classList.contains('active')) {
+            var atual = nfDiasDeProtocolo().length;
+            if (atual !== dias.length) nfAbrirProtocolos();
+        }
+    });
+}
+
+function nfNotasDoDia(dia) {
+    return notasCache.filter(function(n) { return nfDiaProtocolo(n) === dia; });
+}
+
+// Ordem igual à planilha: cartão primeiro, depois por vencimento
+function nfOrdenarProtocolo(a, b) {
+    var ca = a.forma_pagto === 'cartao' ? 0 : 1, cb = b.forma_pagto === 'cartao' ? 0 : 1;
+    if (ca !== cb) return ca - cb;
+    return nfOrdenarPorVenc(a, b);
+}
+
+function nfAbrirDia(dia) {
+    nfDiaAberto = dia;
+    document.getElementById('nfDiaTitulo').innerText = 'Protocolo ' + nfDataBR(dia);
+    var notas = nfNotasDoDia(dia);
+    var cont = document.getElementById('nfDiaLista');
+    if (!notas.length) {
+        cont.innerHTML = '<div class="nf-vazio">Nenhuma nota neste dia.</div>';
+    } else {
+        var porAba = {};
+        notas.forEach(function(n) { var id = nfInfoSetor(n.setor).id; (porAba[id] = porAba[id] || []).push(n); });
+        var ordemAbas = NF_ABAS.slice().sort(function(a, b) { return a.ordem - b.ordem; }).map(function(a) { return a.id; }).concat(['semsetor']);
+        cont.innerHTML = ordemAbas.filter(function(id) { return porAba[id]; }).map(function(id) {
+            var info = nfInfoSetor(id);
+            var itens = porAba[id].sort(nfOrdenarProtocolo);
+            return '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:' + info.cor + ';"></span><span>' + info.icone + ' ' + nfEsc(info.aba) + '</span>' +
+                '<span class="nf-gh-info">' + itens.length + ' · ' + nfMoeda(nfSomar(itens)) + '</span></div>' +
+                '<div class="nf-tabela">' + itens.map(function(n) {
+                    var venc = n.forma_pagto === 'cartao' ? 'CARTÃO' : (n.vencimento ? nfDataBR(n.vencimento, true) : '—');
+                    return '<div class="nf-linha-prot">' +
+                        '<div class="nf-lp-venc">' + venc + '</div>' +
+                        '<div class="nf-lp-desc"><b>' + nfEsc(n.razao_social || 'Fornecedor sem nome') + '</b><span>NF ' + nfEsc(n.numero_nota || '—') + ' · Emissão ' + (n.data_emissao ? nfDataBR(n.data_emissao, true) : '—') + '</span></div>' +
+                        '<div class="nf-lp-valor">' + nfMoeda(n.valor) + '</div>' +
+                        '<div class="nf-lp-acoes">' +
+                        '<button class="nf-icone-btn" onclick="nfEditarDoDia(\'' + n.id + '\')" aria-label="Editar">✏️</button>' +
+                        '<button class="nf-icone-btn" onclick="nfExcluirRapido(\'' + n.id + '\', event)" aria-label="Excluir">🗑️</button>' +
+                        '</div></div>';
+                }).join('') + '</div>';
+        }).join('') +
+        '<div class="nf-dia-total">Total do dia: <b>' + nfMoeda(nfSomar(notas)) + '</b> · ' + notas.length + (notas.length === 1 ? ' nota' : ' notas') + '</div>';
+    }
+    trocarTela('protocolo-dia-screen');
+}
+
+function nfEditarDoDia(id) {
+    nfVoltarParaDia = nfDiaAberto;
+    nfAbrirNota(id);
+}
+
+// ---------- Excel ----------
+function nfGarantirExcel(cb) {
+    if (window.ExcelJS) { cb(null); return; }
+    nfCarregarScript([
+        'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
+    ], cb);
+}
+
+function nfDataExcel(iso) {
+    if (!iso) return null;
+    var p = String(iso).substr(0, 10).split('-');
+    return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+}
+
+function nfMontarPlanilha(dia) {
+    var notas = nfNotasDoDia(dia);
+    var wb = new ExcelJS.Workbook();
+    wb.creator = 'A Bela Sintra';
+    var MOEDA = '_-"R$"\\ * #,##0.00_-;\\-"R$"\\ * #,##0.00_-;_-"R$"\\ * "-"??_-;_-@_-';
+    var DATA = 'dd/mm/yyyy';
+    var borda = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    var abas = NF_ABAS.slice().sort(function(a, b) { return a.ordem - b.ordem; });
+    // nota com setor desconhecido vai para GERAIS
+    function abaDa(n) { var i = nfInfoSetor(n.setor); return i.id === 'semsetor' ? 'gerais' : i.id; }
+
+    abas.forEach(function(a) {
+        var itens = notas.filter(function(n) { return abaDa(n) === a.id; }).sort(nfOrdenarProtocolo);
+        var ws = wb.addWorksheet(a.aba, {
+            pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+            views: [{ showGridLines: true }]
+        });
+        ws.columns = [{ width: 22 }, { width: 82 }, { width: 17 }, { width: 17.4 }, { width: 20.4 }];
+
+        ws.mergeCells('A1:E1');
+        var t = ws.getCell('A1');
+        t.value = a.titulo;
+        t.font = { name: 'Calibri', size: 30 };
+        t.alignment = { horizontal: 'center', vertical: 'middle' };
+        ws.getRow(1).height = 39;
+
+        ws.mergeCells('A2:E2');
+        var d = ws.getCell('A2');
+        d.value = nfDataExcel(dia);
+        d.numFmt = DATA;
+        d.font = { name: 'Calibri', size: 48 };
+        d.alignment = { horizontal: 'center', vertical: 'middle' };
+        ws.getRow(2).height = 61.5;
+
+        var cab = ['Venct', 'Descrição', 'Nº Docto', 'Emissão', 'Valor'];
+        cab.forEach(function(txt, i) {
+            var c = ws.getRow(3).getCell(i + 1);
+            c.value = txt;
+            c.font = { name: 'Calibri', size: 14, bold: true };
+            c.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+        ws.getRow(3).height = 18.75;
+
+        var linhasTabela = Math.max(itens.length, 15);
+        for (var r = 0; r < linhasTabela; r++) {
+            var row = ws.getRow(4 + r);
+            var n = itens[r];
+            if (n) {
+                var numero = String(n.numero_nota || '');
+                row.getCell(1).value = n.forma_pagto === 'cartao' ? 'CARTÃO' : nfDataExcel(n.vencimento);
+                row.getCell(2).value = n.razao_social || '';
+                row.getCell(3).value = /^\d{1,15}$/.test(numero) ? Number(numero) : numero;
+                row.getCell(4).value = nfDataExcel(n.data_emissao);
+                row.getCell(5).value = (n.valor === null || n.valor === undefined || n.valor === '') ? null : Number(n.valor);
+            }
+            row.getCell(1).numFmt = DATA;
+            row.getCell(4).numFmt = DATA;
+            row.getCell(5).numFmt = MOEDA;
+            for (var k = 1; k <= 5; k++) {
+                var c = row.getCell(k);
+                c.font = { name: 'Calibri', size: 14 };
+                c.alignment = { horizontal: k === 2 ? 'left' : (k === 5 ? undefined : 'center'), vertical: 'middle' };
+            }
+            row.height = 18.75;
+        }
+        var ultima = 3 + linhasTabela;
+        var tot = ws.getRow(ultima + 1);
+        tot.getCell(4).value = 'TOTAL';
+        tot.getCell(4).font = { name: 'Calibri', size: 14, bold: true };
+        tot.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
+        tot.getCell(5).value = { formula: 'SUM(E4:E' + ultima + ')', result: nfSomar(itens) };
+        tot.getCell(5).numFmt = MOEDA;
+        tot.getCell(5).font = { name: 'Calibri', size: 14, bold: true };
+        tot.height = 18.75;
+
+        for (var rr = 1; rr <= ultima + 1; rr++) {
+            for (var kk = 1; kk <= 5; kk++) {
+                if (rr === ultima + 1 && kk < 4) continue;
+                ws.getRow(rr).getCell(kk).border = borda;
+            }
+        }
+    });
+    return wb;
+}
+
+function nfNomeArquivoDia(dia) {
+    var p = dia.split('-');
+    return 'PROTOCOLO DE NF BELA ' + p[2] + '-' + p[1] + '-' + p[0] + (usuarioAtual ? ' ' + usuarioAtual : '') + '.xlsx';
+}
+
+function nfExcelDoDia(modo) {
+    var dia = nfDiaAberto;
+    if (!dia) return;
+    if (!nfNotasDoDia(dia).length) { alert('Nenhuma nota neste dia.'); return; }
+    var btns = document.querySelectorAll('.nf-excel-btn');
+    btns.forEach(function(b) { b.disabled = true; });
+    var aviso = document.getElementById('nfDiaAviso');
+    aviso.style.display = 'block';
+    aviso.innerText = 'Gerando a planilha...';
+    nfGarantirExcel(function(err) {
+        if (err || !window.ExcelJS) {
+            btns.forEach(function(b) { b.disabled = false; });
+            aviso.innerText = 'Não consegui carregar o gerador de Excel (sem internet?). Tente de novo.';
+            return;
+        }
+        nfMontarPlanilha(dia).xlsx.writeBuffer().then(function(buf) {
+            btns.forEach(function(b) { b.disabled = false; });
+            var nome = nfNomeArquivoDia(dia);
+            var tipo = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            var blob = new Blob([buf], { type: tipo });
+            var arquivo = null;
+            try { arquivo = new File([blob], nome, { type: tipo }); } catch (e) { }
+            if (modo === 'enviar' && arquivo && navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+                navigator.share({ files: [arquivo], title: nome }).catch(function() { });
+                aviso.innerText = '📤 Escolha onde enviar (WhatsApp, e-mail...).';
+            } else {
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = nome;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+                aviso.innerText = modo === 'enviar'
+                    ? '📥 Este aparelho não permite enviar direto — a planilha foi baixada. Anexe pelo WhatsApp ou e-mail.'
+                    : '📥 Planilha baixada: ' + nome;
+            }
+            var agora = new Date();
+            registrarNoHistoricoCompartilhado({
+                data: agora.toLocaleDateString('pt-BR') + ' às ' + nfPad(agora.getHours()) + ':' + nfPad(agora.getMinutes()),
+                setor: 'Notas Fiscais (protocolo ' + nfDataBR(dia) + ')',
+                tipo: 'notas',
+                itens: ['Planilha de protocolo gerada: ' + nome, nfNotasDoDia(dia).length + ' notas · ' + nfMoeda(nfSomar(nfNotasDoDia(dia)))]
+            });
+        }).catch(function() {
+            btns.forEach(function(b) { b.disabled = false; });
+            aviso.innerText = 'Erro ao gerar a planilha. Tente de novo.';
+        });
+    });
+}
 
 </script>
 </body>
