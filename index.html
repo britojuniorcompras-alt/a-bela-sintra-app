@@ -451,7 +451,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v23set-g</div>
+                <div class="logo-subtitulo">Gestão de Compras · v23set-h</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -6570,14 +6570,116 @@ function nfAbrirImagem(arquivo) {
     if (!window.createImageBitmap) return viaImg();
     return createImageBitmap(arquivo).catch(viaImg);
 }
-function nfCanvasDe(img, sx, sy, sw, sh, maxLado, filtro) {
-    var e = Math.min(1, maxLado / Math.max(sw, sh));
+function nfCanvasDe(img, sx, sy, sw, sh, maxLado, filtro, ampliar) {
+    var e = maxLado / Math.max(sw, sh);
+    e = ampliar ? Math.min(2.5, e) : Math.min(1, e);
     var c = document.createElement('canvas');
     c.width = Math.round(sw * e); c.height = Math.round(sh * e);
     var ctx = c.getContext('2d', { willReadFrequently: true });
     if (filtro) ctx.filter = filtro;
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
     return c;
+}
+
+// Acha na foto os lugares que parecem código de barras (muitas barras verticais juntas).
+// Rápido: trabalha numa cópia pequena da imagem. Devolve retângulos na imagem original, do mais provável ao menos.
+function nfAcharRegioesCodigo(img, maxRegioes) {
+    var W = img.width, H = img.height;
+    var esc = Math.min(1, 1000 / Math.max(W, H));
+    var w = Math.round(W * esc), h = Math.round(H * esc);
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, w, h);
+    var px = ctx.getImageData(0, 0, w, h).data;
+    var g = new Float32Array(w * h);
+    for (var i = 0, j = 0; i < g.length; i++, j += 4) g[i] = px[j] * 0.299 + px[j + 1] * 0.587 + px[j + 2] * 0.114;
+    var CEL = 8, cw = Math.floor(w / CEL), ch = Math.floor(h / CEL);
+    var sx = new Float32Array(cw * ch), sy = new Float32Array(cw * ch);
+    for (var y = 1; y < ch * CEL - 1; y++) {
+        var linha = y * w, cy = Math.floor(y / CEL) * cw;
+        for (var x = 1; x < cw * CEL - 1; x++) {
+            var k = linha + x, cel = cy + Math.floor(x / CEL);
+            sx[cel] += Math.abs(g[k + 1] - g[k - 1]);
+            sy[cel] += Math.abs(g[k + w] - g[k - w]);
+        }
+    }
+    var regioes = [];
+    [['h', sx, sy], ['v', sy, sx]].forEach(function(o) {
+        var A = o[1], B = o[2], n = cw * ch;
+        var sc = new Float32Array(n), soma = 0, soma2 = 0, cont = 0;
+        for (var q = 0; q < n; q++) {
+            var v = (A[q] - 1.5 * B[q]) / (CEL * CEL);
+            sc[q] = v > 0 ? v : 0;
+            if (v > 0) { soma += v; soma2 += v * v; cont++; }
+        }
+        if (!cont) return;
+        var media = soma / cont, dp = Math.sqrt(Math.max(0, soma2 / cont - media * media));
+        var lim = Math.max(8, media + 1.5 * dp);
+        var m = new Uint8Array(n);
+        for (q = 0; q < n; q++) m[q] = sc[q] > lim ? 1 : 0;
+        // junta células vizinhas na direção das barras (fecha buracos entre barras largas)
+        var m2 = new Uint8Array(n);
+        for (var yy = 0; yy < ch; yy++) for (var xx = 0; xx < cw; xx++) {
+            var on = 0;
+            for (var d = -2; d <= 2 && !on; d++) {
+                var ax = o[0] === 'h' ? xx + d : xx, ay = o[0] === 'h' ? yy : yy + d;
+                if (ax >= 0 && ay >= 0 && ax < cw && ay < ch && m[ay * cw + ax]) on = 1;
+            }
+            m2[yy * cw + xx] = on;
+        }
+        var visto = new Uint8Array(n);
+        for (q = 0; q < n; q++) {
+            if (!m2[q] || visto[q]) continue;
+            var pilha = [q], x0 = cw, x1 = 0, y0 = ch, y1 = 0, qtd = 0, forca = 0;
+            visto[q] = 1;
+            while (pilha.length) {
+                var p = pilha.pop(), px_ = p % cw, py_ = (p - px_) / cw;
+                qtd++; forca += sc[p];
+                if (px_ < x0) x0 = px_; if (px_ > x1) x1 = px_; if (py_ < y0) y0 = py_; if (py_ > y1) y1 = py_;
+                var viz = [p - 1, p + 1, p - cw, p + cw];
+                for (var t = 0; t < 4; t++) {
+                    var vq = viz[t];
+                    if (vq < 0 || vq >= n || visto[vq] || !m2[vq]) continue;
+                    if ((t === 0 && px_ === 0) || (t === 1 && px_ === cw - 1)) continue;
+                    visto[vq] = 1; pilha.push(vq);
+                }
+            }
+            var bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+            var comprido = o[0] === 'h' ? bw : bh, curto = o[0] === 'h' ? bh : bw;
+            if (qtd < 5 || comprido < 4 || comprido < curto * 1.2) continue;
+            regioes.push({ o: o[0], x0: x0, x1: x1, y0: y0, y1: y1, forca: forca });
+        }
+    });
+    // junta pedaços do mesmo código que ficaram separados (ex: um trecho mais claro no meio)
+    var juntou = true;
+    while (juntou) {
+        juntou = false;
+        for (var a1 = 0; a1 < regioes.length && !juntou; a1++) for (var b1 = a1 + 1; b1 < regioes.length && !juntou; b1++) {
+            var ra = regioes[a1], rb = regioes[b1];
+            if (ra.o !== rb.o) continue;
+            var h_ = ra.o === 'h';
+            var aIni = h_ ? ra.y0 : ra.x0, aFim = h_ ? ra.y1 : ra.x1, bIni = h_ ? rb.y0 : rb.x0, bFim = h_ ? rb.y1 : rb.x1;
+            var sobre = Math.min(aFim, bFim) - Math.max(aIni, bIni) + 1;
+            var menor = Math.min(aFim - aIni + 1, bFim - bIni + 1);
+            var gap = h_ ? Math.max(ra.x0, rb.x0) - Math.min(ra.x1, rb.x1) : Math.max(ra.y0, rb.y0) - Math.min(ra.y1, rb.y1);
+            if (sobre >= menor * 0.5 && gap <= 8) {
+                regioes[a1] = { o: ra.o, x0: Math.min(ra.x0, rb.x0), x1: Math.max(ra.x1, rb.x1), y0: Math.min(ra.y0, rb.y0), y1: Math.max(ra.y1, rb.y1), forca: ra.forca + rb.forca };
+                regioes.splice(b1, 1);
+                juntou = true;
+            }
+        }
+    }
+    regioes.sort(function(a, b) { return b.forca - a.forca; });
+    return regioes.slice(0, maxRegioes || 4).map(function(r) {
+        var f = CEL / esc;
+        var rx = r.x0 * f, ry = r.y0 * f, rw = (r.x1 - r.x0 + 1) * f, rh = (r.y1 - r.y0 + 1) * f;
+        // margem: sobra dos lados do código (zona branca) e um pouco em cima/embaixo
+        var mx = r.o === 'h' ? rw * 0.12 + f * 2 : rw * 0.6;
+        var my = r.o === 'h' ? rh * 0.6 : rh * 0.12 + f * 2;
+        var X = Math.max(0, rx - mx), Y = Math.max(0, ry - my);
+        return { o: r.o, x: X, y: Y, w: Math.min(W - X, rw + 2 * mx), h: Math.min(H - Y, rh + 2 * my) };
+    });
 }
 
 // Procura o código na foto: começa pelo jeito mais rápido e só tenta os mais pesados se precisar.
@@ -6602,24 +6704,36 @@ function nfLerCodigosDoArquivo(arquivo, tipo, imgPronta) {
                             resultados.push(r);
                         });
                     };
-                    var meio = Math.round(H * 0.5), quarto = Math.round(H * 0.25);
-                    var tentativas = [
-                        { r: [0, 0, W, H], max: 1600, q: 'nativo' },
-                        { r: [0, 0, W, H], max: 1400, q: 'zxing', bin: 'LocalAverage' },
-                        { r: [0, quarto, W, meio], max: 2400, q: 'zxing', bin: 'LocalAverage' },
-                        { r: [0, 0, W, H], max: 2000, q: 'zxing', bin: 'FixedThreshold' },
-                        { r: [0, 0, W, Math.round(H * 0.55)], max: 2600, q: 'zxing', bin: 'LocalAverage' },
-                        { r: [0, Math.round(H * 0.45), W, Math.round(H * 0.55)], max: 2600, q: 'zxing', bin: 'LocalAverage' },
-                        { r: [0, 0, W, H], max: 3000, q: 'nativo' },
-                        { r: [0, quarto, W, meio], max: 2400, q: 'zxing', bin: 'GlobalHistogram' }
-                    ].filter(function(t) {
-                        return t.q === 'nativo' ? !!nfDetectorNativo : !!(window.ZXingWASM && nfZXingPronto);
+                    var temNativo = !!nfDetectorNativo, temZx = !!(window.ZXingWASM && nfZXingPronto);
+                    var tentativas = [];
+                    if (temNativo) tentativas.push({ r: [0, 0, W, H], max: 1600, q: 'nativo' });
+                    // 1º: recortes onde parece ter código de barras, em boa resolução
+                    var regioes = [];
+                    try { regioes = nfAcharRegioesCodigo(img, 3); } catch (e) { regioes = []; }
+                    regioes.forEach(function(rg, idx) {
+                        var comprido = rg.o === 'h' ? rg.w : rg.h;
+                        // ~2000 px no sentido do código: dá 6-7 px por barra fina
+                        var max = Math.max(rg.w, rg.h) * Math.min(2.5, Math.max(0.6, 2000 / comprido));
+                        if (temZx) tentativas.push({ r: [rg.x, rg.y, rg.w, rg.h], max: max, q: 'zxing', bin: 'LocalAverage', amp: 1 });
+                        if (temNativo) tentativas.push({ r: [rg.x, rg.y, rg.w, rg.h], max: max, q: 'nativo', amp: 1 });
+                        if (temZx && idx === 0) tentativas.push({ r: [rg.x, rg.y, rg.w, rg.h], max: max, q: 'zxing', bin: 'FixedThreshold', amp: 1 });
+                        if (temZx && idx === 0) tentativas.push({ r: [rg.x, rg.y, rg.w, rg.h], max: max * 0.6, q: 'zxing', bin: 'LocalAverage', amp: 1 });
                     });
+                    // 2º: a foto toda e partes dela (para quando a busca acima não achar)
+                    var meio = Math.round(H * 0.5), quarto = Math.round(H * 0.25);
+                    if (temZx) {
+                        tentativas.push({ r: [0, 0, W, H], max: 1400, q: 'zxing', bin: 'LocalAverage' });
+                        tentativas.push({ r: [0, 0, W, Math.round(H * 0.55)], max: 2600, q: 'zxing', bin: 'LocalAverage' });
+                        tentativas.push({ r: [0, Math.round(H * 0.45), W, Math.round(H * 0.55)], max: 2600, q: 'zxing', bin: 'LocalAverage' });
+                        tentativas.push({ r: [0, 0, W, H], max: 2000, q: 'zxing', bin: 'FixedThreshold' });
+                        tentativas.push({ r: [0, quarto, W, meio], max: 2400, q: 'zxing', bin: 'GlobalHistogram' });
+                    }
+                    if (temNativo) tentativas.push({ r: [0, 0, W, H], max: 3000, q: 'nativo' });
                     var i = 0;
                     (function proxima() {
-                        if (achou() || i >= tentativas.length || Date.now() - inicio > 15000) { resolve(resultados); return; }
+                        if (achou() || i >= tentativas.length || Date.now() - inicio > 30000) { resolve(resultados); return; }
                         var t = tentativas[i++];
-                        var c = nfCanvasDe(img, t.r[0], t.r[1], t.r[2], t.r[3], t.max);
+                        var c = nfCanvasDe(img, t.r[0], t.r[1], t.r[2], t.r[3], t.max, null, !!t.amp);
                         nfLerCanvas(c, t.q, t.bin, formatos).then(function(l) {
                             guardar(l);
                             setTimeout(proxima, 0);
@@ -6796,7 +6910,7 @@ function nfRenderizarPassos() {
     var corpo = '';
     if (p === 'nota') {
         corpo = '<div class="nf-passo-titulo">Foto 1 · Código de barras da nota</div>' +
-            '<div class="nf-passo-texto">Fotografe o código de barras da DANFE de perto, deitado e nítido.</div>' +
+            '<div class="nf-passo-texto">Pode fotografar a nota inteira ou só a parte de cima com o código de barras. Boa luz e celular firme (espere focar).</div>' +
             '<button class="nf-passo-btn" onclick="nfAbrirCameraNota()">📸 Fotografar nota</button>' +
             '<button class="nf-passo-link" onclick="nfIrParaPasso(\'boleto\')">Preencher a nota à mão →</button>';
     } else if (p === 'boleto') {
