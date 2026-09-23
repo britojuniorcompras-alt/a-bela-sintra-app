@@ -366,6 +366,8 @@ body.com-rasc .shtoast{bottom:104px}
 .cons details{margin-top:10px;font-size:.8rem} .cons summary{cursor:pointer;color:var(--mut);font-weight:700}
 .cons-ant{margin-top:8px;display:grid;gap:6px} .cons-ant div{padding:7px 10px;border-radius:8px;background:var(--surf2)}
 .cons-vaz{font-size:.86rem;color:var(--mut)}
+.selo-ler{display:inline-block;margin-right:6px;padding:3px 9px;border-radius:14px;background:var(--bll);color:var(--bl);font-size:.7rem;font-weight:700;white-space:nowrap}
+.selo-ler[hidden]{display:none}
 .cnovo{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:10px;background:var(--rd);color:#fff;font-size:.62rem;font-weight:700;vertical-align:middle}
 .cnovo[hidden]{display:none}
 .cmini{display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--bll);border:1px solid var(--bdr);border-left:4px solid var(--bl);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:.86rem;line-height:1.4}
@@ -446,6 +448,7 @@ body.com-rasc .shtoast{bottom:104px}
     <p>Mini Fábrica · B2B Congelado · Escala 100k–300k un/mês · A Bela Sintra · São Paulo</p>
   </div>
   <div class="hdr">
+    <span id="selo-ler" class="selo-ler" hidden title="Você pode simular à vontade; as alterações ficam só no seu aparelho">👁 Somente leitura</span>
     <span id="usr" class="usr"></span>
     <button class="hbtn" onclick="abrirVersoes()">💾 Versões</button>
     <button class="hbtn" onclick="sair()">Sair</button>
@@ -1237,7 +1240,7 @@ body.com-rasc .shtoast{bottom:104px}
 
 
 <div id="rasc" class="rasc" hidden role="status" aria-live="polite">
-  <div class="rasc-txt"><strong>✏️ Rascunho — não salvo</strong><span>Só você está vendo estas alterações. Salve para valer para todos.</span></div>
+  <div class="rasc-txt"><strong id="rasc-tit">✏️ Rascunho — não salvo</strong><span id="rasc-sub">Só você está vendo estas alterações. Salve para valer para todos.</span></div>
   <button class="rasc-b" type="button" onclick="descartarRascunho()">Descartar</button>
   <button id="rasc-salvar" class="rasc-b pri" type="button" onclick="salvarRascunho()">💾 Salvar</button>
 </div>
@@ -1529,7 +1532,8 @@ function aplicar(d){
 const quandoBR = iso => new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
 
 /* ---- RASCUNHO: nada vai para o banco até clicar em Salvar ---- */
-let sujo=false, baseEm=null;                 // baseEm = data da versão salva que está aberta na tela
+let sujo=false, baseEm=null, PAPEL='editor';
+const podeSalvar=()=>PAPEL==='editor';                 // baseEm = data da versão salva que está aberta na tela
 const rascKey=()=>'fabrica-rascunho-'+((USER&&USER.id)||'');
 function guardar(){                          // chamada a cada alteração: só marca rascunho
   if(!SB||!USER||!carregado) return;         // carregamento inicial não conta como alteração
@@ -1544,6 +1548,7 @@ function rRascunho(){
 }
 async function salvarRascunho(){
   if(!sujo||!SB||!USER) return;
+  if(!podeSalvar()){ toast('Seu acesso é de leitura — a simulação fica só neste aparelho.'); return; }
   const btn=document.getElementById('rasc-salvar'), txt=btn.innerHTML;
   btn.disabled=true; btn.innerHTML='Salvando…';
   try{
@@ -1634,10 +1639,30 @@ async function iniciarAuth(){
   if(session) await entrar(session.user); else tela('login');
   SB.auth.onAuthStateChange((ev,ses)=>{ if(ev==='SIGNED_OUT'){ USER=null; carregado=false; tela('login'); } });
 }
+async function lerPapel(){
+  try{
+    const {data}=await SB.from('fabrica_acesso').select('papel').maybeSingle();
+    PAPEL=(data&&data.papel==='leitor')?'leitor':'editor';
+  }catch(_){ PAPEL='editor'; }
+  aplicarPapel();
+}
+function aplicarPapel(){
+  const leitor=!podeSalvar();
+  const sl=document.getElementById('selo-ler'); if(sl) sl.hidden=!leitor;
+  const bt=document.getElementById('rasc-salvar'); if(bt) bt.hidden=leitor;
+  const t=document.getElementById('rasc-tit'), sub=document.getElementById('rasc-sub');
+  if(leitor&&t){ t.textContent='🔎 Simulação — não salva'; sub.textContent='Você tem acesso de leitura: os números mudam só no seu aparelho.'; }
+  const f=document.querySelector('#vs-modal .vsform'); if(f) f.hidden=leitor;
+  const p=document.querySelector('#vs-modal .sub');
+  if(leitor&&p) p.textContent='Você tem acesso de leitura: dá para carregar uma versão e simular, mas não salvar nem excluir.';
+  document.querySelectorAll('.vsx').forEach(b=>b.hidden=leitor);
+  const rb=document.querySelector('#tab-diag button[onclick="restaurarOriginal()"]'); if(rb&&leitor) rb.textContent='↺ ver os valores da planilha';
+}
 async function entrar(user){
   USER=user;
   document.getElementById('usr').textContent=user.email;
   tela('app');
+  await lerPapel();
   const erro=await carregarEstado();
   if(!erro) carregarConselheiro();
   if(erro){
@@ -1831,9 +1856,11 @@ async function listarVersoes(){
       <button class="vsb" onclick="carregarVersao(${v.id})">Carregar</button>
       <button class="vsb vsx" onclick="excluirVersao(${v.id})" aria-label="Excluir versão">✕</button></li>`;
   }).join('');
+  aplicarPapel();
 }
 async function salvarVersao(ev){
   ev.preventDefault();
+  if(!podeSalvar()){ toast('Seu acesso é de leitura — não dá para salvar versões.'); return; }
   const inp=document.getElementById('vs-nome'), nome=inp.value.trim();
   if(!nome){ inp.focus(); return; }
   const {error}=await SB.from('fabrica_versoes').insert({nome,dados:instantaneo(),criado_por:USER.email});
@@ -1847,6 +1874,7 @@ function carregarVersao(id){
   toast('Versão "'+v.nome+'" aberta como rascunho');
 }
 async function excluirVersao(id){
+  if(!podeSalvar()){ toast('Seu acesso é de leitura — não dá para excluir versões.'); return; }
   const v=(window._versoes||[]).find(x=>x.id===id); if(!v) return;
   if(!confirm('Excluir a versão "'+v.nome+'"? Isso não pode ser desfeito.')) return;
   // .select() devolve o que foi apagado: se vier vazio, o banco recusou (sem permissão) mesmo sem erro
