@@ -348,6 +348,7 @@
     .nf-excel-btn { flex: 1; border: none; border-radius: 16px; padding: 14px 8px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; background: #1D6F42; color: #fff; box-shadow: 0 6px 16px rgba(29,111,66,0.4); }
     .nf-excel-btn-sec { background: var(--surface); color: var(--text); box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
     .nf-excel-btn:disabled { opacity: 0.5; }
+    .nf-ctrl-origem { color: #F2C94C !important; }
     .nf-apagar-prot { display: block; width: 100%; border: 1px solid rgba(232,111,160,0.35); border-radius: 14px; padding: 11px; background: none; color: #F29BC0; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; }
     .nf-apagar-prot:active { background: rgba(232,111,160,0.12); }
     .nf-tabela { background: var(--surface); border-radius: 16px; overflow: hidden; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
@@ -504,7 +505,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v24set-i</div>
+                <div class="logo-subtitulo">Gestão de Compras · v24set-j</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -8501,8 +8502,8 @@ function nfNomeMes(mes) { var p = mes.split('-'); return NF_MESES[+p[1] - 1] + '
 
 function nfDadosMes(mes) {
     var notas = notasCache.filter(function(n) { var d = nfDiaProtocolo(n); return d && d.substr(0, 7) === mes; });
-    var blocos = {};
-    NF_BLOCOS.forEach(function(b) { blocos[b.id] = {}; });
+    var blocos = {}, doApp = {};
+    NF_BLOCOS.forEach(function(b) { blocos[b.id] = {}; doApp[b.id] = 0; });
     var chegando = [];
     var semClassificar = [];
     // Se o mês veio do controle antigo, as notas importadas de planilha já estão somadas nele
@@ -8519,6 +8520,7 @@ function nfDadosMes(mes) {
         }
         var d = nfDiaProtocolo(n);
         blocos[b][d] = (blocos[b][d] || 0) + v;
+        doApp[b] += v;   // veio de nota protocolada aqui no app, não da planilha importada
     });
     lancamentosCache.filter(function(l) { return l.mes === mes; }).forEach(function(l) {
         var v = Number(l.valor) || 0;
@@ -8535,7 +8537,7 @@ function nfDadosMes(mes) {
     });
     var totalChegando = chegando.reduce(function(s, c) { return s + c.valor; }, 0);
     return {
-        mes: mes, notas: notas, blocos: blocos, totais: totais, chegando: chegando, semClassificar: semClassificar,
+        mes: mes, notas: notas, blocos: blocos, totais: totais, doApp: doApp, chegando: chegando, semClassificar: semClassificar,
         protocoladas: Math.round(protocoladas * 100) / 100, fixos: Math.round(fixos * 100) / 100,
         totalChegando: Math.round(totalChegando * 100) / 100, total: Math.round((protocoladas + totalChegando) * 100) / 100
     };
@@ -8600,13 +8602,24 @@ function nfRenderizarControle() {
         '<div class="nf-resumo-card"><div class="nf-rc-label">NF que estão chegando</div><div class="nf-rc-num" style="font-size:17px;color:#F2C94C;">' + nfMoeda(dados.totalChegando) + '</div></div>' +
         '<div class="nf-resumo-card"><div class="nf-rc-label">Valor total de NF</div><div class="nf-rc-num" style="font-size:17px;color:#7FD6A6;">' + nfMoeda(dados.total) + '</div></div>' +
         '</div>' +
-        '<div class="nf-ctrl-fixos">Custos fixos (não somam): 🧴 Limpeza ' + nfMoeda(dados.totais.limpeza) + ' · 🛠️ Manutenção e Gráfica ' + nfMoeda(dados.totais.manut) + '</div>';
+        '<div class="nf-ctrl-fixos">Custos fixos (não somam): 🧴 Limpeza ' + nfMoeda(dados.totais.limpeza) + ' · 🛠️ Manutenção e Gráfica ' + nfMoeda(dados.totais.manut) + '</div>' +
+        (function() {
+            var soma = 0;
+            NF_BLOCOS.forEach(function(b) { if (b.soma) soma += (dados.doApp[b.id] || 0); });
+            if (soma <= 0.005) return '';
+            return '<div class="nf-ctrl-fixos">📱 Já entrou deste mês: ' + nfMoeda(soma) + ' de notas protocoladas no app (' + dados.notas.filter(function(n) { return n.origem !== 'planilha'; }).length + ' notas)</div>';
+        })();
 
     document.getElementById('nfControleBlocos').innerHTML = NF_BLOCOS.map(function(b) {
         var dias = Object.keys(dados.blocos[b.id]).length;
+        var app = dados.doApp[b.id] || 0;
+        var planilha = (dados.totais[b.id] || 0) - app;
         return '<div class="nf-ctrl-bloco' + (b.soma ? '' : ' nf-ctrl-fixo') + '">' +
             '<div><span>' + b.icone + ' ' + b.nome + '</span>' + (b.soma ? '' : '<small>custo fixo · não soma</small>') +
-            '<small>' + dias + (dias === 1 ? ' dia' : ' dias') + '</small></div>' +
+            '<small>' + dias + (dias === 1 ? ' dia' : ' dias') + '</small>' +
+            (app > 0.005 ? '<small class="nf-ctrl-origem">📱 ' + nfMoeda(app) + ' protocolado no app' +
+                (planilha > 0.005 ? ' · 📄 ' + nfMoeda(planilha) + ' da planilha' : '') + '</small>' : '') +
+            '</div>' +
             '<b>' + nfMoeda(dados.totais[b.id]) + '</b></div>';
     }).join('');
 
