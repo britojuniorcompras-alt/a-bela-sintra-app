@@ -428,6 +428,12 @@
     .nf-coluna { width: 100%; background: rgba(232,111,160,0.35); border-radius: 5px 5px 0 0; }
     .nf-coluna-ativa { background: #E86FA0; }
     .nf-coluna-mes { font-size: 10.5px; color: var(--text-dim); margin-top: 6px; text-transform: capitalize; }
+    #nfCompartilhar { padding-bottom: 110px; }
+    .nf-mes-grupo { margin-bottom: 14px; }
+    .nf-mes-header { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border-radius: 14px; padding: 11px 13px; cursor: pointer; margin-bottom: 8px; }
+    .nf-mes-seta { color: var(--text-dim); font-size: 12px; }
+    .nf-mes-nome { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; text-transform: capitalize; }
+    .nf-mes-info { margin-left: auto; font-size: 11.5px; color: var(--text-dim); text-align: right; }
 </style>
 </head>
 <body>
@@ -492,7 +498,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v23set-m</div>
+                <div class="logo-subtitulo">Gestão de Compras · v23set-q</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -6373,8 +6379,25 @@ var NF_CNPJ_PROPRIO = '04439383000150';
 function nfLerNotasSeguro() {
     try { var d = localStorage.getItem(NF_STORAGE_KEY); return d ? JSON.parse(d) : []; } catch (e) { return []; }
 }
+// O navegador guarda pouco espaço. Com anos de histórico, salvamos aqui só o período
+// recente (o resto continua inteiro no banco e volta na sincronização).
 function nfSalvarNotasLocal() {
-    try { localStorage.setItem(NF_STORAGE_KEY, JSON.stringify(notasCache)); } catch (e) { }
+    var tentativas = [null, 24, 12, 6, 3, 1];
+    for (var t = 0; t < tentativas.length; t++) {
+        var lista = notasCache;
+        if (tentativas[t]) {
+            var corte = nfMesAnterior(nfHojeIso().substr(0, 7), tentativas[t]) + '-01';
+            lista = notasCache.filter(function(n) {
+                var d = nfDiaProtocolo(n);
+                return !d || d >= corte;
+            });
+        }
+        try {
+            localStorage.setItem(NF_STORAGE_KEY, JSON.stringify(lista));
+            return;
+        } catch (e) { /* estourou o espaço: tenta um período menor */ }
+    }
+    try { localStorage.removeItem(NF_STORAGE_KEY); } catch (e) { }
 }
 
 // ---------- utilidades ----------
@@ -6954,9 +6977,9 @@ function nfGruposDoFornecedor(f) {
 }
 
 // Guarda o que foi decidido nesta nota, para a próxima já vir pronta
-function nfRegistrarFornecedor(cnpj, razao, setor, subgrupo) {
+function nfRegistrarFornecedor(cnpj, razao, setor, subgrupo, adiarEnvio) {
     var id = nfIdFornecedor(cnpj, razao);
-    if (!id || !setor) return;
+    if (!id || !setor) return null;
     var c = nfLimpaCnpj(cnpj);
     var f = null;
     for (var i = 0; i < fornecedoresCache.length; i++) {
@@ -6964,6 +6987,17 @@ function nfRegistrarFornecedor(cnpj, razao, setor, subgrupo) {
     }
     if (!f) {
         f = { id: id, cnpj: c.length === 14 ? c : null, razao_social: razao || null, setores: {}, subgrupo: null };
+        // se o mesmo fornecedor já era conhecido pelo nome (ou pelo CNPJ), aproveita o que ele já aprendeu
+        var irmaoId = id.indexOf('c:') === 0 ? nfIdFornecedor('', razao) : (c.length === 14 ? 'c:' + c : null);
+        if (irmaoId) {
+            for (var j = 0; j < fornecedoresCache.length; j++) {
+                if (fornecedoresCache[j].id === irmaoId) {
+                    f.setores = Object.assign({}, fornecedoresCache[j].setores || {});
+                    f.subgrupo = fornecedoresCache[j].subgrupo || null;
+                    break;
+                }
+            }
+        }
         fornecedoresCache.push(f);
     }
     if (razao) f.razao_social = razao;
@@ -6975,20 +7009,47 @@ function nfRegistrarFornecedor(cnpj, razao, setor, subgrupo) {
     f.atualizado_por = usuarioAtual || null;
     delete f.local;
     nfSalvarFornecedoresLocal();
-    var reg = { id: f.id, cnpj: f.cnpj, razao_social: f.razao_social, setores: f.setores, subgrupo: f.subgrupo, atualizado_em: f.atualizado_em, atualizado_por: f.atualizado_por };
-    supabasePost('fornecedores', reg, function(err) {
-        if (err) { supabasePatch('fornecedores', 'id=eq.' + encodeURIComponent(f.id), reg, function() { }); }
+    if (adiarEnvio) return f;
+    nfEnviarFornecedores([f]);
+    return f;
+}
+
+// Grava vários fornecedores de uma vez (cria ou atualiza)
+function nfEnviarFornecedores(lista) {
+    if (!lista || !lista.length) return;
+    var registros = lista.map(function(f) {
+        return { id: f.id, cnpj: f.cnpj, razao_social: f.razao_social, setores: f.setores, subgrupo: f.subgrupo, atualizado_em: f.atualizado_em || new Date().toISOString(), atualizado_por: f.atualizado_por || usuarioAtual || null };
     });
+    var i = 0;
+    (function lote() {
+        if (i >= registros.length) return;
+        var parte = registros.slice(i, i + 100);
+        i += 100;
+        fetch(SUPABASE_URL + '/rest/v1/fornecedores?on_conflict=id', {
+            method: 'POST',
+            headers: supabaseHeaders({ 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+            body: JSON.stringify(parte)
+        }).then(function(r) {
+            if (!r.ok) throw new Error('status ' + r.status);
+            supabaseOnline = true;
+            setTimeout(lote, 0);
+        }).catch(function() {
+            supabaseOnline = false;
+            setTimeout(lote, 0);
+        });
+    })();
 }
 
 function nfSincronizarFornecedores(cb) {
-    supabaseGet('fornecedores', 'select=*', function(err, dados) {
+    nfBuscarTudo('fornecedores', 'select=*&order=id.asc', function(err, dados) {
         if (!err && Array.isArray(dados)) {
             // mantém locais ainda não sincronizados
             var noServidor = {};
             dados.forEach(function(d) { noServidor[d.id] = true; });
-            fornecedoresCache = dados.concat(fornecedoresCache.filter(function(f) { return !noServidor[f.id] && !f.local; }));
-            nfSalvarFornecedoresLocal();
+            if (dados.length || fornecedoresCache.length <= 20) {
+                fornecedoresCache = dados.concat(fornecedoresCache.filter(function(f) { return !noServidor[f.id] && !f.local; }));
+                nfSalvarFornecedoresLocal();
+            }
         }
         if (cb) cb();
     });
@@ -7791,15 +7852,41 @@ function abrirNotasDireto() {
     });
 }
 
+// Busca a tabela inteira, de mil em mil (o servidor corta em 1000 por resposta)
+function nfBuscarTudo(tabela, query, cb) {
+    var todos = [], pagina = 0, POR_VEZ = 1000;
+    (function proximaPagina() {
+        var q = query + '&limit=' + POR_VEZ + '&offset=' + (pagina * POR_VEZ);
+        supabaseGet(tabela, q, function(err, dados) {
+            if (err || !Array.isArray(dados)) { cb(err || new Error('resposta inválida'), todos.length ? todos : null); return; }
+            todos = todos.concat(dados);
+            pagina++;
+            if (dados.length === POR_VEZ && pagina < 50) { setTimeout(proximaPagina, 0); return; }
+            cb(null, todos);
+        });
+    })();
+}
+
 function sincronizarNotasSupabase(cb) {
-    supabaseGet('notas_fiscais', 'select=*&order=vencimento.asc.nullslast', function(err, dados) {
+    nfBuscarTudo('notas_fiscais', 'select=*&order=vencimento.asc.nullslast', function(err, dados) {
         if (err || !Array.isArray(dados)) { if (cb) cb(); return; }
         var fila = lerFilaReenvioSegura();
         var aguardando = {};
         fila.forEach(function(a) { if (a.tabela === 'notas_fiscais' && a.metodo === 'POST' && a.registro) aguardando[a.registro.id] = true; });
         var noServidor = {};
         dados.forEach(function(d) { noServidor[d.id] = true; });
-        var locaisPendentes = notasCache.filter(function(n) { return !noServidor[n.id] && aguardando[n.id]; });
+        if (!dados.length && notasCache.length > 20) {
+            console.warn('Servidor respondeu sem notas — mantendo o que já estava no aparelho.');
+            if (cb) cb();
+            return;
+        }
+        // mantém no aparelho o que acabou de ser salvo (o servidor pode ainda não ter devolvido)
+        var limite = Date.now() - 5 * 60 * 1000;
+        var locaisPendentes = notasCache.filter(function(n) {
+            if (noServidor[n.id]) return false;
+            if (aguardando[n.id]) return true;
+            return n.criado_em && new Date(n.criado_em).getTime() > limite;
+        });
         notasCache = dados.concat(locaisPendentes);
         nfSalvarNotasLocal();
         montarDashboardResumo();
@@ -8042,27 +8129,66 @@ function nfDiasDeProtocolo() {
     return Object.keys(mapa).sort().reverse().map(function(d) { return { dia: d, notas: mapa[d] }; });
 }
 
-function nfAbrirProtocolos() {
+var nfMesesAbertos = {};   // quais meses estão expandidos na lista de protocolos
+var nfProtocolosVerTudo = false;
+
+function nfAlternarMesProtocolo(mes) {
+    nfMesesAbertos[mes] = !nfMesesAbertos[mes];
+    nfRenderizarProtocolos();
+}
+function nfVerTodosProtocolos() {
+    nfProtocolosVerTudo = true;
+    nfRenderizarProtocolos();
+}
+
+function nfRenderizarProtocolos() {
     var cont = document.getElementById('nfDiasLista');
     var dias = nfDiasDeProtocolo();
     if (!dias.length) {
-        cont.innerHTML = '<div class="nf-vazio">Nenhuma nota protocolada ainda.</div>';
-    } else {
-        cont.innerHTML = dias.map(function(g) {
-            var abas = {};
-            g.notas.forEach(function(n) { abas[nfInfoSetor(n.setor).id] = true; });
-            var icones = NF_ABAS.filter(function(a) { return abas[a.id]; }).map(function(a) { return a.icone; }).join(' ');
-            return '<div class="nf-card nf-dia-card" style="--cor:#E86FA0;" onclick="nfAbrirDia(\'' + g.dia + '\')">' +
-                '<div class="nf-card-topo"><div class="nf-card-nome">📅 ' + nfDiaSemana(g.dia) + ', ' + nfDataBR(g.dia) + '</div>' +
-                '<div class="nf-card-valor">' + nfMoeda(nfSomar(g.notas)) + '</div></div>' +
-                '<div class="nf-card-meta">' + g.notas.length + (g.notas.length === 1 ? ' nota' : ' notas') + ' · ' + icones + '</div></div>';
-        }).join('');
+        cont.innerHTML = '<div class="nf-vazio">Nenhum protocolo ainda.<br>Use <b>📥 Importar planilhas antigas</b> para trazer o histórico.</div>';
+        return;
     }
+    // agrupa por mês, do mais recente para o mais antigo
+    var meses = [], porMes = {};
+    dias.forEach(function(g) {
+        var m = g.dia.substr(0, 7);
+        if (!porMes[m]) { porMes[m] = []; meses.push(m); }
+        porMes[m].push(g);
+    });
+    // os 2 primeiros meses já vêm abertos
+    meses.slice(0, 2).forEach(function(m) { if (nfMesesAbertos[m] === undefined) nfMesesAbertos[m] = true; });
+    var mostrar = nfProtocolosVerTudo ? meses : meses.slice(0, 12);
+
+    cont.innerHTML = mostrar.map(function(m) {
+        var lista = porMes[m];
+        var totalMes = lista.reduce(function(s, g) { return s + nfSomar(g.notas); }, 0);
+        var qtdNotas = lista.reduce(function(s, g) { return s + g.notas.length; }, 0);
+        var aberto = !!nfMesesAbertos[m];
+        return '<div class="nf-mes-grupo">' +
+            '<div class="nf-mes-header" onclick="nfAlternarMesProtocolo(\'' + m + '\')">' +
+            '<span class="nf-mes-seta">' + (aberto ? '▾' : '▸') + '</span>' +
+            '<span class="nf-mes-nome">' + nfNomeMes(m) + '</span>' +
+            '<span class="nf-mes-info">' + lista.length + (lista.length === 1 ? ' dia' : ' dias') + ' · ' + qtdNotas + ' notas · ' + nfMoeda(totalMes) + '</span></div>' +
+            (aberto ? lista.map(function(g) {
+                var abas = {};
+                g.notas.forEach(function(n) { abas[nfInfoSetor(n.setor).id] = true; });
+                var icones = NF_ABAS.filter(function(a) { return abas[a.id]; }).map(function(a) { return a.icone; }).join(' ');
+                return '<div class="nf-card nf-dia-card" style="--cor:#E86FA0;" onclick="nfAbrirDia(\'' + g.dia + '\')">' +
+                    '<div class="nf-card-topo"><div class="nf-card-nome">📅 ' + nfDiaSemana(g.dia) + ', ' + nfDataBR(g.dia) + '</div>' +
+                    '<div class="nf-card-valor">' + nfMoeda(nfSomar(g.notas)) + '</div></div>' +
+                    '<div class="nf-card-meta">' + g.notas.length + (g.notas.length === 1 ? ' nota' : ' notas') + ' · ' + icones + '</div></div>';
+            }).join('') : '') + '</div>';
+    }).join('') +
+    (!nfProtocolosVerTudo && meses.length > 12 ? '<button class="ficha-add-ingrediente-btn" onclick="nfVerTodosProtocolos()">Ver os outros ' + (meses.length - 12) + ' meses</button>' : '');
+}
+
+function nfAbrirProtocolos() {
+    var antes = nfDiasDeProtocolo().length;
+    nfRenderizarProtocolos();
     trocarTela('protocolos-screen');
     sincronizarNotasSupabase(function() {
         if (document.getElementById('protocolos-screen').classList.contains('active')) {
-            var atual = nfDiasDeProtocolo().length;
-            if (atual !== dias.length) nfAbrirProtocolos();
+            if (nfDiasDeProtocolo().length !== antes) nfRenderizarProtocolos();
         }
     });
 }
@@ -8359,13 +8485,14 @@ function nfAbrirControle() {
 }
 
 function nfSincronizarLancamentos() {
-    supabaseGet('controle_lancamentos', 'select=*&order=data.asc', function(err, dados) {
+    nfBuscarTudo('controle_lancamentos', 'select=*&order=data.asc', function(err, dados) {
         if (err || !Array.isArray(dados)) { nfRenderizarControleSeAberto(); return; }
         var fila = lerFilaReenvioSegura();
         var aguardando = {};
         fila.forEach(function(a) { if (a.tabela === 'controle_lancamentos' && a.metodo === 'POST' && a.registro) aguardando[a.registro.id] = true; });
         var noServidor = {};
         dados.forEach(function(d) { noServidor[d.id] = true; });
+        if (!dados.length && lancamentosCache.length > 20) { nfRenderizarControleSeAberto(); return; }
         lancamentosCache = dados.concat(lancamentosCache.filter(function(l) { return !noServidor[l.id] && aguardando[l.id]; }));
         nfSalvarLancamentos();
         nfRenderizarControleSeAberto();
@@ -8812,8 +8939,13 @@ function nfSetorDaAba(nome) {
 
 // Data no nome do arquivo: "PROTOCOLO DE NF BELA 18-09-2026 Caique.xlsx"
 function nfDataDoNomeArquivo(nome) {
-    var m = String(nome).match(/(\d{2})[-_.](\d{2})[-_.](\d{4})/);
-    if (m) return m[3] + '-' + m[2] + '-' + m[1];
+    var s = String(nome);
+    var m = s.match(/(\d{1,2})[-_.\/ ](\d{1,2})[-_.\/ ](\d{4})/);          // 18-09-2026
+    if (m) return m[3] + '-' + nfPad(+m[2]) + '-' + nfPad(+m[1]);
+    m = s.match(/(\d{4})[-_.\/](\d{1,2})[-_.\/](\d{1,2})/);                // 2026-09-18
+    if (m) return m[1] + '-' + nfPad(+m[2]) + '-' + nfPad(+m[3]);
+    m = s.match(/(\d{1,2})[-_.\/ ](\d{1,2})[-_.\/ ](\d{2})(?!\d)/);        // 18-09-26
+    if (m) return (2000 + (+m[3])) + '-' + nfPad(+m[2]) + '-' + nfPad(+m[1]);
     return null;
 }
 
@@ -8822,6 +8954,10 @@ function nfLerPlanilha(arquivo) {
     return arquivo.arrayBuffer().then(function(buf) {
         var wb = new ExcelJS.Workbook();
         return wb.xlsx.load(buf);
+    }).catch(function(e) {
+        // planilha que o leitor principal não abre (arquivo antigo, com comentários, etc.)
+        console.warn('Leitor principal falhou, usando o leitor próprio:', e && e.message);
+        return nfLerXlsxSimples(arquivo);
     }).then(function(wb) {
         var meses = 0;
         wb.eachSheet(function(ws) {
@@ -8963,9 +9099,12 @@ function nfRenderizarImport() {
         }
         if (f.tipo === 'protocolo') {
             var dias = f.dias.map(function(d) { return nfDataBR(d); }).join(', ');
-            return '<div class="nf-import-card"><b>📅 ' + nfEsc(f.arquivo) + '</b>' +
+            var semData = !f.dias.length;
+            return '<div class="nf-import-card' + (semData ? ' nf-import-erro' : '') + '"><b>📅 ' + nfEsc(f.arquivo) + '</b>' +
                 '<span>' + f.notas.length + (f.notas.length === 1 ? ' nota' : ' notas') + ' · ' + f.abas + ' setores · ' + nfMoeda(f.total) + '</span>' +
-                '<span>Protocolo de ' + (dias || 'data não encontrada') + '</span>' +
+                (semData
+                    ? '<span>⚠️ Não achei a data deste protocolo. Informe:</span><input type="date" class="text-input" style="margin:4px 0 0 0;" onchange="nfDefinirDataImport(' + i + ', this.value)">'
+                    : '<span>Protocolo de ' + dias + '</span>') +
                 (f.ignoradas.length ? '<span>⚠️ abas ignoradas: ' + nfEsc(f.ignoradas.join(', ')) + '</span>' : '') +
                 '<button class="nf-icone-btn" onclick="nfTirarDaFila(' + i + ')">🗑️ Tirar</button></div>';
         }
@@ -8975,6 +9114,15 @@ function nfRenderizarImport() {
             '<button class="nf-icone-btn" onclick="nfTirarDaFila(' + i + ')">🗑️ Tirar</button></div>';
     }).join('');
     document.getElementById('nfImportBtnGravar').style.display = 'block';
+}
+
+// Define a data do protocolo quando a planilha não trouxe
+function nfDefinirDataImport(i, data) {
+    var f = nfImportFila[i];
+    if (!f || !data) return;
+    f.notas.forEach(function(n) { n.protocolo_data = data; });
+    f.dias = [data];
+    nfRenderizarImport();
 }
 
 function nfTirarDaFila(i) {
@@ -9007,12 +9155,15 @@ function nfGravarImportacao() {
                 var k = nfChaveNota(n);
                 if (jaTem[k]) { repetidas++; return; }
                 jaTem[k] = true;
-                var pago = n.forma_pagto === 'cartao' || (marcarPagas && n.vencimento && n.vencimento < hoje);
+                // notas antigas sem vencimento também não devem ficar na lista de "a pagar"
+                var antiga = n.protocolo_data && nfDiasEntre(n.protocolo_data, hoje) > 45;
+                var pago = n.forma_pagto === 'cartao' ||
+                    (marcarPagas && ((n.vencimento && n.vencimento < hoje) || (!n.vencimento && antiga)));
                 novasNotas.push(Object.assign({}, n, {
                     id: gerarIdUnico(),
                     setor: nfInfoSetor(n.setor).id,
                     status: pago ? 'pago' : 'pendente',
-                    pago_em: pago ? (n.vencimento ? n.vencimento + 'T12:00:00Z' : new Date().toISOString()) : null,
+                    pago_em: pago ? ((n.vencimento || n.protocolo_data || hoje) + 'T12:00:00Z') : null,
                     criado_por: usuarioAtual || null,
                     criado_em: (n.protocolo_data || hoje) + 'T12:00:00Z',
                     origem: 'planilha'
@@ -9042,12 +9193,15 @@ function nfGravarImportacao() {
     aviso.style.display = 'block';
     aviso.innerText = 'Importando...';
 
+    var fornecedoresTocados = {};
     novasNotas.forEach(function(n) {
         notasCache.push(n);
-        // o app aprende o grupo de cada fornecedor com as notas antigas
-        nfRegistrarFornecedor(n.cnpj || '', n.razao_social || '', n.setor, n.subgrupo || null);
+        // o app aprende o grupo de cada fornecedor com as notas antigas (envia tudo junto no fim)
+        var f = nfRegistrarFornecedor(n.cnpj || '', n.razao_social || '', n.setor, n.subgrupo || null, true);
+        if (f) fornecedoresTocados[f.id] = f;
     });
     nfSalvarNotasLocal();
+    nfEnviarFornecedores(Object.keys(fornecedoresTocados).map(function(k) { return fornecedoresTocados[k]; }));
     novosLanc.forEach(function(l) { lancamentosCache.push(l); });
     nfSalvarLancamentos();
 
@@ -9080,8 +9234,12 @@ function nfEnviarEmLotes(tabela, registros, cb) {
     var i = 0, erro = null;
     (function proximo() {
         if (i >= registros.length) { cb(erro); return; }
-        var lote = registros.slice(i, i + 50);
-        i += 50;
+        var lote = registros.slice(i, i + 200);
+        i += 200;
+        var avisoProgresso = document.getElementById('nfImportAviso');
+        if (avisoProgresso && registros.length > 200) {
+            avisoProgresso.innerText = 'Enviando ' + Math.min(i, registros.length) + ' de ' + registros.length + '...';
+        }
         supabasePost(tabela, lote, function(err) {
             if (err) erro = err;
             setTimeout(proximo, 0);
@@ -9098,15 +9256,29 @@ function nfDiasEntre(a, b) {
     return Math.round((Date.UTC(+pb[0], +pb[1] - 1, +pb[2]) - Date.UTC(+pa[0], +pa[1] - 1, +pa[2])) / 86400000);
 }
 
+// Índice por número de nota — evita varrer a base inteira a cada linha da tela
+var nfIdxNumeros = null;
+function nfIndicePorNumero() {
+    if (nfIdxNumeros && nfIdxNumeros.qtd === notasCache.length) return nfIdxNumeros.mapa;
+    var mapa = {};
+    notasCache.forEach(function(n) {
+        var num = nfNormalizar(n.numero_nota);
+        if (!num) return;
+        (mapa[num] = mapa[num] || []).push(n);
+    });
+    nfIdxNumeros = { qtd: notasCache.length, mapa: mapa };
+    return mapa;
+}
+
 // Procura outra nota do mesmo fornecedor com o mesmo número
 function nfNotaRepetida(dados, ignorarId) {
     var num = nfNormalizar(dados.numero_nota);
     if (!num) return null;
     var cnpj = nfLimpaCnpj(dados.cnpj), razao = nfNormalizar(dados.razao_social);
-    for (var i = 0; i < notasCache.length; i++) {
-        var n = notasCache[i];
+    var candidatos = nfIndicePorNumero()[num] || [];
+    for (var i = 0; i < candidatos.length; i++) {
+        var n = candidatos[i];
         if (n.id === ignorarId) continue;
-        if (nfNormalizar(n.numero_nota) !== num) continue;
         var mesmo = (cnpj && n.cnpj === cnpj) || (!cnpj && razao && nfNormalizar(n.razao_social) === razao);
         if (!mesmo) continue;
         // parcelas da mesma nota não são repetição
@@ -9136,10 +9308,12 @@ function nfAvisosDaNota(n) {
     if (n.valor_nota && n.valor) {
         // soma de todas as parcelas dessa nota
         var soma = 0;
-        notasCache.forEach(function(x) {
-            var mesma = x.chave_acesso ? (x.chave_acesso === n.chave_acesso) :
-                (nfNormalizar(x.numero_nota) === nfNormalizar(n.numero_nota) && nfNormalizar(x.razao_social) === nfNormalizar(n.razao_social));
-            if (mesma && nfNormalizar(x.numero_nota) === nfNormalizar(n.numero_nota)) soma += Number(x.valor) || 0;
+        (nfIndicePorNumero()[nfNormalizar(n.numero_nota)] || []).forEach(function(x) {
+            var mesmaNota = (n.chave_acesso && x.chave_acesso)
+                ? x.chave_acesso === n.chave_acesso
+                : (nfNormalizar(x.numero_nota) === nfNormalizar(n.numero_nota) &&
+                   (n.cnpj ? x.cnpj === n.cnpj : nfNormalizar(x.razao_social) === nfNormalizar(n.razao_social)));
+            if (mesmaNota) soma += Number(x.valor) || 0;
         });
         var dif = Math.round((Number(n.valor_nota) - soma) * 100) / 100;
         if (Math.abs(dif) >= 0.02) avisos.push({ tipo: 'soma', txt: 'parcelas somam ' + nfMoeda(soma) + ', nota diz ' + nfMoeda(n.valor_nota) });
@@ -9254,8 +9428,10 @@ function nfHtmlVariacao(v, invertido) {
 function nfGastosDoMes(mes) {
     var d = nfDadosMes(mes);
     var porFornecedor = {};
+    var temControleAntigo = lancamentosCache.some(function(l) { return l.mes === mes && l.tipo === 'bloco'; });
     var notas = notasCache.filter(function(n) {
         var dia = nfDiaProtocolo(n);
+        if (temControleAntigo && n.origem === 'planilha') return false;
         return dia && dia.substr(0, 7) === mes && nfBlocoDaNota(n) && nfBlocoDaNota(n) !== 'chegando';
     });
     notas.forEach(function(n) {
@@ -9356,6 +9532,170 @@ function nfRenderizarGastos() {
     var obs = document.getElementById('nfGastosObs');
     obs.style.display = soImportado ? 'block' : 'none';
     obs.innerText = soImportado ? 'Este mês veio da planilha antiga, que guarda só os totais por dia. Por isso não há lista de fornecedores.' : '';
+}
+
+// =====================================================================
+// LEITOR DE XLSX PRÓPRIO — usado quando o leitor principal não consegue abrir
+// a planilha (arquivos antigos, com comentários ou salvos por outros programas)
+// =====================================================================
+function nfDescompactar(buffer) {
+    var dv = new DataView(buffer), u8 = new Uint8Array(buffer);
+    // acha o fim do índice central do zip
+    var fim = -1;
+    for (var i = u8.length - 22; i >= 0 && i > u8.length - 66000; i--) {
+        if (dv.getUint32(i, true) === 0x06054b50) { fim = i; break; }
+    }
+    if (fim < 0) return Promise.reject(new Error('zip inválido'));
+    var qtd = dv.getUint16(fim + 10, true), ini = dv.getUint32(fim + 16, true);
+    var arquivos = [], p = ini;
+    for (var k = 0; k < qtd; k++) {
+        if (dv.getUint32(p, true) !== 0x02014b50) break;
+        var metodo = dv.getUint16(p + 10, true);
+        var tamComp = dv.getUint32(p + 20, true);
+        var nomeTam = dv.getUint16(p + 28, true);
+        var extraTam = dv.getUint16(p + 30, true);
+        var comentTam = dv.getUint16(p + 32, true);
+        var desloc = dv.getUint32(p + 42, true);
+        var nome = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nomeTam));
+        // cabeçalho local (o tamanho dos campos extras pode ser diferente)
+        var nomeTamL = dv.getUint16(desloc + 26, true), extraTamL = dv.getUint16(desloc + 28, true);
+        var dados = u8.subarray(desloc + 30 + nomeTamL + extraTamL, desloc + 30 + nomeTamL + extraTamL + tamComp);
+        arquivos.push({ nome: nome, metodo: metodo, dados: dados });
+        p += 46 + nomeTam + extraTam + comentTam;
+    }
+    var mapa = {};
+    var texto = new TextDecoder('utf-8');
+    return arquivos.reduce(function(cadeia, a) {
+        return cadeia.then(function() {
+            if (a.metodo === 0) { mapa[a.nome] = texto.decode(a.dados); return; }
+            if (typeof DecompressionStream === 'undefined') return;
+            var ds = new DecompressionStream('deflate-raw');
+            var w = ds.writable.getWriter();
+            w.write(a.dados); w.close();
+            return new Response(ds.readable).text().then(function(t) { mapa[a.nome] = t; }).catch(function() { });
+        });
+    }, Promise.resolve()).then(function() { return mapa; });
+}
+
+function nfSerialParaData(n) {
+    // 0 = 30/12/1899 no Excel
+    var ms = Math.round((n - 25569) * 86400000);
+    return new Date(ms);
+}
+function nfColunaParaNumero(letras) {
+    var n = 0;
+    for (var i = 0; i < letras.length; i++) n = n * 26 + (letras.charCodeAt(i) - 64);
+    return n;
+}
+
+function nfLerXlsxSimples(arquivo) {
+    return arquivo.arrayBuffer().then(nfDescompactar).then(function(zip) {
+        var dom = new DOMParser();
+        var pega = function(nome) { return zip[nome] ? dom.parseFromString(zip[nome], 'application/xml') : null; };
+
+        // textos compartilhados
+        var textos = [];
+        var xs = pega('xl/sharedStrings.xml');
+        if (xs) {
+            var sis = xs.getElementsByTagName('si');
+            for (var i = 0; i < sis.length; i++) {
+                var ts = sis[i].getElementsByTagName('t'), s = '';
+                for (var j = 0; j < ts.length; j++) s += ts[j].textContent;
+                textos.push(s);
+            }
+        }
+        // quais estilos são data
+        var ehData = {};
+        var st = pega('xl/styles.xml');
+        if (st) {
+            var formatosData = { 14: 1, 15: 1, 16: 1, 17: 1, 22: 1 };
+            var nfs = st.getElementsByTagName('numFmt');
+            for (var f = 0; f < nfs.length; f++) {
+                var cod = nfs[f].getAttribute('formatCode') || '';
+                if (/[dmyDMY]/.test(cod.replace(/\[[^\]]*\]/g, '')) && !/^[#0.,%\s]*$/.test(cod)) {
+                    formatosData[+nfs[f].getAttribute('numFmtId')] = 1;
+                }
+            }
+            var xfsPai = st.getElementsByTagName('cellXfs')[0];
+            if (xfsPai) {
+                var xfs = xfsPai.getElementsByTagName('xf');
+                for (var x = 0; x < xfs.length; x++) {
+                    ehData[x] = !!formatosData[+(xfs[x].getAttribute('numFmtId') || 0)];
+                }
+            }
+        }
+        // nomes das abas e seus arquivos
+        var wbx = pega('xl/workbook.xml'), rels = pega('xl/_rels/workbook.xml.rels');
+        if (!wbx) throw new Error('planilha sem workbook');
+        var alvoPorId = {};
+        if (rels) {
+            var rs = rels.getElementsByTagName('Relationship');
+            for (var r = 0; r < rs.length; r++) {
+                var alvo = rs[r].getAttribute('Target').replace(/^\/?xl\//, '').replace(/^\//, '');
+                alvoPorId[rs[r].getAttribute('Id')] = 'xl/' + alvo;
+            }
+        }
+        var abas = [];
+        var sheets = wbx.getElementsByTagName('sheet');
+        for (var sN = 0; sN < sheets.length; sN++) {
+            var rid = sheets[sN].getAttribute('r:id') || sheets[sN].getAttribute('id');
+            var caminho = alvoPorId[rid] || ('xl/worksheets/sheet' + (sN + 1) + '.xml');
+            var doc = pega(caminho);
+            var celulas = {}, maxLinha = 0;
+            if (doc) {
+                var cs = doc.getElementsByTagName('c');
+                for (var c = 0; c < cs.length; c++) {
+                    var ref = cs[c].getAttribute('r') || '';
+                    var m = ref.match(/^([A-Z]+)(\d+)$/);
+                    if (!m) continue;
+                    var linha = +m[2];
+                    if (linha > maxLinha) maxLinha = linha;
+                    var tipo = cs[c].getAttribute('t');
+                    var estilo = +(cs[c].getAttribute('s') || 0);
+                    var vEl = cs[c].getElementsByTagName('v')[0];
+                    var valor = null;
+                    if (tipo === 'inlineStr') {
+                        var isEl = cs[c].getElementsByTagName('t');
+                        valor = isEl.length ? isEl[0].textContent : null;
+                    } else if (!vEl) {
+                        valor = null;
+                    } else if (tipo === 's') {
+                        valor = textos[+vEl.textContent] || '';
+                    } else if (tipo === 'str' || tipo === 'e') {
+                        valor = vEl.textContent;
+                    } else {
+                        var num = parseFloat(vEl.textContent);
+                        valor = isNaN(num) ? vEl.textContent : (ehData[estilo] && num > 1000 ? nfSerialParaData(num) : num);
+                    }
+                    if (valor !== null && valor !== '') celulas[m[1] + linha] = valor;
+                }
+            }
+            abas.push({ nome: sheets[sN].getAttribute('name'), celulas: celulas, maxLinha: maxLinha });
+        }
+        // deixa parecido com o leitor principal, para os mesmos parsers funcionarem
+        return {
+            eachSheet: function(cb) {
+                abas.forEach(function(a, idx) {
+                    cb({
+                        name: a.nome,
+                        rowCount: a.maxLinha,
+                        getCell: function(ref) { return { value: a.celulas[ref] === undefined ? null : a.celulas[ref] }; },
+                        getRow: function(n) {
+                            return {
+                                getCell: function(col) {
+                                    var letra = '';
+                                    var q = col;
+                                    while (q > 0) { var rest = (q - 1) % 26; letra = String.fromCharCode(65 + rest) + letra; q = Math.floor((q - 1) / 26); }
+                                    var v = a.celulas[letra + n];
+                                    return { value: v === undefined ? null : v };
+                                }
+                            };
+                        }
+                    }, idx + 1);
+                });
+            }
+        };
+    });
 }
 
 </script>
