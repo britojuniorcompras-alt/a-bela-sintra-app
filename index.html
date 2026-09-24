@@ -349,6 +349,7 @@
     .nf-excel-btn-sec { background: var(--surface); color: var(--text); box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
     .nf-excel-btn:disabled { opacity: 0.5; }
     .nf-ctrl-origem { color: #F2C94C !important; }
+    .nf-dica-valor { font-size: 11.5px; color: #F2C94C; line-height: 1.4; margin-top: 8px; }
     .nf-apagar-prot { display: block; width: 100%; border: 1px solid rgba(232,111,160,0.35); border-radius: 14px; padding: 11px; background: none; color: #F29BC0; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; }
     .nf-apagar-prot:active { background: rgba(232,111,160,0.12); }
     .nf-tabela { background: var(--surface); border-radius: 16px; overflow: hidden; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
@@ -505,7 +506,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v24set-j</div>
+                <div class="logo-subtitulo">Gestão de Compras · v24set-k</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -7617,9 +7618,10 @@ function nfRenderizarBoletosForm() {
             (nfForm.editandoId ? '' : '<button onclick="nfRemoverBoleto(' + i + ')" aria-label="Remover">×</button>') + '</span></div>' +
             '<div class="nf-linha2">' +
             (b.cartao ? '' : '<div><label class="nf-label">Vencimento</label><input type="date" data-campo="venc" class="text-input" value="' + (b.vencimento || '') + '" onchange="nfAtualizarBoleto(' + i + ', \'vencimento\', this.value)"></div>') +
-            '<div><label class="nf-label">Valor (R$)</label><input type="text" data-campo="valor" inputmode="decimal" class="text-input" placeholder="0,00" value="' + nfValorParaCampo(b.valor) + '" onchange="nfAtualizarBoleto(' + i + ', \'valor\', this.value)"></div>' +
+            '<div><label class="nf-label">' + (b.linha ? 'Valor (R$)' : 'Valor total da NOTA (R$)') + '</label><input type="text" data-campo="valor" inputmode="decimal" class="text-input" placeholder="0,00" value="' + nfValorParaCampo(b.valor) + '" onchange="nfAtualizarBoleto(' + i + ', \'valor\', this.value)"></div>' +
             '</div>' +
-            (b.linha ? '<div class="nf-linha-digitavel" onclick="copiarTextoGenerico(\'' + b.linha + '\', \'✅ Linha digitável copiada!\')">' + nfFormatarLinha(b.linha) + '  📋</div>' : '') +
+            (b.linha ? '<div class="nf-linha-digitavel" onclick="copiarTextoGenerico(\'' + b.linha + '\', \'✅ Linha digitável copiada!\')">' + nfFormatarLinha(b.linha) + '  📋</div>'
+                     : (b.cartao ? '' : '<div class="nf-dica-valor">💡 O valor é o <b>TOTAL DA NOTA</b> (rodapé do DANFE, já com desconto) — não o total dos produtos.</div>')) +
             '</div>';
     }).join('');
     nfAtualizarSomaParcelas();
