@@ -498,7 +498,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v23set-q</div>
+                <div class="logo-subtitulo">Gestão de Compras · v24set-a</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -8920,21 +8920,51 @@ function nfNormalizar(s) {
 }
 
 // Nome da aba da planilha -> setor do app
+// Palavras que identificam o setor no nome da aba, na ordem em que devem ser procuradas
+var NF_PALAVRAS_ABA = [
+    ['BONIFICAD', 'bonificada'],
+    ['NENZAO', 'nenzao'],
+    ['AZEITE', 'azeite'],
+    ['MANUTENCAO', 'manutencao'], ['MANUT', 'manutencao'],
+    ['GRAFICA', 'grafica'], ['GRAF', 'grafica'], ['EMBALAGEM', 'grafica'], ['EMBALAGENS', 'grafica'],
+    ['UNIFORME', 'grafica'], ['UTENSILIO', 'grafica'], ['DESCARTAVE', 'limpeza'],
+    ['MATERIAL DE LIMPEZA', 'limpeza'], ['MAT DE LIMPEZA', 'limpeza'], ['MAT LIMPEZA', 'limpeza'], ['LIMPEZA', 'limpeza'],
+    ['PEIXES E FRUTOS', 'peixes'], ['FRUTOS DO MAR', 'peixes'], ['PEIXARIA', 'peixes'], ['PEIXE', 'peixes'],
+    ['CARNES E AVES', 'carnes'], ['CARNE', 'carnes'], ['AVES', 'carnes'], ['ACOUGUE', 'carnes'],
+    ['DESTILADO', 'destilados'], ['DESTI', 'destilados'],
+    ['REFRIGERANTE', 'refri'], ['REFRI', 'refri'], ['CERVEJA', 'refri'],
+    ['AGUAS', 'aguas'], ['AGUA', 'aguas'],
+    ['VINHO', 'vinhos'],
+    ['GERAIS', 'gerais'], ['GERAL', 'gerais'], ['SECOS', 'gerais'], ['HORTI', 'gerais'], ['MERCEARIA', 'gerais']
+];
+
+// Descobre o setor pelo nome da aba, aceitando variações ("GERAIS 01", "DESTI. REFRI. E AGUAS")
 function nfSetorDaAba(nome) {
     var n = nfNormalizar(nome);
-    if (!n || n === 'PLANILHA1') return null;
+    if (!n) return null;
+    if (n === 'PLANILHA1' || n === 'PLAN1' || n === 'SHEET1' || n === 'MODELO') return null;
+    if (n.indexOf('TOTAL') === 0 || n.indexOf('RESUMO') === 0) return null;   // aba de resumo não é protocolo
+    // tira numeração no fim: "GERAIS 01", "VINHOS 2 0"
+    var semNumero = n.replace(/\s+\d+(\s+\d+)*$/, '').trim();
+
     for (var i = 0; i < NF_ABAS.length; i++) {
-        if (nfNormalizar(NF_ABAS[i].aba) === n || nfNormalizar(NF_ABAS[i].nome) === n) return NF_ABAS[i].id;
+        var aba = nfNormalizar(NF_ABAS[i].aba), nome2 = nfNormalizar(NF_ABAS[i].nome);
+        if (n === aba || n === nome2 || semNumero === aba || semNumero === nome2) return NF_ABAS[i].id;
     }
-    var apelidos = {
-        'VINHOS 2 0': 'vinhos', 'REFRI E CERVEJA': 'refri', 'REFRIGERANTES': 'refri', 'AGUA': 'aguas',
-        'MATERIAL DE LIMPEZA': 'limpeza', 'MAT DE LIMPEZA': 'limpeza', 'LIMPEZA': 'limpeza',
-        'GRAFICA': 'grafica', 'EMBALAGENS': 'grafica', 'GRAFICA E EMBALAGEM': 'grafica',
-        'MANUTENCAO E GRAFICA': 'manutencao', 'CARNES': 'carnes', 'PEIXES': 'peixes', 'GERAL': 'gerais'
-    };
-    if (apelidos[n]) return apelidos[n];
-    for (var k in apelidos) { if (n.indexOf(k) === 0) return apelidos[k]; }
-    return null;
+    // procura a palavra que aparece primeiro no nome (aba que junta setores cai no primeiro)
+    var melhor = null, posicao = 99999;
+    for (var k = 0; k < NF_PALAVRAS_ABA.length; k++) {
+        var p = semNumero.indexOf(NF_PALAVRAS_ABA[k][0]);
+        if (p >= 0 && p < posicao) { posicao = p; melhor = NF_PALAVRAS_ABA[k][1]; }
+    }
+    return melhor;
+}
+// Aba que junta mais de um setor? (para avisar na prévia)
+function nfAbaJuntaSetores(nome) {
+    var n = nfNormalizar(nome).replace(/\s+\d+(\s+\d+)*$/, '').trim();
+    var achados = {};
+    NF_PALAVRAS_ABA.forEach(function(par) { if (n.indexOf(par[0]) >= 0) achados[par[1]] = 1; });
+    return Object.keys(achados).length > 1;
 }
 
 // Data no nome do arquivo: "PROTOCOLO DE NF BELA 18-09-2026 Caique.xlsx"
@@ -8970,10 +9000,20 @@ function nfLerPlanilha(arquivo) {
 
 function nfLerProtocolo(wb, nomeArquivo) {
     var dataArquivo = nfDataDoNomeArquivo(nomeArquivo);
-    var notas = [], abasLidas = {}, abasIgnoradas = [];
+    var notas = [], abasLidas = {}, abasIgnoradas = [], abasJuntadas = [];
     wb.eachSheet(function(ws) {
         var setor = nfSetorDaAba(ws.name);
-        if (!setor) { if (nfNormalizar(ws.name) !== 'PLANILHA1') abasIgnoradas.push(ws.name); return; }
+        if (!setor) {
+            // só avisa se a aba tiver mesmo alguma nota dentro
+            var temConteudo = false;
+            for (var v = 4; v <= Math.min(ws.rowCount || 0, 60) && !temConteudo; v++) {
+                var lv = ws.getRow(v);
+                if (nfTextoCel(lv.getCell(2).value) && nfNumCel(lv.getCell(5).value)) temConteudo = true;
+            }
+            if (temConteudo) abasIgnoradas.push(ws.name);
+            return;
+        }
+        if (nfAbaJuntaSetores(ws.name)) abasJuntadas.push(ws.name + ' → ' + nfInfoSetor(setor).nome);
         var dataProt = nfDataCel(ws.getCell('A2').value) || dataArquivo;
         var cab = nfNormalizar(nfTextoCel(ws.getCell('A3').value));
         var linha0 = cab.indexOf('VENCT') === 0 ? 4 : 4;
@@ -9005,7 +9045,7 @@ function nfLerProtocolo(wb, nomeArquivo) {
     return {
         tipo: 'protocolo', arquivo: nomeArquivo, notas: notas,
         dias: Object.keys(dias).sort(), abas: Object.keys(abasLidas).length,
-        ignoradas: abasIgnoradas, total: notas.reduce(function(s, n) { return s + (n.valor || 0); }, 0)
+        ignoradas: abasIgnoradas, juntadas: abasJuntadas, total: notas.reduce(function(s, n) { return s + (n.valor || 0); }, 0)
     };
 }
 
@@ -9105,7 +9145,8 @@ function nfRenderizarImport() {
                 (semData
                     ? '<span>⚠️ Não achei a data deste protocolo. Informe:</span><input type="date" class="text-input" style="margin:4px 0 0 0;" onchange="nfDefinirDataImport(' + i + ', this.value)">'
                     : '<span>Protocolo de ' + dias + '</span>') +
-                (f.ignoradas.length ? '<span>⚠️ abas ignoradas: ' + nfEsc(f.ignoradas.join(', ')) + '</span>' : '') +
+                (f.juntadas && f.juntadas.length ? '<span>ℹ️ abas que juntam setores: ' + nfEsc(f.juntadas.join(' · ')) + '</span>' : '') +
+                (f.ignoradas.length ? '<span>⚠️ abas sem notas lidas: ' + nfEsc(f.ignoradas.join(', ')) + '</span>' : '') +
                 '<button class="nf-icone-btn" onclick="nfTirarDaFila(' + i + ')">🗑️ Tirar</button></div>';
         }
         return '<div class="nf-import-card"><b>📊 ' + nfEsc(f.arquivo) + '</b>' +
