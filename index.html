@@ -500,7 +500,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v24set-d</div>
+                <div class="logo-subtitulo">Gestão de Compras · v24set-e</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -889,17 +889,11 @@
         <button class="nf-protocolos-btn nf-import-btn" onclick="nfAbrirImportar()">📥 Importar planilhas antigas</button>
         <button class="nf-protocolos-btn nf-leitor-btn" id="nfBtnLeitorUSB" onclick="nfAlternarLeitorUSB()">🔫 Leitor de código de barras (pistola): ligado</button>
         <div id="nfAvisoLeitor" class="nf-status" style="display:none; margin:0;"></div>
-        <div class="nf-segmento" id="nfVisoes"></div>
     </div>
     <div class="search-bar" style="position: static; padding: 12px 20px 0 20px;">
-        <input type="text" id="nfBusca" placeholder="🔍 Buscar fornecedor, nº da nota ou CNPJ" oninput="nfRenderizarLista()">
+        <input type="text" id="nfBusca" placeholder="🔍 Buscar nota de qualquer mês" oninput="nfRenderizarLista()">
     </div>
     <div class="product-list" id="nfLista"></div>
-    <div class="summary-footer" id="nfCompartilhar">
-        <button class="btn-whatsapp-link" onclick="nfCompartilhar('whatsapp')">Enviar resumo via WhatsApp</button>
-        <button class="btn-email-link" onclick="nfCompartilhar('email')">Enviar resumo por E-mail</button>
-        <button class="btn-copiar" onclick="nfCompartilhar('copiar')">Copiar resumo</button>
-    </div>
     <div class="bottom-bar">
         <div style="display:flex; gap:8px;">
             <button style="flex:3;" onclick="nfAbrirNovaNota()">📷 Protocolar nota</button>
@@ -969,7 +963,6 @@
 
 
         <div id="nfAcoesExistente" class="nf-acoes-existente" style="display:none;">
-            <button id="nfBtnPagarDetalhe" class="nf-acao-btn nf-acao-pagar" onclick="nfAlternarPagoDetalhe()">✓ Marcar como pago</button>
             <button class="nf-acao-btn nf-acao-excluir" onclick="nfExcluirDetalhe()">Excluir nota</button>
         </div>
 
@@ -2265,13 +2258,6 @@ function montarDashboardResumo() {
     var compromissosHoje = compromissosCache[chaveHoje] || [];
     if (compromissosHoje.length > 0) {
         chips.push({ classe: 'dashboard-chip-agenda', emoji: '📅', texto: 'Hoje na agenda', count: compromissosHoje.length, onclick: "abrirAgendaDireto()" });
-    }
-
-    // Boletos de notas fiscais vencidos / vencendo em até 3 dias
-    if (typeof nfContagemAlertas === 'function') {
-        var alertasNf = nfContagemAlertas();
-        if (alertasNf.vencidos > 0) { chips.push({ classe: 'dashboard-chip-vencido', emoji: '🧾', texto: 'Boleto vencido', count: alertasNf.vencidos, onclick: "abrirNotasDireto()" }); }
-        if (alertasNf.proximos > 0) { chips.push({ classe: 'dashboard-chip-proximo', emoji: '🧾', texto: 'Boleto vencendo', count: alertasNf.proximos, onclick: "abrirNotasDireto()" }); }
     }
 
     if (chips.length === 0) {
@@ -7553,12 +7539,11 @@ function nfAbrirNota(id) {
     var info = [];
     if (n.criado_por) info.push('Protocolada por ' + n.criado_por);
     if (n.criado_em) info.push('em ' + nfDataBR(String(n.criado_em).substr(0, 10)));
-    if (n.status === 'pago' && n.pago_em) info.push('· Paga em ' + nfDataBR(String(n.pago_em).substr(0, 10)));
+
     if (info.length) nfStatusForm(info.join(' '));
 
     document.getElementById('nfEditTitulo').innerText = nfRotuloDoc(n);
     document.getElementById('nfAcoesExistente').style.display = 'flex';
-    document.getElementById('nfBtnPagarDetalhe').innerText = n.status === 'pago' ? '↩︎ Desmarcar pagamento' : '✓ Marcar como pago';
     document.getElementById('nfBtnAddVenc').style.display = 'none';
     document.getElementById('nfSecaoSetor').style.display = 'block';
     document.getElementById('nfAcoesSalvar').style.display = 'flex';
@@ -7794,30 +7779,6 @@ function nfAcharNota(id) {
     return null;
 }
 
-function nfMarcarPago(id, pago) {
-    var n = nfAcharNota(id);
-    if (!n) return;
-    var alteracao = pago ? { status: 'pago', pago_em: new Date().toISOString() } : { status: 'pendente', pago_em: null };
-    Object.assign(n, alteracao);
-    nfSalvarNotasLocal();
-    supabasePatch('notas_fiscais', 'id=eq.' + encodeURIComponent(id), alteracao, function() { });
-    montarDashboardResumo();
-}
-function nfPagarDaLista(id, ev) {
-    if (ev) ev.stopPropagation();
-    var n = nfAcharNota(id);
-    if (!n) return;
-    if (!confirm('Marcar como pago?\n\n' + (n.razao_social || '') + ' — NF ' + (n.numero_nota || '') + '\n' + nfMoeda(n.valor) + (n.vencimento ? ' · venc. ' + nfDataBR(n.vencimento) : ''))) return;
-    nfMarcarPago(id, true);
-    nfRenderizarLista();
-}
-function nfAlternarPagoDetalhe() {
-    if (!nfForm || !nfForm.editandoId) return;
-    var n = nfAcharNota(nfForm.editandoId);
-    if (!n) return;
-    nfMarcarPago(n.id, n.status !== 'pago');
-    nfVoltarLista();
-}
 function nfExcluirDetalhe() {
     if (!nfForm || !nfForm.editandoId) return;
     var n = nfAcharNota(nfForm.editandoId);
@@ -7909,17 +7870,11 @@ function nfContagemAlertas() {
     return r;
 }
 
+// O pagamento é de outro setor: aqui mostramos só o dado da nota, sem cobrança
 function nfEtiquetaVencimento(n) {
-    if (n.forma_pagto === 'cartao') return { classe: 'nf-badge-pago', texto: '💳 Cartão' };
-    if (n.status === 'pago') return { classe: 'nf-badge-pago', texto: '✓ Pago' + (n.pago_em ? ' em ' + nfDataBR(String(n.pago_em).substr(0, 10), true) : '') };
+    if (n.forma_pagto === 'cartao') return { classe: 'nf-badge-futuro', texto: '💳 Cartão' };
     if (!n.vencimento) return { classe: 'nf-badge-futuro', texto: 'Sem vencimento' };
-    var d = nfDiasAte(n.vencimento);
-    var data = nfDataBR(n.vencimento, String(n.vencimento).substr(0, 4) === String(new Date().getFullYear()));
-    if (d < 0) return { classe: 'nf-badge-vencido', texto: 'Vencido há ' + (-d) + (d === -1 ? ' dia' : ' dias') + ' · ' + data };
-    if (d === 0) return { classe: 'nf-badge-hoje', texto: 'Vence hoje · ' + data };
-    if (d === 1) return { classe: 'nf-badge-proximo', texto: 'Vence amanhã · ' + data };
-    if (d <= 7) return { classe: 'nf-badge-proximo', texto: 'Vence em ' + d + ' dias · ' + data };
-    return { classe: 'nf-badge-futuro', texto: 'Vence ' + data + ' (' + nfDiaSemana(n.vencimento) + ')' };
+    return { classe: 'nf-badge-futuro', texto: 'Venc. ' + nfDataBR(n.vencimento) };
 }
 
 function nfParcelas() {
@@ -7998,41 +7953,53 @@ function nfMontarGrupos(lista) {
 function nfSomar(lista) { return lista.reduce(function(s, n) { return s + (Number(n.valor) || 0); }, 0); }
 
 function nfRenderizarLista() {
-    // Resumo no topo (sempre sobre as pendentes)
-    var pend = notasCache.filter(function(n) { return n.status !== 'pago'; });
-    var venc = pend.filter(function(n) { var d = nfDiasAte(n.vencimento); return d !== null && d < 0; });
-    var hoje = pend.filter(function(n) { return nfDiasAte(n.vencimento) === 0; });
-    var semana = pend.filter(function(n) { var d = nfDiasAte(n.vencimento); return d !== null && d >= 1 && d <= 7; });
-    document.getElementById('nfResumo').innerHTML =
-        '<div class="nf-resumo-card nf-rc-vencido" onclick="nfIrPara(\'vencimento\')"><div class="nf-rc-label">Vencidos</div><div class="nf-rc-num">' + venc.length + '</div><div class="nf-rc-valor">' + nfMoeda(nfSomar(venc)) + '</div></div>' +
-        '<div class="nf-resumo-card nf-rc-hoje" onclick="nfIrPara(\'vencimento\')"><div class="nf-rc-label">Vencem hoje</div><div class="nf-rc-num">' + hoje.length + '</div><div class="nf-rc-valor">' + nfMoeda(nfSomar(hoje)) + '</div></div>' +
-        '<div class="nf-resumo-card nf-rc-semana" onclick="nfIrPara(\'vencimento\')"><div class="nf-rc-label">Próx. 7 dias</div><div class="nf-rc-num">' + semana.length + '</div><div class="nf-rc-valor">' + nfMoeda(nfSomar(semana)) + '</div></div>' +
-        '<div class="nf-resumo-card nf-rc-total" onclick="nfIrPara(\'setor\')"><div class="nf-rc-label">Total a pagar</div><div class="nf-rc-num">' + nfMoeda(nfSomar(pend)) + '</div><div class="nf-rc-valor">' + pend.length + (pend.length === 1 ? ' boleto' : ' boletos') + '</div></div>';
-
-    // Sem filtro de pagas/todas: a lista mostra o que falta pagar; na busca aparecem também as já pagas
-    nfFiltro = (document.getElementById('nfBusca').value || '').trim() ? 'todas' : 'pendentes';
-    var visoes = [['setor', 'Por setor'], ['vencimento', 'Por vencimento']];
-    document.getElementById('nfVisoes').innerHTML = visoes.map(function(v) {
-        return '<button class="' + (nfVisao === v[0] ? 'ativo' : '') + '" onclick="nfMudarVisao(\'' + v[0] + '\')">' + v[1] + '</button>';
-    }).join('');
-
-    var lista = nfListaFiltrada();
+    var mes = nfHojeIso().substr(0, 7);
+    var busca = (document.getElementById('nfBusca').value || '').trim();
     var cont = document.getElementById('nfLista');
-    document.getElementById('nfCompartilhar').style.display = lista.length ? 'flex' : 'none';
-    if (!lista.length) {
+
+    // Resumo do mês (protocolo, não pagamento)
+    var doMes = notasCache.filter(function(n) { var d = nfDiaProtocolo(n); return d && d.substr(0, 7) === mes; });
+    var diasMes = {};
+    doMes.forEach(function(n) { diasMes[nfDiaProtocolo(n)] = 1; });
+    var qtdDias = Object.keys(diasMes).length;
+    document.getElementById('nfResumo').innerHTML =
+        '<div class="nf-resumo-card"><div class="nf-rc-label">Protocolos no mês</div><div class="nf-rc-num">' + qtdDias + '</div><div class="nf-rc-valor">' + (qtdDias === 1 ? 'dia' : 'dias') + '</div></div>' +
+        '<div class="nf-resumo-card"><div class="nf-rc-label">Notas no mês</div><div class="nf-rc-num">' + doMes.length + '</div><div class="nf-rc-valor">protocoladas</div></div>' +
+        '<div class="nf-resumo-card nf-rc-total" style="grid-column:1 / -1;"><div class="nf-rc-label">Valor protocolado em ' + nfNomeMes(mes) + '</div><div class="nf-rc-num">' + nfMoeda(nfSomar(doMes)) + '</div></div>';
+
+    // Com busca: mostra as notas encontradas. Sem busca: as pastas do mês.
+    if (busca) {
+        nfFiltro = 'todas';
+        var lista = nfListaFiltrada();
+        if (!lista.length) { cont.innerHTML = '<div class="nf-vazio">Nada encontrado para "' + nfEsc(busca) + '".</div>'; return; }
+        var parcelas = nfParcelas();
+        cont.innerHTML = '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:#E86FA0;"></span><span>🔍 ' + lista.length + (lista.length === 1 ? ' nota encontrada' : ' notas encontradas') + '</span>' +
+            '<span class="nf-gh-info">' + nfMoeda(nfSomar(lista)) + '</span></div>' +
+            lista.sort(function(a, b) { return String(nfDiaProtocolo(b) || '').localeCompare(String(nfDiaProtocolo(a) || '')); })
+                 .slice(0, 100).map(function(n) { return nfCardHtml(n, parcelas[n.id]); }).join('');
+        return;
+    }
+
+    var dias = nfDiasDeProtocolo().filter(function(g) { return g.dia.substr(0, 7) === mes; });
+    if (!dias.length) {
         cont.innerHTML = '<div class="nf-vazio">' + (notasCache.length
-            ? 'Nada por aqui com esse filtro.'
+            ? 'Nenhum protocolo em ' + nfNomeMes(mes) + ' ainda.<br>Toque em <b>📅 Protocolos por dia</b> para ver os meses anteriores.'
             : '🧾<br><br>Nenhuma nota protocolada ainda.<br>Toque em <b>📷 Protocolar nota</b>: foto 1 do código da nota, foto 2 do boleto e escolha o setor.') + '</div>';
         return;
     }
-    var parcelas = nfParcelas();
-    var grupos = nfMontarGrupos(lista);
-    cont.innerHTML = grupos.map(function(g) {
-        var abertas = g.itens.filter(function(n) { return n.status !== 'pago'; });
-        return '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:' + g.cor + ';"></span><span>' + g.icone + ' ' + nfEsc(g.titulo) + '</span>' +
-            '<span class="nf-gh-info">' + g.itens.length + ' · ' + nfMoeda(nfSomar(abertas.length ? abertas : g.itens)) + '</span></div>' +
-            g.itens.map(function(n) { return nfCardHtml(n, parcelas[n.id]); }).join('');
-    }).join('');
+    cont.innerHTML = '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:#E86FA0;"></span><span>📅 ' + nfNomeMes(mes) + '</span>' +
+        '<span class="nf-gh-info">' + dias.length + (dias.length === 1 ? ' dia' : ' dias') + ' · ' + nfMoeda(nfSomar(doMes)) + '</span></div>' +
+        dias.map(function(g) {
+            var abas = {};
+            g.notas.forEach(function(n) { abas[nfInfoSetor(n.setor).id] = true; });
+            var icones = NF_ABAS.filter(function(a) { return abas[a.id]; }).map(function(a) { return a.icone; }).join(' ');
+            var pend = nfConferenciaDoDia(g.dia).length;
+            return '<div class="nf-card nf-dia-card" style="--cor:#E86FA0;" onclick="nfAbrirDia(\'' + g.dia + '\')">' +
+                '<div class="nf-card-topo"><div class="nf-card-nome">📅 ' + nfDiaSemana(g.dia) + ', ' + nfDataBR(g.dia) + '</div>' +
+                '<div class="nf-card-valor">' + nfMoeda(nfSomar(g.notas)) + '</div></div>' +
+                '<div class="nf-card-meta">' + g.notas.length + (g.notas.length === 1 ? ' nota' : ' notas') + ' · ' + icones +
+                (pend ? ' · <span style="color:#F2C94C;">⚠️ ' + pend + ' para conferir</span>' : '') + '</div></div>';
+        }).join('');
 }
 
 function nfCardHtml(n, parcela) {
@@ -8066,7 +8033,7 @@ function nfTextoResumo() {
     var agora = new Date();
     var dataStr = agora.toLocaleDateString('pt-BR');
     var horaStr = nfPad(agora.getHours()) + ':' + nfPad(agora.getMinutes());
-    var tituloFiltro = nfFiltro === 'pendentes' ? 'BOLETOS A PAGAR' : (nfFiltro === 'pagas' ? 'BOLETOS PAGOS' : 'NOTAS FISCAIS');
+    var tituloFiltro = 'NOTAS FISCAIS';
     var linhas = [];
     var texto = '🧾 *' + tituloFiltro + ' — ' + (nfVisao === 'setor' ? 'por setor' : 'por vencimento') + '*\n' +
         'Gerado em ' + dataStr + ' às ' + horaStr + (usuarioAtual ? ' por ' + usuarioAtual : '') + '\n';
