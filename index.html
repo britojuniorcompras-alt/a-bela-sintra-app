@@ -506,7 +506,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v24set-k</div>
+                <div class="logo-subtitulo">Gestão de Compras · v24set-l</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -7279,11 +7279,8 @@ function nfSemBoleto() {
 function nfSalvarNoSetor(id) {
     if (!nfForm) return;
     nfForm.setor = id;
-    if (id !== 'gerais') { nfForm.subgrupo = null; nfSalvarNota(); return; }
-    // Gerais: Ceagesp ou Secos? Usa o que o fornecedor já teve; senão pergunta (só uma vez)
-    if (!nfForm.subgrupo) nfForm.subgrupo = nfSubgrupoConhecido();
-    if (nfForm.subgrupo) { nfSalvarNota(); return; }
-    nfIrParaPasso('subgrupo');
+    if (id !== 'gerais') nfForm.subgrupo = null;
+    nfSalvarNota();
 }
 function nfEscolherSubgrupo(s) {
     if (!nfForm) return;
@@ -7681,15 +7678,11 @@ function nfRenderizarSetoresForm() {
         var acao = (nfForm && nfForm.manual && !nfForm.editandoId) ? 'nfSalvarNoSetor' : 'nfEscolherSetor';
         return '<button class="nf-setor-btn' + (ativo ? ' ativo' : '') + '" style="--cor:' + s.cor + ';" onclick="' + acao + '(\'' + s.id + '\')">' +
             '<span>' + s.icone + '</span><span>' + nfEsc(s.nome) + '</span></button>';
-    }).join('') + (nfForm && nfForm.setor === 'gerais' ?
-        '<div class="nf-subgrupo-box"><span>Controle mensal:</span>' +
-        '<button class="' + (nfForm.subgrupo === 'ceagesp' ? 'ativo' : '') + '" onclick="nfEscolherSubgrupo(\'ceagesp\')">🥬 Ceagesp</button>' +
-        '<button class="' + (nfForm.subgrupo === 'secos' ? 'ativo' : '') + '" onclick="nfEscolherSubgrupo(\'secos\')">🌾 Secos</button></div>' : '');
+    }).join('');
 }
 function nfEscolherSetor(id) {
     if (!nfForm) return;
     nfForm.setor = id;
-    if (id === 'gerais' && !nfForm.subgrupo) nfForm.subgrupo = nfSubgrupoConhecido();
     document.getElementById('nfSetorDica').innerText = '';
     nfRenderizarSetoresForm();
 }
@@ -8492,7 +8485,7 @@ function nfSalvarLancamentos() { try { localStorage.setItem('controleLancABS', J
 function nfBlocoDaNota(n) {
     var s = nfInfoSetor(n.setor).id;
     if (s === 'peixes') return 'ceagesp';
-    if (s === 'gerais') return n.subgrupo === 'ceagesp' ? 'ceagesp' : 'secos';
+    if (s === 'gerais') return 'secos';   // a aba GERAIS inteira entra em Estoque de secos
     if (s === 'vinhos' || s === 'refri' || s === 'limpeza' || s === 'destilados' || s === 'carnes' || s === 'aguas') return s;
     if (s === 'caixa') return 'caixa';
     if (s === 'manutencao' || s === 'grafica') return 'manut';
@@ -8514,7 +8507,6 @@ function nfDadosMes(mes) {
         if (temControleAntigo && n.origem === 'planilha') return;
         var b = nfBlocoDaNota(n);
         var v = Number(n.valor) || 0;
-        if (nfInfoSetor(n.setor).id === 'gerais' && !n.subgrupo) semClassificar.push(n);
         if (!b) return;
         if (b === 'chegando') {
             chegando.push({ desc: nfInfoSetor(n.setor).aba + ' - ' + (n.razao_social || 'Fornecedor'), valor: v, auto: true });
