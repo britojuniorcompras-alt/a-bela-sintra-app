@@ -434,6 +434,8 @@
     .nf-mes-seta { color: var(--text-dim); font-size: 12px; }
     .nf-mes-nome { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; text-transform: capitalize; }
     .nf-mes-info { margin-left: auto; font-size: 11.5px; color: var(--text-dim); text-align: right; }
+    .nf-import-atencao { border: 1px solid rgba(242,201,76,0.45); }
+    .nf-import-atencao b { color: #F2C94C; }
 </style>
 </head>
 <body>
@@ -498,7 +500,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v24set-a</div>
+                <div class="logo-subtitulo">Gestão de Compras · v24set-d</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -1059,6 +1061,7 @@
         <div id="nfImportAviso" class="nf-status" style="display:none;"></div>
         <div id="nfImportLista"></div>
         <button id="nfImportBtnGravar" class="nf-passo-btn" style="display:none; margin-top:14px;" onclick="nfGravarImportacao()">✅ Importar tudo para o app</button>
+        <button class="nf-acao-btn nf-acao-excluir" style="width:100%; margin-top:18px;" onclick="nfApagarImportados()">🗑️ Apagar tudo que veio de planilha (para refazer a carga)</button>
     </div>
 </div>
 
@@ -8891,6 +8894,9 @@ function nfTextoCel(v) {
     }
     return String(v).trim();
 }
+// célula de fórmula (total) — não é lançamento digitado
+function nfEhFormula(v) { return !!(v && typeof v === 'object' && v.formula); }
+
 function nfNumCel(v) {
     if (v === null || v === undefined || v === '') return null;
     if (typeof v === 'object' && v.result !== undefined) v = v.result;
@@ -9000,13 +9006,21 @@ function nfLerPlanilha(arquivo) {
 
 function nfLerProtocolo(wb, nomeArquivo) {
     var dataArquivo = nfDataDoNomeArquivo(nomeArquivo);
-    var notas = [], abasLidas = {}, abasIgnoradas = [], abasJuntadas = [];
+    var notas = [], abasLidas = {}, abasIgnoradas = [], abasJuntadas = [], datasDiferentes = [];
     wb.eachSheet(function(ws) {
         var setor = nfSetorDaAba(ws.name);
+        var limite = Math.min(ws.rowCount || 0, 400);
+
+        // acha a linha do cabeçalho (Venct / Descrição) — a planilha pode ter linhas a mais ou a menos
+        var linhaCab = 0;
+        for (var h = 1; h <= Math.min(limite, 15) && !linhaCab; h++) {
+            var c1 = nfNormalizar(nfTextoCel(ws.getRow(h).getCell(1).value));
+            var c2 = nfNormalizar(nfTextoCel(ws.getRow(h).getCell(2).value));
+            if (c1.indexOf('VENCT') === 0 || c1.indexOf('VENCIMENTO') === 0 || c2.indexOf('DESCRICAO') === 0) linhaCab = h;
+        }
         if (!setor) {
-            // só avisa se a aba tiver mesmo alguma nota dentro
             var temConteudo = false;
-            for (var v = 4; v <= Math.min(ws.rowCount || 0, 60) && !temConteudo; v++) {
+            for (var v = (linhaCab || 3) + 1; v <= Math.min(limite, 60) && !temConteudo; v++) {
                 var lv = ws.getRow(v);
                 if (nfTextoCel(lv.getCell(2).value) && nfNumCel(lv.getCell(5).value)) temConteudo = true;
             }
@@ -9014,22 +9028,34 @@ function nfLerProtocolo(wb, nomeArquivo) {
             return;
         }
         if (nfAbaJuntaSetores(ws.name)) abasJuntadas.push(ws.name + ' → ' + nfInfoSetor(setor).nome);
-        var dataProt = nfDataCel(ws.getCell('A2').value) || dataArquivo;
-        var cab = nfNormalizar(nfTextoCel(ws.getCell('A3').value));
-        var linha0 = cab.indexOf('VENCT') === 0 ? 4 : 4;
-        for (var r = linha0; r <= Math.min(ws.rowCount, 400); r++) {
+        if (!linhaCab) linhaCab = 3;
+
+        // data do protocolo: o nome do arquivo manda; a data de dentro é reserva
+        var dataInterna = null;
+        for (var d = 1; d < linhaCab && !dataInterna; d++) {
+            for (var dc = 1; dc <= 5 && !dataInterna; dc++) {
+                var cand = nfDataCel(ws.getRow(d).getCell(dc).value);
+                if (cand) dataInterna = cand;
+            }
+        }
+        var dataProt = dataArquivo || dataInterna;
+        if (dataArquivo && dataInterna && dataArquivo !== dataInterna && datasDiferentes.indexOf(dataInterna) < 0) {
+            datasDiferentes.push(dataInterna);
+        }
+
+        for (var r = linhaCab + 1; r <= limite; r++) {
             var row = ws.getRow(r);
             var venctBruto = row.getCell(1).value;
             var desc = nfTextoCel(row.getCell(2).value);
             var doc = nfTextoCel(row.getCell(3).value);
             var emissao = nfDataCel(row.getCell(4).value);
             var valor = nfNumCel(row.getCell(5).value);
-            if (nfNormalizar(desc) === 'TOTAL' || nfNormalizar(nfTextoCel(venctBruto)) === 'TOTAL') continue;
+            var txtVenc = nfNormalizar(nfTextoCel(venctBruto));
+            if (nfNormalizar(desc) === 'TOTAL' || txtVenc === 'TOTAL') continue;
             if (!desc && valor === null) continue;
             if (!desc && !doc) continue;
             var venc = nfDataCel(venctBruto);
-            var txtVenc = nfNormalizar(nfTextoCel(venctBruto));
-            var cartao = !venc && txtVenc.indexOf('CART') >= 0;
+            var cartao = !venc && (txtVenc.indexOf('CART') >= 0 || txtVenc.indexOf('PIX') >= 0 || txtVenc.indexOf('DINHEIRO') >= 0 || txtVenc.indexOf('BOLETO') >= 0 && false);
             notas.push({
                 setor: setor, razao_social: desc || null, numero_nota: doc || null,
                 data_emissao: emissao, vencimento: venc, valor: valor,
@@ -9045,52 +9071,130 @@ function nfLerProtocolo(wb, nomeArquivo) {
     return {
         tipo: 'protocolo', arquivo: nomeArquivo, notas: notas,
         dias: Object.keys(dias).sort(), abas: Object.keys(abasLidas).length,
-        ignoradas: abasIgnoradas, juntadas: abasJuntadas, total: notas.reduce(function(s, n) { return s + (n.valor || 0); }, 0)
+        ignoradas: abasIgnoradas, juntadas: abasJuntadas, datasDiferentes: datasDiferentes,
+        total: notas.reduce(function(s, n) { return s + (n.valor || 0); }, 0)
     };
+}
+
+// Descobre o bloco do controle pelo título escrito na planilha
+function nfBlocoPorTitulo(texto) {
+    var t = nfNormalizar(texto);
+    if (!t) return null;
+    var chaves = [
+        ['CAIXA', 'caixa'], ['ALMOXARIFADO', 'caixa'],
+        ['CEAGESP', 'ceagesp'], ['PEIXE', 'ceagesp'],
+        ['SECOS', 'secos'], ['ESTOQUE', 'secos'], ['MERCEARIA', 'secos'],
+        ['VINHO', 'vinhos'],
+        ['REFRIGERANTE', 'refri'], ['REFRI', 'refri'], ['CERVEJA', 'refri'],
+        ['LIMPEZA', 'limpeza'], ['DESCARTAVE', 'limpeza'],
+        ['MANUTENCAO', 'manut'], ['MANUT', 'manut'], ['GRAFICA', 'manut'], ['EMBALAGEM', 'manut'],
+        ['DESTILADO', 'destilados'],
+        ['CARNE', 'carnes'], ['AVES', 'carnes'],
+        ['AGUA', 'aguas']
+    ];
+    var melhor = null, pos = 99999;
+    for (var i = 0; i < chaves.length; i++) {
+        var p = t.indexOf(chaves[i][0]);
+        if (p >= 0 && p < pos) { pos = p; melhor = chaves[i][1]; }
+    }
+    return melhor;
+}
+
+// Acha, na aba do mês, onde começa cada bloco (aguenta linhas a mais ou a menos)
+function nfAcharBlocosControle(ws) {
+    var blocos = [], limite = Math.min(ws.rowCount || 0, 120);
+    for (var r = 1; r <= limite; r++) {
+        var linha = ws.getRow(r);
+        for (var c = 1; c <= 30; c++) {
+            if (nfNormalizar(nfTextoCel(linha.getCell(c).value)) !== 'DATA') continue;
+            // "Data" costuma estar em célula mesclada: só vale a primeira coluna da mescla
+            if (c > 1 && nfNormalizar(nfTextoCel(linha.getCell(c - 1).value)) === 'DATA') continue;
+            var colValor = null;
+            for (var c2 = c + 1; c2 <= c + 5; c2++) {
+                if (nfNormalizar(nfTextoCel(linha.getCell(c2).value)).indexOf('VALOR') === 0) { colValor = c2; break; }
+            }
+            if (!colValor) continue;
+            var titulo = '';
+            for (var acima = r - 1; acima >= Math.max(1, r - 3) && !titulo; acima--) {
+                for (var ct = c; ct <= c + 3 && !titulo; ct++) titulo = nfTextoCel(ws.getRow(acima).getCell(ct).value);
+            }
+            var id = nfBlocoPorTitulo(titulo);
+            var repetido = blocos.some(function(x) { return x.colData === c && x.primeira === r + 1; });
+            if (id && !repetido) blocos.push({ id: id, titulo: titulo, colData: c, colValor: colValor, primeira: r + 1 });
+            c = colValor;   // pula para depois da coluna de valor
+        }
+    }
+    // até onde cada bloco vai: linha do "Total" (ou 40 linhas)
+    blocos.forEach(function(b) {
+        b.ultima = b.primeira;
+        b.declarado = null;
+        for (var r2 = b.primeira; r2 <= Math.min(limite, b.primeira + 60); r2++) {
+            var t = nfNormalizar(nfTextoCel(ws.getRow(r2).getCell(b.colData).value));
+            if (t.indexOf('TOTAL') === 0) { b.declarado = nfNumCel(ws.getRow(r2).getCell(b.colValor).value); break; }
+            b.ultima = r2;
+        }
+    });
+    return blocos;
 }
 
 function nfLerControle(wb, nomeArquivo) {
     var anoArq = (String(nomeArquivo).match(/(20\d{2})/) || [])[1];
-    var lancamentos = [], mesesLidos = [];
-    var colunas = [
-        { bloco0: 'caixa', bloco1: 'limpeza', data: 1, valor: 3 },
-        { bloco0: 'ceagesp', bloco1: 'manut', data: 6, valor: 8 },
-        { bloco0: 'secos', bloco1: 'destilados', data: 11, valor: 13 },
-        { bloco0: 'vinhos', bloco1: 'carnes', data: 16, valor: 18 },
-        { bloco0: 'refri', bloco1: 'aguas', data: 21, valor: 23 }
-    ];
+    var lancamentos = [], mesesLidos = [], conferencia = [];
     wb.eachSheet(function(ws) {
         var iMes = -1;
         for (var im = 0; im < NF_MESES.length; im++) { if (nfNormalizar(NF_MESES[im]) === nfNormalizar(ws.name)) { iMes = im; break; } }
         if (iMes < 0) return;
-        var dataTopo = nfDataCel(ws.getCell('A1').value);
+        var dataTopo = null;
+        for (var dr = 1; dr <= 3 && !dataTopo; dr++) {
+            for (var dc = 1; dc <= 4 && !dataTopo; dc++) dataTopo = nfDataCel(ws.getRow(dr).getCell(dc).value);
+        }
         var ano = dataTopo ? dataTopo.substr(0, 4) : (anoArq || String(new Date().getFullYear()));
         var mes = ano + '-' + nfPad(iMes + 1);
         var antes = lancamentos.length;
-        colunas.forEach(function(c) {
-            [[c.bloco0, 6, 25], [c.bloco1, 31, 50]].forEach(function(par) {
-                for (var r = par[1]; r <= par[2]; r++) {
-                    var row = ws.getRow(r);
-                    var valor = nfNumCel(row.getCell(c.valor).value);
-                    if (!valor) continue;
-                    var data = nfDataCel(row.getCell(c.data).value) || (mes + '-01');
-                    lancamentos.push({ mes: mes, tipo: 'bloco', bloco: par[0], data: data, valor: valor, descricao: null });
-                }
-            });
+
+        nfAcharBlocosControle(ws).forEach(function(b) {
+            var somaLida = 0;
+            for (var r = b.primeira; r <= b.ultima; r++) {
+                var linha = ws.getRow(r);
+                if (nfEhFormula(linha.getCell(b.colValor).value)) continue;   // é uma linha de total
+                var valor = nfNumCel(linha.getCell(b.colValor).value);
+                if (!valor) continue;
+                var data = nfDataCel(linha.getCell(b.colData).value) || (mes + '-01');
+                somaLida += valor;
+                lancamentos.push({ mes: mes, tipo: 'bloco', bloco: b.id, data: data, valor: valor, descricao: null });
+            }
+            somaLida = Math.round(somaLida * 100) / 100;
+            if (b.declarado !== null && Math.abs(b.declarado - somaLida) >= 0.02) {
+                conferencia.push(nfNomeMes(mes) + ' · ' + b.titulo + ': planilha diz ' + nfMoeda(b.declarado) + ', somei ' + nfMoeda(somaLida));
+            }
         });
-        // coluna "NF que estão chegando" (Y = descrição, Z = valor)
-        for (var r2 = 5; r2 <= 52; r2++) {
-            var linha = ws.getRow(r2);
-            var v = nfNumCel(linha.getCell(26).value);
-            var d = nfTextoCel(linha.getCell(25).value);
-            if (!v) continue;
-            lancamentos.push({ mes: mes, tipo: 'chegando', bloco: null, data: null, valor: v, descricao: d || 'Previsão' });
+
+        // coluna "NF que estão chegando"
+        var colTitulo = null, linhaTitulo = 0;
+        for (var r3 = 1; r3 <= Math.min(ws.rowCount || 0, 20) && !colTitulo; r3++) {
+            for (var c3 = 1; c3 <= 40; c3++) {
+                if (nfNormalizar(nfTextoCel(ws.getRow(r3).getCell(c3).value)).indexOf('CHEGANDO') >= 0) { colTitulo = c3; linhaTitulo = r3; break; }
+            }
+        }
+        if (colTitulo) {
+            for (var r4 = linhaTitulo; r4 <= Math.min(ws.rowCount || 0, linhaTitulo + 60); r4++) {
+                var l4 = ws.getRow(r4);
+                if (nfEhFormula(l4.getCell(colTitulo).value) || nfEhFormula(l4.getCell(colTitulo + 1).value)) continue;  // linha de total
+                var rotulo4 = colTitulo > 1 ? nfNormalizar(nfTextoCel(l4.getCell(colTitulo - 1).value)) : '';
+                if (rotulo4.indexOf('TOTAL') === 0) break;
+                var v = nfNumCel(l4.getCell(colTitulo).value);
+                var d4 = colTitulo > 1 ? nfTextoCel(l4.getCell(colTitulo - 1).value) : '';
+                if (!v) { v = nfNumCel(l4.getCell(colTitulo + 1).value); if (v) d4 = nfTextoCel(l4.getCell(colTitulo).value); }
+                if (!v) continue;
+                lancamentos.push({ mes: mes, tipo: 'chegando', bloco: null, data: null, valor: v, descricao: d4 || 'Previsão' });
+            }
         }
         if (lancamentos.length > antes) mesesLidos.push(mes);
     });
     return {
         tipo: 'controle', arquivo: nomeArquivo, lancamentos: lancamentos,
-        meses: mesesLidos.sort(), total: lancamentos.reduce(function(s, l) { return s + (l.valor || 0); }, 0)
+        meses: mesesLidos.sort(), conferencia: conferencia,
+        total: lancamentos.reduce(function(s, l) { return s + (l.valor || 0); }, 0)
     };
 }
 
@@ -9140,18 +9244,32 @@ function nfRenderizarImport() {
         if (f.tipo === 'protocolo') {
             var dias = f.dias.map(function(d) { return nfDataBR(d); }).join(', ');
             var semData = !f.dias.length;
+            // outro arquivo da fila com a mesma data? e já existe protocolo desse dia no app?
+            var repetidos = [], jaNoApp = [];
+            f.dias.forEach(function(dia) {
+                nfImportFila.forEach(function(outro, j) {
+                    if (j !== i && outro.tipo === 'protocolo' && outro.dias.indexOf(dia) >= 0 && repetidos.indexOf(dia) < 0) repetidos.push(dia);
+                });
+                if (nfNotasDoDia(dia).length) jaNoApp.push(dia);
+            });
             return '<div class="nf-import-card' + (semData ? ' nf-import-erro' : '') + '"><b>📅 ' + nfEsc(f.arquivo) + '</b>' +
                 '<span>' + f.notas.length + (f.notas.length === 1 ? ' nota' : ' notas') + ' · ' + f.abas + ' setores · ' + nfMoeda(f.total) + '</span>' +
                 (semData
                     ? '<span>⚠️ Não achei a data deste protocolo. Informe:</span><input type="date" class="text-input" style="margin:4px 0 0 0;" onchange="nfDefinirDataImport(' + i + ', this.value)">'
                     : '<span>Protocolo de ' + dias + '</span>') +
+                (f.datasDiferentes && f.datasDiferentes.length ? '<span>ℹ️ dentro da planilha a data é ' + f.datasDiferentes.map(function(d) { return nfDataBR(d); }).join(', ') + ' — usei a do nome do arquivo</span>' : '') +
+                (repetidos.length ? '<span>⚠️ outro arquivo desta lista tem a mesma data (' + repetidos.map(function(d) { return nfDataBR(d); }).join(', ') + ') — os dois entram no mesmo dia</span>' : '') +
+                (jaNoApp.length ? '<span>ℹ️ já existe protocolo de ' + jaNoApp.map(function(d) { return nfDataBR(d); }).join(', ') + ' no app — só o que faltar será acrescentado</span>' : '') +
                 (f.juntadas && f.juntadas.length ? '<span>ℹ️ abas que juntam setores: ' + nfEsc(f.juntadas.join(' · ')) + '</span>' : '') +
                 (f.ignoradas.length ? '<span>⚠️ abas sem notas lidas: ' + nfEsc(f.ignoradas.join(', ')) + '</span>' : '') +
                 '<button class="nf-icone-btn" onclick="nfTirarDaFila(' + i + ')">🗑️ Tirar</button></div>';
         }
-        return '<div class="nf-import-card"><b>📊 ' + nfEsc(f.arquivo) + '</b>' +
+        return '<div class="nf-import-card' + (f.conferencia && f.conferencia.length ? ' nf-import-atencao' : '') + '"><b>📊 ' + nfEsc(f.arquivo) + '</b>' +
             '<span>' + f.lancamentos.length + ' lançamentos · ' + f.meses.length + ' meses · ' + nfMoeda(f.total) + '</span>' +
             '<span>' + f.meses.map(function(m) { return nfNomeMes(m); }).join(', ') + '</span>' +
+            (f.conferencia && f.conferencia.length
+                ? '<span>⚠️ conferência: ' + nfEsc(f.conferencia.slice(0, 6).join(' · ')) + (f.conferencia.length > 6 ? ' · (+' + (f.conferencia.length - 6) + ')' : '') + '</span>'
+                : '<span>✅ os totais batem com a planilha</span>') +
             '<button class="nf-icone-btn" onclick="nfTirarDaFila(' + i + ')">🗑️ Tirar</button></div>';
     }).join('');
     document.getElementById('nfImportBtnGravar').style.display = 'block';
@@ -9215,7 +9333,7 @@ function nfGravarImportacao() {
                 var k = nfChaveLanc(l);
                 if (jaLanc[k]) { repetidas++; return; }
                 jaLanc[k] = true;
-                novosLanc.push(Object.assign({}, l, { id: gerarIdUnico(), criado_por: usuarioAtual || null }));
+                novosLanc.push(Object.assign({}, l, { id: gerarIdUnico(), criado_por: usuarioAtual || null, origem: 'planilha' }));
             });
         }
     });
@@ -9267,6 +9385,37 @@ function nfGravarImportacao() {
     }
     nfEnviarEmLotes('notas_fiscais', novasNotas, function(e) { if (e) erros++; feito(); });
     nfEnviarEmLotes('controle_lancamentos', novosLanc, function(e) { if (e) erros++; feito(); });
+}
+
+// Apaga tudo que entrou por planilha, para refazer a carga do zero
+function nfApagarImportados() {
+    var notas = notasCache.filter(function(n) { return n.origem === 'planilha'; }).length;
+    var lanc = lancamentosCache.filter(function(l) { return l.tipo === 'bloco' || l.tipo === 'chegando'; }).length;
+    if (!notas && !lanc) { alert('Não há nada importado de planilha para apagar.'); return; }
+    if (!confirm('Apagar tudo que veio das planilhas?\n\n• ' + notas + ' notas importadas\n• ' + lanc + ' lançamentos do controle mensal\n\nAs notas lançadas pelo app (foto, leitor ou manual) NÃO são apagadas.\nOs avisos de "NF chegando" digitados à mão também serão apagados.')) return;
+    if (!confirm('Tem certeza? Isso não pode ser desfeito.\n\nDepois é só importar as planilhas de novo.')) return;
+
+    var aviso = document.getElementById('nfImportAviso');
+    aviso.style.display = 'block';
+    aviso.innerText = 'Apagando...';
+
+    notasCache = notasCache.filter(function(n) { return n.origem !== 'planilha'; });
+    lancamentosCache = lancamentosCache.filter(function(l) { return l.tipo !== 'bloco' && l.tipo !== 'chegando'; });
+    nfSalvarNotasLocal();
+    nfSalvarLancamentos();
+    nfIdxNumeros = null;
+
+    var faltam = 2, erro = false;
+    function pronto(e) {
+        if (e) erro = true;
+        if (--faltam > 0) return;
+        aviso.innerText = erro
+            ? '⚠️ Apagado no aparelho, mas parte pode não ter saído do banco. Abra de novo a tela de Notas para conferir.'
+            : '✅ Tudo que veio de planilha foi apagado. Pode importar de novo.';
+        montarDashboardResumo();
+    }
+    supabaseDelete('notas_fiscais', 'origem=eq.planilha', pronto);
+    supabaseDelete('controle_lancamentos', 'tipo=in.(bloco,chegando)', pronto);
 }
 
 // envia de 50 em 50 para não travar
