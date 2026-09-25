@@ -501,7 +501,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-d</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-e</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -8775,6 +8775,12 @@ function nfMontarControleExcel(meses) {
             model.id = ws.id;
             model.mergeCells = model.merges;
             ws.model = model;
+            // linha com altura mas sem nenhuma célula faz o Excel acusar "problema no conteúdo"
+            // (a área usada sai declarada errada). Uma célula vazia com formato resolve.
+            ws.eachRow({ includeEmpty: true }, function(row) {
+                var m = row.model;
+                if (m && (!m.cells || !m.cells.length)) row.getCell(1).numFmt = 'General';
+            });
             nfPreencherAbaControle(ws, nfDadosMes(mes));
         });
         return wb;
