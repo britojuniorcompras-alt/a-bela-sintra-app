@@ -501,7 +501,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v24set-m</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-b</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -6929,6 +6929,29 @@ function nfSalvarFornecedoresLocal() {
     try { localStorage.setItem('fornecedoresABS', JSON.stringify(fornecedoresCache)); } catch (e) { }
 }
 function nfSlugNome(s) { return String(s || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim(); }
+// "ADEGA ALENTEJANA COM IMP" e "Adega Alentejana Com Imp e Exp Ltda" são o mesmo fornecedor
+var NF_SUFIXOS = ['LTDA', 'SA', 'EIRELI', 'ME', 'EPP', 'MEI', 'CIA', 'S', 'A'];
+function nfTokensNome(nome) {
+    return nfNormalizar(nome).split(' ').filter(function(t) {
+        return t.length > 1 && NF_SUFIXOS.indexOf(t) < 0;
+    });
+}
+function nfNomesCasam(a, b) {
+    var ta = nfTokensNome(a), tb = nfTokensNome(b);
+    if (!ta.length || !tb.length) return false;
+    if (ta.join(' ') === tb.join(' ')) return true;                      // "FEED S.A" e "FEED S/A"
+    var n = Math.min(ta.length, tb.length);
+    for (var i = 0; i < n; i++) {
+        if (ta[i] === tb[i]) continue;
+        // a última palavra comparada pode estar abreviada: IMPORT / IMPORTADORA
+        var curto = ta[i].length < tb[i].length ? ta[i] : tb[i];
+        var longo = ta[i].length < tb[i].length ? tb[i] : ta[i];
+        if (i === n - 1 && curto.length >= 4 && longo.indexOf(curto) === 0) continue;
+        return false;
+    }
+    if (n >= 3) return true;
+    return n >= 2 && ta.slice(0, n).join('').length >= 12;
+}
 function nfIdFornecedor(cnpj, razao) {
     var c = nfLimpaCnpj(cnpj);
     if (c.length === 14) return 'c:' + c;
@@ -6944,14 +6967,14 @@ function nfAcharFornecedor(cnpj, razao) {
     for (var i = 0; i < fornecedoresCache.length; i++) {
         var f = fornecedoresCache[i];
         if (c.length === 14 && f.cnpj === c) { achado = f; break; }
-        if (!achado && slug && nfSlugNome(f.razao_social) === slug) achado = f;
+        if (!achado && razao && nfNomesCasam(f.razao_social, razao)) achado = f;
     }
     if (achado) return achado;
     // fallback: aprende com o histórico de notas
     var setores = {}, razaoVista = null, subgrupo = null, qtd = 0;
     for (var j = 0; j < notasCache.length; j++) {
         var n = notasCache[j];
-        var bate = (c.length === 14 && n.cnpj === c) || (slug && nfSlugNome(n.razao_social) === slug);
+        var bate = (c.length === 14 && n.cnpj === c) || (razao && nfNomesCasam(n.razao_social, razao));
         if (!bate || !n.setor) continue;
         var sid = nfInfoSetor(n.setor).id;
         if (sid === 'caixa') continue;   // compra de fundo de caixa não define o grupo do fornecedor
@@ -6965,6 +6988,17 @@ function nfAcharFornecedor(cnpj, razao) {
 }
 
 // Lista de grupos que esse fornecedor já usou, do mais usado para o menos
+// Qual grupo dar sem perguntar. null = precisa perguntar.
+// "bonificada" não conta: é característica da nota, não do fornecedor.
+function nfGrupoAutomatico(f) {
+    var grupos = nfGruposDoFornecedor(f).filter(function(g) { return g.id !== 'bonificada'; });
+    if (!grupos.length) return null;
+    var total = grupos.reduce(function(s, g) { return s + g.qtd; }, 0);
+    if (total < 3) return grupos.length === 1 ? grupos[0] : null;   // histórico curto: só se for unânime
+    if (grupos.length === 1) return grupos[0];
+    if (grupos[0].qtd / total >= 0.85) return grupos[0];            // um grupo manda em quase tudo
+    return null;
+}
 function nfGruposDoFornecedor(f) {
     if (!f || !f.setores) return [];
     return Object.keys(f.setores)
@@ -7078,11 +7112,8 @@ function nfAplicarFornecedorConhecido() {
     var f = nfAcharFornecedor(cnpj, razao);
     if (!f) return null;
     if (!razao && f.razao_social) document.getElementById('nfRazao').value = f.razao_social;
-    var grupos = nfGruposDoFornecedor(f);
-    if (grupos.length === 1 && !nfForm.setor) {
-        nfForm.setor = grupos[0].id;
-        if (grupos[0].id === 'gerais' && f.subgrupo && !nfForm.subgrupo) nfForm.subgrupo = f.subgrupo;
-    }
+    var auto = nfGrupoAutomatico(f);
+    if (auto && !nfForm.setor) nfForm.setor = auto.id;
     nfForm.fornecedor = f;
     return f;
 }
@@ -7203,7 +7234,14 @@ function nfRenderizarPassos() {
             (qtd ? '<div class="nf-passo-texto">✅ ' + qtd + (qtd === 1 ? ' boleto lido.' : ' boletos lidos.') + ' Tem outra parcela?</div>'
                  : '<div class="nf-passo-texto">' + (nfLeitorLigado ? '🔫 <b>Bipe o boleto com o leitor</b> — ou fotografe.<br>' : '') + 'Fotografe o código de barras do boleto.</div>') +
             '<button class="nf-passo-btn" onclick="nfAbrirCameraBoleto()">📸 ' + (qtd ? 'Fotografar outra parcela' : 'Fotografar boleto') + '</button>' +
-            (qtd ? '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfIrParaPasso(\'setor\')">Continuar → escolher setor</button>'
+            (qtd ? (function() {
+                    var fb = nfForm.fornecedor || nfAcharFornecedor(nfLimpaCnpj(document.getElementById('nfCnpj').value), document.getElementById('nfRazao').value);
+                    var ab = nfGrupoAutomatico(fb);
+                    if (!ab) return '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfIrParaPasso(\'setor\')">Continuar → escolher setor</button>';
+                    var sb = nfInfoSetor(ab.id);
+                    return '<button class="nf-passo-btn" style="background:linear-gradient(160deg,' + sb.cor + ',' + sb.cor + '99);color:#1B1420;" onclick="nfSalvarNoSetor(\'' + ab.id + '\')">✅ Salvar em ' + sb.icone + ' ' + nfEsc(sb.nome) + '</button>' +
+                        '<button class="nf-passo-link" onclick="nfIrParaPasso(\'setor\')">Lançar em outro grupo</button>';
+                })()
                  : '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfSemBoleto()">Sem boleto — preencher vencimento à mão</button>' +
                    '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfPagoNoCartao()">💳 Pago no cartão</button>');
     } else if (p === 'manual') {
@@ -7224,10 +7262,11 @@ function nfRenderizarPassos() {
             var s = nfInfoSetor(id);
             return '<button class="nf-passo-btn ' + (destaque ? '' : 'nf-passo-btn-sec') + '" style="' + (destaque ? 'background:linear-gradient(160deg,' + s.cor + ',' + s.cor + '99);color:#1B1420;' : '') + '" onclick="nfSalvarNoSetor(\'' + id + '\')">' + s.icone + ' ' + nfEsc(s.nome) + '</button>';
         };
-        if (grupos.length === 1 && !nfForm.trocarSetor) {
+        var auto = nfGrupoAutomatico(f);
+        if (auto && !nfForm.trocarSetor) {
             corpo = '<div class="nf-passo-titulo">⭐ Fornecedor já conhecido</div>' +
-                '<div class="nf-passo-texto">' + nfEsc(f.razao_social || 'Esse fornecedor') + ' sempre entra em <b>' + nfEsc(nfInfoSetor(grupos[0].id).nome) + '</b>.</div>' +
-                botaoSetor(grupos[0].id, true) +
+                '<div class="nf-passo-texto">' + nfEsc(f.razao_social || 'Esse fornecedor') + ' entra em <b>' + nfEsc(nfInfoSetor(auto.id).nome) + '</b>' + (auto.qtd > 1 ? ' (' + auto.qtd + ' notas até agora)' : '') + '.</div>' +
+                botaoSetor(auto.id, true) +
                 '<button class="nf-passo-link" onclick="nfTrocarSetorManual()">Lançar em outro grupo</button>';
         } else if (grupos.length > 1 && !nfForm.trocarSetor) {
             corpo = '<div class="nf-passo-titulo">Qual grupo desta nota?</div>' +
@@ -7771,12 +7810,18 @@ function nfExcluirDetalhe() {
 }
 function nfExcluirRapido(id, ev) {
     if (ev) ev.stopPropagation();
-    var n = nfAcharNota(id);
+    // pode vir um id só, ou os ids de todos os boletos da mesma nota
+    var ids = String(id).split(',').filter(function(x) { return x; });
+    var n = nfAcharNota(ids[0]);
     if (!n) return;
-    if (!confirm('Excluir esta nota do protocolo?\n\n' + (n.razao_social || '') + ' — ' + nfRotuloDoc(n) + ' — ' + nfMoeda(n.valor) + '\n\nIsso não pode ser desfeito.')) return;
-    notasCache = notasCache.filter(function(x) { return x.id !== id; });
+    var total = ids.reduce(function(s, x) { var y = nfAcharNota(x); return s + (y ? (Number(y.valor) || 0) : 0); }, 0);
+    var quantos = ids.length > 1 ? '\n\nSão ' + ids.length + ' boletos desta mesma nota — todos saem juntos.' : '';
+    if (!confirm('Excluir esta nota do protocolo?\n\n' + (n.razao_social || '') + ' — ' + nfRotuloDoc(n) + ' — ' + nfMoeda(total) + quantos + '\n\nIsso não pode ser desfeito.')) return;
+    var fora = {};
+    ids.forEach(function(x) { fora[x] = 1; });
+    notasCache = notasCache.filter(function(x) { return !fora[x.id]; });
     nfSalvarNotasLocal();
-    supabaseDelete('notas_fiscais', 'id=eq.' + encodeURIComponent(id), function() { });
+    supabaseDelete('notas_fiscais', 'id=in.(' + ids.map(encodeURIComponent).join(',') + ')', function() { });
     montarDashboardResumo();
     if (document.getElementById('protocolo-dia-screen').classList.contains('active')) nfAbrirDia(nfDiaAberto);
     else nfRenderizarLista();
@@ -8225,6 +8270,39 @@ function nfDiaDoProtocolo(id) {
     return notas.length ? nfDiaProtocolo(notas[0]) : String(id).replace('dia-', '');
 }
 
+// Nota parcelada: os boletos da mesma nota viram uma linha só no protocolo
+function nfChaveNotaFisica(n) {
+    var doc = n.chave_acesso || n.numero_nota;
+    if (!doc) return null;   // recibo / fundo de caixa sem número nunca agrupa
+    return nfInfoSetor(n.setor).id + '|' + nfNormalizar(n.razao_social) + '|' + nfNormalizar(doc);
+}
+// true se a vence antes de b (sem data vai para o fim)
+function nfVenceAntes(a, b) {
+    var va = a.vencimento || '', vb = b.vencimento || '';
+    if (va && vb) return va < vb;
+    return !!va && !vb;
+}
+function nfAgruparParcelas(lista) {
+    var grupos = [], indice = {};
+    (lista || []).forEach(function(n) {
+        var k = nfChaveNotaFisica(n);
+        if (!k || !indice[k]) {
+            var g = { nota: n, valor: 0, parcelas: 0, ids: [], notas: [] };
+            if (k) indice[k] = g;
+            grupos.push(g);
+        }
+        var alvo = k ? indice[k] : grupos[grupos.length - 1];
+        alvo.valor += Number(n.valor) || 0;
+        alvo.parcelas++;
+        alvo.ids.push(n.id);
+        alvo.notas.push(n);
+        if (nfVenceAntes(n, alvo.nota)) alvo.nota = n;   // a linha leva o primeiro vencimento
+    });
+    grupos.forEach(function(g) { g.valor = Math.round(g.valor * 100) / 100; });
+    return grupos;
+}
+function nfOrdenarGrupo(a, b) { return nfOrdenarProtocolo(a.nota, b.nota); }
+
 // Ordem igual à planilha: cartão primeiro, depois por vencimento
 function nfOrdenarProtocolo(a, b) {
     var ca = a.forma_pagto === 'cartao' ? 0 : 1, cb = b.forma_pagto === 'cartao' ? 0 : 1;
@@ -8250,23 +8328,29 @@ function nfAbrirDia(id) {
         var ordemAbas = NF_ABAS.slice().sort(function(a, b) { return a.ordem - b.ordem; }).map(function(a) { return a.id; }).concat(['semsetor']);
         cont.innerHTML = ordemAbas.filter(function(id) { return porAba[id]; }).map(function(id) {
             var info = nfInfoSetor(id);
-            var itens = porAba[id].sort(nfOrdenarProtocolo);
+            var itens = nfAgruparParcelas(porAba[id]).sort(nfOrdenarGrupo);
             return '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:' + info.cor + ';"></span><span>' + info.icone + ' ' + nfEsc(info.aba) + '</span>' +
-                '<span class="nf-gh-info">' + itens.length + ' · ' + nfMoeda(nfSomar(itens)) + '</span></div>' +
-                '<div class="nf-tabela">' + itens.map(function(n) {
+                '<span class="nf-gh-info">' + itens.length + ' · ' + nfMoeda(nfSomar(porAba[id])) + '</span></div>' +
+                '<div class="nf-tabela">' + itens.map(function(g) {
+                    var n = g.nota;
                     var venc = n.forma_pagto === 'cartao' ? 'CARTÃO' : (n.vencimento ? nfDataBR(n.vencimento, true) : (n.setor === 'caixa' ? 'DINHEIRO' : '—'));
-                    var av = nfAvisosDaNota(n);
+                    var av = [];
+                    g.notas.forEach(function(x) { nfAvisosDaNota(x).forEach(function(a) { if (av.indexOf(a.txt) < 0) av.push(a.txt); }); });
+                    var parc = g.parcelas > 1 ? ' · ' + g.parcelas + ' boletos (1º em ' + nfDataBR(n.vencimento, true) + ')' : '';
                     return '<div class="nf-linha-prot' + (av.length ? ' nf-lp-alerta' : '') + '">' +
-                        '<div class="nf-lp-venc">' + (av.length ? '<span title="' + nfEsc(av.map(function(x){return x.txt;}).join(' · ')) + '">⚠️</span><br>' : '') + venc + '</div>' +
-                        '<div class="nf-lp-desc"><b>' + nfEsc(n.razao_social || 'Fornecedor sem nome') + '</b><span>' + nfEsc(nfRotuloDoc(n)) + ' · Emissão ' + (n.data_emissao ? nfDataBR(n.data_emissao, true) : '—') + '</span></div>' +
-                        '<div class="nf-lp-valor">' + nfMoeda(n.valor) + '</div>' +
+                        '<div class="nf-lp-venc">' + (av.length ? '<span title="' + nfEsc(av.join(' · ')) + '">⚠️</span><br>' : '') + venc + '</div>' +
+                        '<div class="nf-lp-desc"><b>' + nfEsc(n.razao_social || 'Fornecedor sem nome') + '</b><span>' + nfEsc(nfRotuloDoc(n)) + ' · Emissão ' + (n.data_emissao ? nfDataBR(n.data_emissao, true) : '—') + nfEsc(parc) + '</span></div>' +
+                        '<div class="nf-lp-valor">' + nfMoeda(g.valor) + '</div>' +
                         '<div class="nf-lp-acoes">' +
                         '<button class="nf-icone-btn" onclick="nfEditarDoDia(\'' + n.id + '\')" aria-label="Editar">✏️</button>' +
-                        '<button class="nf-icone-btn" onclick="nfExcluirRapido(\'' + n.id + '\', event)" aria-label="Excluir">🗑️</button>' +
+                        '<button class="nf-icone-btn" onclick="nfExcluirRapido(\'' + g.ids.join(',') + '\', event)" aria-label="Excluir">🗑️</button>' +
                         '</div></div>';
                 }).join('') + '</div>';
         }).join('') +
-        '<div class="nf-dia-total">Total do dia: <b>' + nfMoeda(nfSomar(notas)) + '</b> · ' + notas.length + (notas.length === 1 ? ' nota' : ' notas') + '</div>';
+        (function() {
+            var q = nfAgruparParcelas(notas).length;
+            return '<div class="nf-dia-total">Total do dia: <b>' + nfMoeda(nfSomar(notas)) + '</b> · ' + q + (q === 1 ? ' nota' : ' notas') + '</div>';
+        })();
     }
     trocarTela('protocolo-dia-screen');
 }
@@ -8304,7 +8388,8 @@ function nfMontarPlanilha(id) {
     function abaDa(n) { var i = nfInfoSetor(n.setor); return i.id === 'semsetor' ? 'gerais' : i.id; }
 
     abas.forEach(function(a) {
-        var itens = notas.filter(function(n) { return abaDa(n) === a.id; }).sort(nfOrdenarProtocolo);
+        var daAba = notas.filter(function(n) { return abaDa(n) === a.id; });
+        var itens = nfAgruparParcelas(daAba).sort(nfOrdenarGrupo);
         var ws = wb.addWorksheet(a.aba, {
             pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
             views: [{ showGridLines: true }]
@@ -8338,14 +8423,15 @@ function nfMontarPlanilha(id) {
         var linhasTabela = Math.max(itens.length, 15);
         for (var r = 0; r < linhasTabela; r++) {
             var row = ws.getRow(4 + r);
-            var n = itens[r];
+            var g = itens[r];
+            var n = g ? g.nota : null;
             if (n) {
                 var numero = String(n.numero_nota || '');
                 row.getCell(1).value = n.forma_pagto === 'cartao' ? 'CARTÃO' : (!n.vencimento && n.setor === 'caixa' ? 'DINHEIRO' : nfDataExcel(n.vencimento));
                 row.getCell(2).value = n.razao_social || '';
                 row.getCell(3).value = n.tipo_doc === 'recibo' ? ('RECIBO' + (numero ? ' ' + numero : '')) : (/^\d{1,15}$/.test(numero) ? Number(numero) : numero);
                 row.getCell(4).value = nfDataExcel(n.data_emissao);
-                row.getCell(5).value = (n.valor === null || n.valor === undefined || n.valor === '') ? null : Number(n.valor);
+                row.getCell(5).value = g.valor;
             }
             row.getCell(1).numFmt = DATA;
             row.getCell(4).numFmt = DATA;
@@ -8362,7 +8448,7 @@ function nfMontarPlanilha(id) {
         tot.getCell(4).value = 'TOTAL';
         tot.getCell(4).font = { name: 'Calibri', size: 14, bold: true };
         tot.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
-        tot.getCell(5).value = { formula: 'SUM(E4:E' + ultima + ')', result: nfSomar(itens) };
+        tot.getCell(5).value = { formula: 'SUM(E4:E' + ultima + ')', result: nfSomar(daAba) };
         tot.getCell(5).numFmt = MOEDA;
         tot.getCell(5).font = { name: 'Calibri', size: 14, bold: true };
         tot.height = 18.75;
@@ -9704,7 +9790,8 @@ function nfHtmlConferencia(dia) {
     var notas = nfNotasDoDia(dia);
     if (!notas.length) return '';
     if (!pend.length) {
-        return '<div class="nf-conf-ok">✅ Protocolo conferido: ' + notas.length + (notas.length === 1 ? ' nota' : ' notas') +
+        var q = nfAgruparParcelas(notas).length;
+        return '<div class="nf-conf-ok">✅ Protocolo conferido: ' + q + (q === 1 ? ' nota' : ' notas') +
             ' · ' + nfMoeda(nfSomar(notas)) + ' · nada faltando.</div>';
     }
     return '<div class="nf-conf-aviso"><b>⚠️ ' + pend.length + (pend.length === 1 ? ' nota para conferir' : ' notas para conferir') + '</b>' +
