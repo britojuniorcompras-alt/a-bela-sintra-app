@@ -384,11 +384,6 @@
     .nf-lanc-form .text-input { margin-bottom: 0; }
     .nf-lanc-form input[type="date"] { color-scheme: dark; }
     .nf-lanc-form button { grid-column: 1 / -1; border: none; border-radius: 14px; padding: 12px; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; cursor: pointer; background: var(--surface-2); color: var(--text); }
-    .nf-classificar-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; font-weight: 600; }
-    .nf-classificar-btns { display: flex; gap: 6px; flex-shrink: 0; }
-    .nf-classificar-btns button, .nf-subgrupo-box button { border: none; border-radius: 12px; padding: 8px 10px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--surface-2); color: var(--text); }
-    .nf-subgrupo-box { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); font-weight: 700; margin-top: 4px; }
-    .nf-subgrupo-box button.ativo { background: #8FD14F; color: #1B1420; }
     .bottom-bar .nf-btn-manual { background: var(--surface-2) !important; color: var(--text) !important; box-shadow: 0 6px 16px rgba(0,0,0,0.3) !important; font-size: 12px; letter-spacing: 0.3px; }
     #nota-edit-screen .edit-obs { margin-bottom: 4px; }
     .nf-leitor-btn { background: rgba(155,143,209,0.2); color: #C4BAF0; }
@@ -506,7 +501,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v24set-l</div>
+                <div class="logo-subtitulo">Gestão de Compras · v24set-m</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -1019,7 +1014,6 @@
         <button onclick="nfMudarMes(1)">▶</button>
     </div>
     <div style="padding: 0 20px;">
-        <div id="nfControleClassificar" class="nf-passos" style="display:none;"></div>
         <div id="nfControleResumo"></div>
         <div class="nf-excel-acoes" style="padding: 14px 0 0 0;">
             <button class="nf-excel-btn" onclick="nfExcelControle('baixar')">📥 Excel do mês</button>
@@ -6960,6 +6954,7 @@ function nfAcharFornecedor(cnpj, razao) {
         var bate = (c.length === 14 && n.cnpj === c) || (slug && nfSlugNome(n.razao_social) === slug);
         if (!bate || !n.setor) continue;
         var sid = nfInfoSetor(n.setor).id;
+        if (sid === 'caixa') continue;   // compra de fundo de caixa não define o grupo do fornecedor
         setores[sid] = (setores[sid] || 0) + 1;
         if (n.razao_social) razaoVista = n.razao_social;
         if (n.subgrupo) subgrupo = n.subgrupo;
@@ -7160,7 +7155,7 @@ function nfAbrirCameraBoleto() { var i = document.getElementById('nfInputBoleto'
 function nfIrParaPasso(passo) {
     if (!nfForm) return;
     nfForm.passo = passo;
-    if (passo === 'setor' || passo === 'subgrupo') nfLerDataEmissaoDepois();
+    if (passo === 'setor') nfLerDataEmissaoDepois();
     nfRenderizarPassos();
     window.scrollTo(0, 0);
 }
@@ -7190,7 +7185,7 @@ function nfRenderizarPassos() {
     el.style.display = 'block';
     var p = nfForm.passo;
     var etapas = [['nota', '1 Nota'], ['boleto', '2 Boleto'], ['setor', '3 Setor']];
-    var ordem = { nota: 0, boleto: 1, setor: 2, subgrupo: 2 };
+    var ordem = { nota: 0, boleto: 1, setor: 2 };
     var trilha = (p === 'manual' || nfForm.manual) ? '' : '<div class="nf-trilha">' + etapas.map(function(e) {
         var cls = ordem[e[0]] < ordem[p] ? 'feito' : (ordem[e[0]] === ordem[p] ? 'atual' : '');
         return '<span class="' + cls + '">' + (ordem[e[0]] < ordem[p] ? '✓ ' : '') + e[1] + '</span>';
@@ -7222,12 +7217,6 @@ function nfRenderizarPassos() {
                     return '<button class="nf-passo-btn ' + (i === 0 ? '' : 'nf-passo-btn-sec') + '" style="' + (i === 0 ? 'background:linear-gradient(160deg,' + s.cor + ',' + s.cor + '99);color:#1B1420;' : '') + '" onclick="nfSalvarNoSetor(\'' + g.id + '\')">' + s.icone + ' ' + nfEsc(s.nome) + '</button>';
                 }).join('') : '') +
             '<label class="nf-passo-btn nf-passo-btn-sec" style="text-align:center;">📎 Anexar foto (opcional)<input type="file" accept="image/*" capture="environment" onchange="nfAnexarFoto(event)" style="display:none;"></label>';
-    } else if (p === 'subgrupo') {
-        corpo = '<div class="nf-passo-titulo">Gerais: Ceagesp ou Secos?</div>' +
-            '<div class="nf-passo-texto">Para o controle mensal. Só pergunto na primeira nota deste fornecedor — depois o app lembra.</div>' +
-            '<button class="nf-passo-btn" onclick="nfEscolherSubgrupo(\'ceagesp\')">🥬 Peixes e Ceagesp (hortifrúti, laticínios)</button>' +
-            '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfEscolherSubgrupo(\'secos\')">🌾 Estoque de secos</button>' +
-            '<button class="nf-passo-link" onclick="nfIrParaPasso(nfForm.manual ? \'manual\' : \'setor\')">← Voltar aos setores</button>';
     } else {
         var f = nfForm.fornecedor || nfAcharFornecedor(nfLimpaCnpj(document.getElementById('nfCnpj').value), document.getElementById('nfRazao').value);
         var grupos = nfGruposDoFornecedor(f);
@@ -7281,25 +7270,6 @@ function nfSalvarNoSetor(id) {
     nfForm.setor = id;
     if (id !== 'gerais') nfForm.subgrupo = null;
     nfSalvarNota();
-}
-function nfEscolherSubgrupo(s) {
-    if (!nfForm) return;
-    nfForm.subgrupo = s;
-    if (nfForm.editandoId) { nfRenderizarSetoresForm(); return; }
-    nfSalvarNota();
-}
-function nfSubgrupoConhecido() {
-    var cnpj = nfLimpaCnpj(document.getElementById('nfCnpj').value);
-    var fCad = nfAcharFornecedor(cnpj, document.getElementById('nfRazao').value);
-    if (fCad && fCad.subgrupo) return fCad.subgrupo;
-    var razao = (document.getElementById('nfRazao').value || '').trim().toUpperCase();
-    var melhor = null;
-    notasCache.forEach(function(n) {
-        if (!n.subgrupo) return;
-        var mesmo = cnpj ? n.cnpj === cnpj : (razao && (n.razao_social || '').trim().toUpperCase() === razao);
-        if (mesmo && (!melhor || String(n.criado_em || '') > String(melhor.criado_em || ''))) melhor = n;
-    });
-    return melhor ? melhor.subgrupo : null;
 }
 
 // Foto 1: nota
@@ -7615,10 +7585,10 @@ function nfRenderizarBoletosForm() {
             (nfForm.editandoId ? '' : '<button onclick="nfRemoverBoleto(' + i + ')" aria-label="Remover">×</button>') + '</span></div>' +
             '<div class="nf-linha2">' +
             (b.cartao ? '' : '<div><label class="nf-label">Vencimento</label><input type="date" data-campo="venc" class="text-input" value="' + (b.vencimento || '') + '" onchange="nfAtualizarBoleto(' + i + ', \'vencimento\', this.value)"></div>') +
-            '<div><label class="nf-label">' + (b.linha ? 'Valor (R$)' : 'Valor total da NOTA (R$)') + '</label><input type="text" data-campo="valor" inputmode="decimal" class="text-input" placeholder="0,00" value="' + nfValorParaCampo(b.valor) + '" onchange="nfAtualizarBoleto(' + i + ', \'valor\', this.value)"></div>' +
+            '<div><label class="nf-label">' + (b.linha || total > 1 ? 'Valor (R$)' : 'Valor total da NOTA (R$)') + '</label><input type="text" data-campo="valor" inputmode="decimal" class="text-input" placeholder="0,00" value="' + nfValorParaCampo(b.valor) + '" onchange="nfAtualizarBoleto(' + i + ', \'valor\', this.value)"></div>' +
             '</div>' +
             (b.linha ? '<div class="nf-linha-digitavel" onclick="copiarTextoGenerico(\'' + b.linha + '\', \'✅ Linha digitável copiada!\')">' + nfFormatarLinha(b.linha) + '  📋</div>'
-                     : (b.cartao ? '' : '<div class="nf-dica-valor">💡 O valor é o <b>TOTAL DA NOTA</b> (rodapé do DANFE, já com desconto) — não o total dos produtos.</div>')) +
+                     : (b.cartao || total > 1 ? '' : '<div class="nf-dica-valor">💡 O valor é o <b>TOTAL DA NOTA</b> (rodapé do DANFE, já com desconto) — não o total dos produtos.</div>')) +
             '</div>';
     }).join('');
     nfAtualizarSomaParcelas();
@@ -7750,8 +7720,8 @@ function nfSalvarNota() {
                 valor: b.valor,
                 linha_digitavel: b.linha || null,
                 forma_pagto: formaDe(b),
-                status: b.cartao ? 'pago' : 'pendente',
-                pago_em: b.cartao ? agora : null,
+                status: (b.cartao || base.setor === 'caixa') ? 'pago' : 'pendente',
+                pago_em: (b.cartao || base.setor === 'caixa') ? agora : null,
                 criado_por: usuarioAtual || null,
                 criado_em: agora,
                 protocolo_id: 'app-' + (base.protocolo_data || nfHojeIso()),
@@ -7834,21 +7804,30 @@ function nfExcluirProtocolo(id) {
     // o servidor tem limite de tamanho no filtro, então vai em lotes
     var lotes = [], POR_LOTE = 60;
     for (var i = 0; i < ids.length; i += POR_LOTE) lotes.push(ids.slice(i, i + POR_LOTE));
-    var prontos = 0, falhou = false;
+    var prontos = 0, recusado = false, semRede = false;
+    var estavaNoProtocolo = document.getElementById('protocolo-dia-screen').classList.contains('active');
     lotes.forEach(function(lote) {
         var filtro = 'id=in.(' + lote.map(encodeURIComponent).join(',') + ')';
         supabaseDelete('notas_fiscais', filtro, function(err) {
-            if (err) falhou = true;
+            // erro de rede o app reenvia sozinho; erro do servidor (status) não entra na fila
+            if (err) { if (err.message && err.message.indexOf('status') === 0) recusado = true; else semRede = true; }
             prontos++;
             if (prontos < lotes.length) return;
-            nfDiaAberto = null;
             if (aviso) aviso.style.display = 'none';
             montarDashboardResumo();
-            abrirNotasDireto();
+            // só sai da tela se o usuário ainda estiver no protocolo que mandou apagar
+            if (estavaNoProtocolo && document.getElementById('protocolo-dia-screen').classList.contains('active')) {
+                nfDiaAberto = null;
+                abrirNotasDireto();
+            }
             setTimeout(function() {
-                alert(falhou
-                    ? 'Protocolo apagado no aparelho. Parte não subiu para a equipe (sem internet?) — vai sincronizar sozinho depois.'
-                    : 'Protocolo apagado: ' + nome + '.');
+                if (recusado) {
+                    alert('⚠️ O servidor recusou a exclusão de parte das notas.\n\nElas sumiram deste aparelho, mas continuam no banco da equipe e voltam na próxima sincronização. Me avise para eu verificar.');
+                } else if (semRede) {
+                    alert('Protocolo apagado no aparelho. Ainda não subiu para a equipe (sem internet?) — vai sincronizar sozinho depois.');
+                } else {
+                    alert('Protocolo apagado: ' + nome + '.');
+                }
             }, 100);
         });
     });
@@ -8500,7 +8479,6 @@ function nfDadosMes(mes) {
     var blocos = {}, doApp = {};
     NF_BLOCOS.forEach(function(b) { blocos[b.id] = {}; doApp[b.id] = 0; });
     var chegando = [];
-    var semClassificar = [];
     // Se o mês veio do controle antigo, as notas importadas de planilha já estão somadas nele
     var temControleAntigo = lancamentosCache.some(function(l) { return l.mes === mes && l.tipo === 'bloco'; });
     notas.forEach(function(n) {
@@ -8514,7 +8492,7 @@ function nfDadosMes(mes) {
         }
         var d = nfDiaProtocolo(n);
         blocos[b][d] = (blocos[b][d] || 0) + v;
-        doApp[b] += v;   // veio de nota protocolada aqui no app, não da planilha importada
+        if (n.origem !== 'planilha') doApp[b] += v;   // só o que foi protocolado aqui no app
     });
     lancamentosCache.filter(function(l) { return l.mes === mes; }).forEach(function(l) {
         var v = Number(l.valor) || 0;
@@ -8531,7 +8509,7 @@ function nfDadosMes(mes) {
     });
     var totalChegando = chegando.reduce(function(s, c) { return s + c.valor; }, 0);
     return {
-        mes: mes, notas: notas, blocos: blocos, totais: totais, doApp: doApp, chegando: chegando, semClassificar: semClassificar,
+        mes: mes, notas: notas, blocos: blocos, totais: totais, doApp: doApp, chegando: chegando,
         protocoladas: Math.round(protocoladas * 100) / 100, fixos: Math.round(fixos * 100) / 100,
         totalChegando: Math.round(totalChegando * 100) / 100, total: Math.round((protocoladas + totalChegando) * 100) / 100
     };
@@ -8571,24 +8549,6 @@ function nfMudarMes(delta) {
 function nfRenderizarControle() {
     var dados = nfDadosMes(nfMesControle);
     document.getElementById('nfMesTitulo').innerText = nfNomeMes(nfMesControle);
-
-    var aviso = document.getElementById('nfControleClassificar');
-    if (dados.semClassificar.length) {
-        var fornecedores = {};
-        dados.semClassificar.forEach(function(n) { var k = n.cnpj || n.razao_social || n.id; if (!fornecedores[k]) fornecedores[k] = n; });
-        aviso.style.display = 'block';
-        aviso.innerHTML = '<div class="nf-passo-titulo">⚠️ Notas Gerais sem classificação</div>' +
-            '<div class="nf-passo-texto">Diga se o fornecedor é Ceagesp ou Secos (só uma vez — o app lembra nas próximas notas).</div>' +
-            Object.keys(fornecedores).map(function(k) {
-                var n = fornecedores[k];
-                return '<div class="nf-classificar-linha"><div>' + nfEsc(n.razao_social || 'Fornecedor') + '</div>' +
-                    '<div class="nf-classificar-btns"><button onclick="nfClassificarFornecedor(\'' + n.id + '\', \'ceagesp\')">🥬 Ceagesp</button>' +
-                    '<button onclick="nfClassificarFornecedor(\'' + n.id + '\', \'secos\')">🌾 Secos</button></div></div>';
-            }).join('');
-    } else {
-        aviso.style.display = 'none';
-        aviso.innerHTML = '';
-    }
 
     document.getElementById('nfControleResumo').innerHTML =
         '<div class="nf-ctrl-total"><div class="nf-rc-label">Valor de NF protocoladas</div><div class="nf-ctrl-num">' + nfMoeda(dados.protocoladas) + '</div></div>' +
@@ -8633,20 +8593,6 @@ function nfRenderizarControle() {
         var hoje = nfHojeIso();
         document.getElementById('nfCaixaData').value = hoje.substr(0, 7) === nfMesControle ? hoje : nfMesControle + '-01';
     }
-}
-
-function nfClassificarFornecedor(idNota, subgrupo) {
-    var ref = nfAcharNota(idNota);
-    if (!ref) return;
-    notasCache.forEach(function(n) {
-        var mesmo = ref.cnpj ? n.cnpj === ref.cnpj : (n.razao_social || '').trim().toUpperCase() === (ref.razao_social || '').trim().toUpperCase();
-        if (mesmo && nfInfoSetor(n.setor).id === 'gerais' && !n.subgrupo) {
-            n.subgrupo = subgrupo;
-            supabasePatch('notas_fiscais', 'id=eq.' + encodeURIComponent(n.id), { subgrupo: subgrupo }, function() { });
-        }
-    });
-    nfSalvarNotasLocal();
-    nfRenderizarControle();
 }
 
 function nfAdicionarLancamento(tipo) {
@@ -9067,8 +9013,8 @@ function nfLerPlanilha(arquivo) {
         wb.eachSheet(function(ws) {
             for (var im = 0; im < NF_MESES.length; im++) { if (nfNormalizar(NF_MESES[im]) === nfNormalizar(ws.name)) { meses++; break; } }
         });
-        if (meses > 0) return nfLerControle(wb, arquivo.name);
         if (nfEhLivroCaixa(wb)) return nfLerFundoCaixa(wb, arquivo.name);
+        if (meses > 0) return nfLerControle(wb, arquivo.name);
         return nfLerProtocolo(wb, arquivo.name);
     });
 }
@@ -9429,7 +9375,7 @@ function nfRenderizarImport() {
             });
             return '<div class="nf-import-card' + (semData || semNota ? ' nf-import-erro' : '') + '"><b>' + (semNota ? '⚠️ ' : '📅 ') + nfEsc(f.arquivo) + '</b>' +
                 (semNota ? '<span>Nenhuma nota foi lida desta planilha — confira se as abas têm o cabeçalho Venct / Descrição / Nº Docto / Emissão / Valor.</span>' : '') +
-                '<span>' + f.notas.length + (f.notas.length === 1 ? ' nota' : ' notas') + ' · ' + f.abas + ' setores · ' + nfMoeda(f.total) + '</span>' +
+                '<span>' + f.notas.length + (f.notas.length === 1 ? ' nota' : ' notas') + ' · ' + (f.fundoCaixa ? '💵 fundo de caixa' : f.abas + ' setores') + ' · ' + nfMoeda(f.total) + '</span>' +
                 (semData
                     ? '<span>⚠️ Não achei a data deste protocolo. Informe:</span><input type="date" class="text-input" style="margin:4px 0 0 0;" onchange="nfDefinirDataImport(' + i + ', this.value)">'
                     : '<span>Protocolo de ' + dias + '</span>') +
@@ -9468,7 +9414,7 @@ function nfTirarDaFila(i) {
 
 // chave para não importar a mesma nota duas vezes
 function nfChaveNota(n) {
-    return [n.protocolo_data || '', n.protocolo_nome || '', nfInfoSetor(n.setor).id, nfNormalizar(n.razao_social), nfNormalizar(n.numero_nota), n.valor || 0].join('|');
+    return [n.protocolo_data || '', n.protocolo_nome || '', nfInfoSetor(n.setor).id, nfNormalizar(n.razao_social), nfNormalizar(n.numero_nota), nfNormalizar(n.observacao), n.valor || 0].join('|');
 }
 function nfChaveLanc(l) {
     return [l.mes, l.tipo, l.bloco || '', l.data || '', l.valor || 0, nfNormalizar(l.descricao)].join('|');
@@ -9534,6 +9480,7 @@ function nfGravarImportacao() {
     novasNotas.forEach(function(n) {
         notasCache.push(n);
         // o app aprende o grupo de cada fornecedor com as notas antigas (envia tudo junto no fim)
+        if (nfInfoSetor(n.setor).id === 'caixa') return;   // fundo de caixa não ensina grupo
         var f = nfRegistrarFornecedor(n.cnpj || '', n.razao_social || '', n.setor, n.subgrupo || null, true);
         if (f) fornecedoresTocados[f.id] = f;
     });
