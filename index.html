@@ -501,7 +501,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-b</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-c</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -8940,6 +8940,40 @@ function nfBipSom(ok) {
     } catch (e) { }
 }
 
+// ---------- fechamento automático da nota (para bipar em sequência) ----------
+// Qual grupo usar sem perguntar: o já escolhido, ou o que o fornecedor sempre usa
+function nfGrupoParaSalvar() {
+    if (!nfForm) return null;
+    if (nfForm.setor) return nfForm.setor;
+    var f = nfForm.fornecedor || nfAcharFornecedor(nfLimpaCnpj(document.getElementById('nfCnpj').value), document.getElementById('nfRazao').value);
+    var a = nfGrupoAutomatico(f);
+    return a ? a.id : null;
+}
+// A nota da tela está completa a ponto de ser salva sozinha? devolve o grupo, ou null
+function nfNotaProntaParaFechar() {
+    if (!nfForm || nfForm.editandoId) return null;
+    if (!nfForm.chave) return null;                                  // nota ainda não foi lida
+    if (!document.getElementById('nfNumero').value) return null;
+    var comValor = nfForm.boletos.filter(function(b) { return Number(b.valor) > 0; });
+    if (!comValor.length) return null;                               // sem boleto ninguém fecha sozinho
+    var faltaVenc = comValor.some(function(b) { return !b.cartao && !b.vencimento; });
+    if (faltaVenc) return null;
+    return nfGrupoParaSalvar();
+}
+// A soma dos boletos bateu com o valor total que o usuário digitou?
+function nfBoletosFecharamNota() {
+    if (!nfForm) return false;
+    var alvo = nfParseValor(document.getElementById('nfValorNota').value);
+    if (!alvo) return false;
+    var soma = nfForm.boletos.reduce(function(t, b) { return t + (Number(b.valor) || 0); }, 0);
+    return Math.abs(Math.round((alvo - soma) * 100) / 100) < 0.02;
+}
+function nfFecharNotaSozinho(grupo, motivo) {
+    var info = nfInfoSetor(grupo);
+    nfStatusForm('✅ ' + motivo + ' — salvando em ' + info.icone + ' ' + info.nome + '...');
+    nfSalvarNoSetor(grupo);
+}
+
 function nfProcessarBipada(texto) {
     var r = nfInterpretarCodigo(texto);
     if (!r) {
@@ -8951,6 +8985,12 @@ function nfProcessarBipada(texto) {
     nfAtualizarBotaoLeitor();
     nfBipSom(true);
 
+    // Bipou a chave de OUTRA nota com a anterior já pronta? fecha a anterior sozinho
+    if (r.tipo === 'nota' && nfForm && nfForm.chave && r.dados && r.dados.chave !== nfForm.chave) {
+        var grupoAnterior = nfNotaProntaParaFechar();
+        if (grupoAnterior) nfFecharNotaSozinho(grupoAnterior, 'Nota anterior fechada');
+    }
+
     var tela = nfTelaDeNotasAberta();
     // Bipou fora do formulário: abre um lançamento novo já com o que foi lido
     if (tela !== 'nota-edit-screen' || !nfForm) {
@@ -8959,10 +8999,17 @@ function nfProcessarBipada(texto) {
     nfAplicarLeitura(r, 'leitor');
     if (r.tipo === 'nota') {
         nfIrParaPasso('boleto');
-    } else {
-        if (nfForm && nfForm.passo === 'nota') nfForm.passo = 'boleto';
-        nfRenderizarPassos();
-        nfRenderizarBoletosForm();
+        return;
+    }
+    if (nfForm && nfForm.passo === 'nota') nfForm.passo = 'boleto';
+    nfRenderizarPassos();
+    nfRenderizarBoletosForm();
+    // Bipou o último boleto e a soma fechou com o valor da nota: salva na hora
+    var grupo = nfNotaProntaParaFechar();
+    if (grupo && nfBoletosFecharamNota()) {
+        setTimeout(function() {
+            if (nfForm && !nfForm.salvoIds) nfFecharNotaSozinho(grupo, 'Boletos bateram com o valor da nota');
+        }, 350);
     }
 }
 
