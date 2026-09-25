@@ -501,7 +501,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-c</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-d</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -7134,7 +7134,11 @@ function nfBuscarRazaoParaForm(cnpj) {
     }
     if (campo.value.trim()) return;
     dica.innerText = 'Buscando razão social pelo CNPJ...';
+    // a resposta demora: guarda de qual nota/CNPJ ela é, senão cai na nota seguinte
+    var formDaBusca = nfForm, cnpjDaBusca = cnpj;
     nfBuscarRazao(cnpj, function(res) {
+        if (nfForm !== formDaBusca) return;                                        // já é outra nota
+        if (nfLimpaCnpj(document.getElementById('nfCnpj').value) !== cnpjDaBusca) return;   // o CNPJ na tela mudou
         if (res && res.razao) {
             if (!campo.value.trim()) campo.value = res.razao;
             dica.innerText = res.conhecido ? '⭐ Fornecedor conhecido.' : (res.fantasia ? 'Nome fantasia: ' + res.fantasia : '');
