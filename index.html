@@ -445,6 +445,12 @@
     #nfFotoStatus { white-space: pre-line; }
     .manut-tarefas-area { margin-top: 6px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 1.45; color: var(--text); white-space: normal; }
     .manut-tarefas-area div { padding: 2px 0; }
+    #buffet-screen.active { display: flex; flex-direction: column; height: 100vh; height: 100dvh; padding-bottom: 0; }
+    #buffet-screen .screen-header { flex: 0 0 auto; }
+    .buffet-acao { margin-left: 6px; width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 18px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; }
+    #buffet-screen .screen-header h2 { flex: 1; }
+    .buffet-frame { flex: 1 1 auto; width: 100%; border: none; background: #fff; display: block; }
+    .buffet-carregando { display: none; align-items: center; justify-content: center; padding: 14px; font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -509,7 +515,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-o</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-q</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -1102,6 +1108,16 @@
 
 <!-- ===== FIM NOTAS FISCAIS ===== -->
 
+<div id="buffet-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="fecharBuffet()">←</button>
+        <h2>🎉 Eventos · Buffet</h2>
+        <button class="buffet-acao" onclick="recarregarBuffet()" title="Recarregar">⟳</button>
+        <a class="buffet-acao" href="https://britojuniorcompras-alt.github.io/buffet-app/" target="_blank" rel="noopener" title="Abrir em tela cheia">↗</a>
+    </div>
+    <div id="buffetCarregando" class="buffet-carregando">Carregando o app de eventos...</div>
+    <iframe id="buffetFrame" class="buffet-frame" title="App de eventos" allow="clipboard-write; camera; fullscreen" ></iframe>
+</div>
 <div id="fichas-screen" class="screen">
     <div class="screen-header">
         <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
@@ -10541,6 +10557,39 @@ function imprimirOrdemManutencao() {
         else { imgs[i].onload = talvez; imgs[i].onerror = talvez; }
     }
     setTimeout(function() { if (!feito) { feito = true; abrir(); } }, 4000);
+}
+
+// =====================================================================
+// EVENTOS → abre o app de buffet (outro app) dentro do app da Bela Sintra
+// =====================================================================
+var BUFFET_URL = 'https://britojuniorcompras-alt.github.io/buffet-app/';
+
+// Toda vez que entra, carrega o buffet do zero (dados atualizados, tela inicial).
+function abrirEventosDireto() {
+    var fr = document.getElementById('buffetFrame');
+    if (fr) {
+        document.getElementById('buffetCarregando').style.display = 'flex';
+        fr.onload = function() {
+            if (fr.getAttribute('src') && fr.getAttribute('src') !== 'about:blank') document.getElementById('buffetCarregando').style.display = 'none';
+        };
+        fr.setAttribute('src', BUFFET_URL + (BUFFET_URL.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now());
+    }
+    trocarTela('buffet-screen');
+    document.querySelectorAll('.hist-btn').forEach(function(b) { b.classList.remove('hist-btn-ativo'); });
+    var btn = document.getElementById('btnEventosTopo');
+    if (btn) btn.classList.add('hist-btn-ativo');
+}
+// Ao sair, descarrega o buffet (não fica rodando escondido com a tela antiga)
+function fecharBuffet() {
+    var fr = document.getElementById('buffetFrame');
+    if (fr) fr.setAttribute('src', 'about:blank');
+    document.querySelectorAll('.hist-btn').forEach(function(b) { b.classList.remove('hist-btn-ativo'); });
+    trocarTela('main-screen');
+}
+function recarregarBuffet() {
+    var fr = document.getElementById('buffetFrame');
+    document.getElementById('buffetCarregando').style.display = 'flex';
+    fr.setAttribute('src', BUFFET_URL + (BUFFET_URL.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now());
 }
 
 </script>
