@@ -441,6 +441,8 @@
     .nf-setor-grande-icone { font-size: 2.4em; line-height: 1; }
     .nf-setor-grande-nome { font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 1.6em; text-transform: uppercase; letter-spacing: 0.3px; }
     @keyframes nfSetorPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .nf-setor-grande-nf { display: block; font-size: 0.55em; font-weight: 700; opacity: 0.85; margin-top: 2px; letter-spacing: 0.5px; }
+    #nfFotoStatus { white-space: pre-line; }
 </style>
 </head>
 <body>
@@ -505,7 +507,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-k</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-l</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -9136,10 +9138,22 @@ function nfProcessarBipada(texto) {
     nfBipSom(true);
 
     // Bipou a chave de OUTRA nota com a anterior ainda aberta
+    var fechouMsg = null;
     if (r.tipo === 'nota' && nfForm && nfForm.chave && r.dados && r.dados.chave !== nfForm.chave) {
         var grupoAnterior = nfNotaProntaParaFechar();
         if (grupoAnterior) {
+            var formAnterior = nfForm;
+            var numAnterior = document.getElementById('nfNumero').value || 'sem número';
+            var somaAnterior = formAnterior.boletos.reduce(function(s, b) { return s + (Number(b.valor) || 0); }, 0);
             nfFecharNotaSozinho(grupoAnterior, 'Nota anterior fechada');
+            if (nfForm === formAnterior && !formAnterior.salvoIds) {
+                // O salvamento foi cancelado (ex.: caixa de conferência). Não pode jogar a nota
+                // nova em cima da anterior — ela ficaria com os boletos da outra.
+                nfBipSom(false);
+                nfAvisoLeitor('⚠️ A NF ' + numAnterior + ' NÃO foi salva (a conferência foi cancelada). Resolva ela e salve antes de ler a próxima.');
+                return;
+            }
+            fechouMsg = '✅ NF ' + numAnterior + ' salva em ' + nfInfoSetor(grupoAnterior).nome + ' (' + nfMoeda(Math.round(somaAnterior * 100) / 100) + ')';
         } else {
             // Não dá pra fechar sozinho (falta setor, vencimento ou valor) — não pode seguir
             // e trocar os dados da tela pela nota nova, senão perde a nota anterior sem salvar
@@ -9157,6 +9171,8 @@ function nfProcessarBipada(texto) {
     nfAplicarLeitura(r, 'leitor');
     if (r.tipo === 'nota') {
         nfIrParaPasso('boleto');
+        // deixa claro na tela que a anterior foi salva e esta é OUTRA nota (mesmo fornecedor fica igualzinho)
+        if (fechouMsg && nfForm && nfForm.chave === r.dados.chave) nfStatusForm(fechouMsg + '\n🆕 Nova nota: NF ' + r.dados.numero);
         nfAvisarSetorSeConhecido();
         return;
     }
@@ -9189,7 +9205,7 @@ function nfAvisarSetorSeConhecido() {
     var grupo = nfGrupoParaSalvar();
     if (!grupo) return;
     nfForm.avisoSetorMostrado = true;
-    nfMostrarSetorGrande(nfInfoSetor(grupo));
+    nfMostrarSetorGrande(nfInfoSetor(grupo), document.getElementById('nfNumero').value);
 }
 function nfBipSetorConhecido() {
     try {
@@ -9206,11 +9222,12 @@ function nfBipSetorConhecido() {
         setTimeout(function() { try { ctx.close(); } catch (e) { } }, 500);
     } catch (e) { }
 }
-function nfMostrarSetorGrande(info) {
+function nfMostrarSetorGrande(info, numero) {
     var el = document.getElementById('nfAvisoSetorGrande');
     if (!el) return;
     el.style.background = info.cor;
-    el.innerHTML = '<span class="nf-setor-grande-icone">' + info.icone + '</span><span class="nf-setor-grande-nome">' + nfEsc(info.nome) + '</span>';
+    el.innerHTML = '<span class="nf-setor-grande-icone">' + info.icone + '</span><span class="nf-setor-grande-nome">' + nfEsc(info.nome) +
+        (numero ? '<small class="nf-setor-grande-nf">NF ' + nfEsc(numero) + '</small>' : '') + '</span>';
     el.style.display = 'flex';
     nfBipSetorConhecido();
     clearTimeout(nfMostrarSetorGrande.t);
@@ -9911,14 +9928,15 @@ function nfDiasEntre(a, b) {
 // Índice por número de nota — evita varrer a base inteira a cada linha da tela
 var nfIdxNumeros = null;
 function nfIndicePorNumero() {
-    if (nfIdxNumeros && nfIdxNumeros.qtd === notasCache.length) return nfIdxNumeros.mapa;
+    // refaz se a lista mudou de tamanho OU foi trocada (apagar+lançar deixa o tamanho igual)
+    if (nfIdxNumeros && nfIdxNumeros.qtd === notasCache.length && nfIdxNumeros.ref === notasCache) return nfIdxNumeros.mapa;
     var mapa = {};
     notasCache.forEach(function(n) {
         var num = nfNormalizar(n.numero_nota);
         if (!num) return;
         (mapa[num] = mapa[num] || []).push(n);
     });
-    nfIdxNumeros = { qtd: notasCache.length, mapa: mapa };
+    nfIdxNumeros = { qtd: notasCache.length, ref: notasCache, mapa: mapa };
     return mapa;
 }
 
