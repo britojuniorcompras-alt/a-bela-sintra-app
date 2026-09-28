@@ -505,7 +505,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-j</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-k</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -7354,6 +7354,7 @@ function nfFotoNota(evento) {
             // guarda a foto (leve) depois da leitura, sem disputar o processador
             setTimeout(function() { nfEnviarFotoNota(img, formRef); }, 50);
             if (achouNota) {
+                nfAvisarSetorSeConhecido();
                 // a data de emissão é lida pelo texto da foto mais tarde (no passo do setor), sem atrasar o boleto
                 formRef.ocrCanvas = nfCanvasDe(img, 0, 0, img.width, img.height, 1700, 'grayscale(1) contrast(1.35)');
                 nfIrParaPasso('boleto');
@@ -7364,7 +7365,7 @@ function nfFotoNota(evento) {
             nfOCRCanvas(nfCanvasDe(img, 0, 0, img.width, img.height, 1700, 'grayscale(1) contrast(1.35)'), function(texto) {
                 if (nfForm !== formRef) return;
                 var achou = texto ? nfExtrairDoTexto(texto) : {};
-                if (achou.nota) { nfIrParaPasso('boleto'); return; }
+                if (achou.nota) { nfIrParaPasso('boleto'); nfAvisarSetorSeConhecido(); return; }
                 nfStatusForm('❌ Não consegui ler essa foto. Tire outra mais de perto, com o código de barras deitado ocupando a largura da foto — ou preencha à mão.');
             });
         });
@@ -7407,13 +7408,14 @@ function nfFotoBoleto(evento) {
             if (boletos.length) {
                 boletos.forEach(function(r) { nfAplicarLeitura(r, 'foto'); });
                 nfRenderizarPassos();
+                nfChecarFechamentoAutomatico();
                 return;
             }
             nfStatusForm('Não achei o código de barras. Lendo a linha digitável da foto (pode levar uns 20 segundos)...');
             nfOCRCanvas(nfCanvasDe(img, 0, 0, img.width, img.height, 1700, 'grayscale(1) contrast(1.35)'), function(texto) {
                 if (nfForm !== formRef) return;
                 var achou = texto ? nfExtrairDoTexto(texto, true) : {};
-                if (achou.boleto) { nfRenderizarPassos(); return; }
+                if (achou.boleto) { nfRenderizarPassos(); nfChecarFechamentoAutomatico(); return; }
                 nfStatusForm('❌ Não consegui ler esse boleto. Tire outra foto mais de perto, com o código de barras deitado — ou toque em "Sem boleto" e preencha à mão.');
             });
         });
@@ -9161,13 +9163,19 @@ function nfProcessarBipada(texto) {
     if (nfForm && nfForm.passo === 'nota') nfForm.passo = 'boleto';
     nfRenderizarPassos();
     nfRenderizarBoletosForm();
+    nfChecarFechamentoAutomatico();
+}
+
+// Depois de aplicar uma leitura de boleto (leitor OU foto): avisa o setor se já for conhecido,
+// e fecha a nota sozinha se os boletos já somarem o valor da nota. Usado nos dois caminhos
+// para o "avança sozinho" funcionar tanto com a pistola quanto lendo por foto.
+function nfChecarFechamentoAutomatico() {
     nfAvisarSetorSeConhecido();
-    // Bipou o último boleto e a soma fechou com o valor da nota: salva na hora
     var grupo = nfNotaProntaParaFechar();
     if (grupo && nfBoletosFecharamNota()) {
         var formDoFechamento = nfForm;
         setTimeout(function() {
-            // só fecha se ainda for a MESMA nota: se enquanto isso já bipou a próxima
+            // só fecha se ainda for a MESMA nota: se enquanto isso já bipou/leu a próxima
             // (nfForm trocou), esse fechamento é obsoleto e não pode mexer na nota nova
             if (nfForm === formDoFechamento && nfForm && !nfForm.salvoIds) nfFecharNotaSozinho(grupo, 'Boletos bateram com o valor da nota');
         }, 350);
