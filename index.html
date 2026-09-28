@@ -507,7 +507,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-l</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-m</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -8636,8 +8636,9 @@ function nfAbrirControle() {
     sincronizarNotasSupabase(function() { nfSincronizarLancamentos(); });
 }
 
-function nfSincronizarLancamentos() {
+function nfSincronizarLancamentos(cb) {
     nfBuscarTudo('controle_lancamentos', 'select=*&order=data.asc', function(err, dados) {
+        if (cb) { var cbOriginal = cb; setTimeout(function() { cbOriginal(); }, 0); }
         if (err || !Array.isArray(dados)) { nfRenderizarControleSeAberto(); return; }
         var fila = lerFilaReenvioSegura();
         var aguardando = {};
@@ -10099,16 +10100,21 @@ function nfHtmlVariacao(v, invertido) {
 function nfGastosDoMes(mes) {
     var d = nfDadosMes(mes);
     var porFornecedor = {};
-    var temControleAntigo = lancamentosCache.some(function(l) { return l.mes === mes && l.tipo === 'bloco'; });
-    var notas = notasCache.filter(function(n) {
+    // O TOTAL vem do controle mensal (nfDadosMes). Aqui é o detalhe: todas as notas do mês —
+    // lançadas no app E importadas das planilhas de protocolo — só dos blocos que entram no total.
+    var somaBloco = {};
+    NF_BLOCOS.forEach(function(b) { somaBloco[b.id] = b.soma; });
+    var boletos = notasCache.filter(function(n) {
         var dia = nfDiaProtocolo(n);
-        if (temControleAntigo && n.origem === 'planilha') return false;
-        return dia && dia.substr(0, 7) === mes && nfBlocoDaNota(n) && nfBlocoDaNota(n) !== 'chegando';
+        var b = nfBlocoDaNota(n);
+        return dia && dia.substr(0, 7) === mes && b && somaBloco[b];
     });
-    notas.forEach(function(n) {
+    var notas = nfAgruparParcelas(boletos);   // nota parcelada conta uma vez só
+    notas.forEach(function(g) {
+        var n = g.nota;
         var k = nfNormalizar(n.razao_social) || 'SEM NOME';
         if (!porFornecedor[k]) porFornecedor[k] = { nome: n.razao_social || 'Sem nome', valor: 0, notas: 0, setor: nfInfoSetor(n.setor).id };
-        porFornecedor[k].valor += Number(n.valor) || 0;
+        porFornecedor[k].valor += g.valor;
         porFornecedor[k].notas++;
     });
     return {
@@ -10122,8 +10128,11 @@ function nfAbrirGastos() {
     if (!nfMesGastos) nfMesGastos = nfHojeIso().substr(0, 7);
     nfRenderizarGastos();
     trocarTela('gastos-screen');
+    // precisa das notas E dos lançamentos do controle mensal (meses que vieram da planilha)
+    var re = function() { if (document.getElementById('gastos-screen').classList.contains('active')) nfRenderizarGastos(); };
     sincronizarNotasSupabase(function() {
-        if (document.getElementById('gastos-screen').classList.contains('active')) nfRenderizarGastos();
+        re();
+        nfSincronizarLancamentos(re);
     });
 }
 function nfMudarMesGastos(delta) {
