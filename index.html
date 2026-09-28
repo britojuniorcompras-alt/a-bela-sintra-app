@@ -443,6 +443,8 @@
     @keyframes nfSetorPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .nf-setor-grande-nf { display: block; font-size: 0.55em; font-weight: 700; opacity: 0.85; margin-top: 2px; letter-spacing: 0.5px; }
     #nfFotoStatus { white-space: pre-line; }
+    .manut-tarefas-area { margin-top: 6px; font-family: 'Inter', sans-serif; font-size: 12.5px; line-height: 1.45; color: var(--text); white-space: normal; }
+    .manut-tarefas-area div { padding: 2px 0; }
 </style>
 </head>
 <body>
@@ -507,7 +509,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-n</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-o</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -4989,6 +4991,23 @@ function montarListaManutencao() {
             else if (statusPrazoArea === 'proximo') { item.classList.add('problema-prazo-proximo'); }
         }
         info.appendChild(statusDiv);
+
+        // o que tem pra fazer nesta área (todos os chamados, não só o primeiro)
+        if (n > 0) {
+            var daArea = problemasAtuais.filter(function(p) { return p.areaId === area.id; })
+                .sort(function(a, b) {
+                    return (prioridadesInfo[a.prioridade] ? prioridadesInfo[a.prioridade].ordem : 9) - (prioridadesInfo[b.prioridade] ? prioridadesInfo[b.prioridade].ordem : 9) ||
+                        String(a.prazo || '9999').localeCompare(String(b.prazo || '9999'));
+                });
+            var tarefas = document.createElement('div');
+            tarefas.className = 'manut-tarefas-area';
+            tarefas.innerHTML = daArea.map(function(p) {
+                var emoji = prioridadesInfo[p.prioridade] ? prioridadesInfo[p.prioridade].emoji : '•';
+                var txt = String(p.descricao || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return '<div>' + emoji + ' ' + txt + '</div>';
+            }).join('');
+            info.appendChild(tarefas);
+        }
 
         item.appendChild(icone);
         item.appendChild(info);
@@ -10406,27 +10425,41 @@ function manutHtmlOrdemServico() {
     var cores = { vermelho: '#C62828', amarelo: '#B8860B', verde: '#2E7D32' };
     var titulos = { vermelho: 'URGENTE', amarelo: 'IMPORTANTE', verde: 'QUANDO DER' };
 
-    ordemPrioridades.forEach(function(chave) {
-        var grupo = problemasAtuais.filter(function(p) { return p.prioridade === chave; })
-            .sort(function(a, b) { return String(a.prazo || '9999').localeCompare(String(b.prazo || '9999')); });
-        if (!grupo.length) return;
-        var linhas = grupo.map(function(p) {
+    // Organizada por SETOR: cada área com TODOS os chamados dela embaixo.
+    // Áreas mais urgentes primeiro; dentro da área, por prioridade e depois prazo.
+    var ordemP = {}; ordemPrioridades.forEach(function(k, i) { ordemP[k] = i; });
+    var porArea = {}, areas = [];
+    problemasAtuais.forEach(function(p) {
+        var k = p.areaId || p.areaNome;
+        if (!porArea[k]) { porArea[k] = { nome: p.areaNome, icone: p.areaIcone || '', itens: [] }; areas.push(porArea[k]); }
+        porArea[k].itens.push(p);
+    });
+    var cmp = function(a, b) {
+        var d = (ordemP[a.prioridade] || 0) - (ordemP[b.prioridade] || 0);
+        return d || String(a.prazo || '9999').localeCompare(String(b.prazo || '9999'));
+    };
+    areas.forEach(function(a) { a.itens.sort(cmp); });
+    areas.sort(function(a, b) { return cmp(a.itens[0], b.itens[0]); });
+
+    areas.forEach(function(a) {
+        var linhas = a.itens.map(function(p) {
             n++;
             var pz = manutPrazoInfo(p.prazo);
             var prazoHtml = pz.vencido ? '<b class="venc">' + pz.txt + '<br><small>ATRASADO</small></b>'
                 : (pz.hoje ? '<b>' + pz.txt + '<br><small>HOJE</small></b>' : pz.txt);
             var foto = p.fotoUrl ? '<img src="' + manutEsc(p.fotoUrl) + '" alt="">' : '';
+            var cor = cores[p.prioridade] || '#555';
             return '<tr>' +
                 '<td class="num">' + n + '</td>' +
-                '<td class="area">' + manutEsc(p.areaIcone || '') + ' ' + manutEsc(p.areaNome) + '</td>' +
+                '<td class="prio"><span style="background:' + cor + ';">' + (titulos[p.prioridade] || '') + '</span></td>' +
                 '<td class="desc">' + manutEsc(p.descricao) + foto + '<div class="obs">Obs./material: </div></td>' +
                 '<td class="prazo">' + prazoHtml + '</td>' +
                 '<td class="ok"><span class="caixa"></span></td>' +
                 '</tr>';
         }).join('');
-        blocos += '<h2 style="color:' + cores[chave] + ';border-color:' + cores[chave] + ';">' +
-            prioridadesInfo[chave].emoji + ' ' + titulos[chave] + ' <small>(' + prioridadesInfo[chave].label + ' · ' + grupo.length + ')</small></h2>' +
-            '<table><thead><tr><th>#</th><th>Área</th><th>Serviço</th><th>Prazo</th><th>Feito</th></tr></thead><tbody>' + linhas + '</tbody></table>';
+        blocos += '<div class="area-bloco"><h2>' + manutEsc(a.icone) + ' ' + manutEsc(a.nome).toUpperCase() +
+            ' <small>' + a.itens.length + (a.itens.length === 1 ? ' serviço' : ' serviços') + '</small></h2>' +
+            '<table><thead><tr><th>#</th><th>Prioridade</th><th>O que fazer</th><th>Prazo</th><th>Feito</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
     });
 
     return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">' +
@@ -10441,15 +10474,18 @@ function manutHtmlOrdemServico() {
         '.topo .emp{font-size:11px;color:#444;margin-top:3px;}' +
         '.topo .dir{text-align:right;font-size:12px;line-height:1.5;}' +
         '.resp{display:flex;gap:18px;flex-wrap:wrap;background:#f2f2f2;border-radius:6px;padding:8px 10px;margin-bottom:12px;font-size:13px;}' +
-        'h2{font-size:14px;margin:16px 0 6px 0;border-left:6px solid;padding-left:8px;}' +
+        'h2{font-size:15px;margin:16px 0 6px 0;border-left:6px solid #111;padding-left:8px;}' +
+        '.area-bloco{page-break-inside:avoid;}' +
+        'td.prio{width:92px;text-align:center;}' +
+        'td.prio span{display:inline-block;color:#fff;font-size:9.5px;font-weight:bold;padding:3px 6px;border-radius:4px;letter-spacing:.3px;}' +
+        '@media print{td.prio span{-webkit-print-color-adjust:exact;print-color-adjust:exact;}th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}' +
         'h2 small{font-weight:normal;color:#555;font-size:11.5px;}' +
         'table{width:100%;border-collapse:collapse;page-break-inside:auto;}' +
         'tr{page-break-inside:avoid;}' +
         'th{background:#222;color:#fff;font-size:11px;text-transform:uppercase;padding:6px;text-align:left;}' +
         'td{border:1px solid #999;padding:7px 6px;vertical-align:top;}' +
         'td.num{width:26px;text-align:center;font-weight:bold;}' +
-        'td.area{width:22%;font-weight:bold;}' +
-        'td.prazo{width:70px;text-align:center;}' +
+                'td.prazo{width:70px;text-align:center;}' +
         'td.prazo .venc{color:#C62828;}' +
         'td.prazo small{font-size:9.5px;}' +
         'td.ok{width:48px;text-align:center;}' +
