@@ -507,7 +507,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-m</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-n</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -678,6 +678,7 @@
         <a id="manutencaoBtnWhatsApp" class="btn-whatsapp-link" href="#" target="_blank">Enviar via WhatsApp</a>
         <a id="manutencaoBtnEmail" class="btn-email-link" href="#">Enviar por E-mail</a>
         <button class="btn-copiar" onclick="copiarResumoManutencao()">Copiar Texto</button>
+        <button class="btn-copiar" style="background:#F2F2F2;color:#111;border:none;" onclick="imprimirOrdemManutencao()">🖨️ Imprimir / PDF para o Fabio</button>
     </div>
 </div>
 
@@ -10376,6 +10377,134 @@ function nfLerXlsxSimples(arquivo) {
             }
         };
     });
+}
+
+// =====================================================================
+// MANUTENÇÃO — Ordem de serviço para imprimir / salvar em PDF (entregar ao Fabio)
+// =====================================================================
+var MANUT_RESPONSAVEL = 'Fabio';
+
+function manutEsc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function manutPrazoInfo(prazo) {
+    if (!prazo) return { txt: '—', vencido: false };
+    var d = new Date(prazo);
+    if (isNaN(d.getTime())) return { txt: '—', vencido: false };
+    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    var dia = new Date(d); dia.setHours(0, 0, 0, 0);
+    var txt = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return { txt: txt, vencido: dia < hoje, hoje: dia.getTime() === hoje.getTime() };
+}
+
+function manutHtmlOrdemServico() {
+    var agora = new Date();
+    var dataStr = agora.toLocaleDateString('pt-BR');
+    var horaStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    var n = 0, blocos = '';
+    var cores = { vermelho: '#C62828', amarelo: '#B8860B', verde: '#2E7D32' };
+    var titulos = { vermelho: 'URGENTE', amarelo: 'IMPORTANTE', verde: 'QUANDO DER' };
+
+    ordemPrioridades.forEach(function(chave) {
+        var grupo = problemasAtuais.filter(function(p) { return p.prioridade === chave; })
+            .sort(function(a, b) { return String(a.prazo || '9999').localeCompare(String(b.prazo || '9999')); });
+        if (!grupo.length) return;
+        var linhas = grupo.map(function(p) {
+            n++;
+            var pz = manutPrazoInfo(p.prazo);
+            var prazoHtml = pz.vencido ? '<b class="venc">' + pz.txt + '<br><small>ATRASADO</small></b>'
+                : (pz.hoje ? '<b>' + pz.txt + '<br><small>HOJE</small></b>' : pz.txt);
+            var foto = p.fotoUrl ? '<img src="' + manutEsc(p.fotoUrl) + '" alt="">' : '';
+            return '<tr>' +
+                '<td class="num">' + n + '</td>' +
+                '<td class="area">' + manutEsc(p.areaIcone || '') + ' ' + manutEsc(p.areaNome) + '</td>' +
+                '<td class="desc">' + manutEsc(p.descricao) + foto + '<div class="obs">Obs./material: </div></td>' +
+                '<td class="prazo">' + prazoHtml + '</td>' +
+                '<td class="ok"><span class="caixa"></span></td>' +
+                '</tr>';
+        }).join('');
+        blocos += '<h2 style="color:' + cores[chave] + ';border-color:' + cores[chave] + ';">' +
+            prioridadesInfo[chave].emoji + ' ' + titulos[chave] + ' <small>(' + prioridadesInfo[chave].label + ' · ' + grupo.length + ')</small></h2>' +
+            '<table><thead><tr><th>#</th><th>Área</th><th>Serviço</th><th>Prazo</th><th>Feito</th></tr></thead><tbody>' + linhas + '</tbody></table>';
+    });
+
+    return '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">' +
+        '<title>Ordem de Serviço - Manutenção - ' + dataStr.replace(/\//g, '-') + '</title>' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+        '<style>' +
+        '@page{size:A4;margin:14mm 12mm;}' +
+        '*{box-sizing:border-box;}' +
+        'body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;padding:16px;font-size:12.5px;}' +
+        '.topo{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #111;padding-bottom:8px;margin-bottom:10px;}' +
+        '.topo h1{font-size:22px;margin:0;letter-spacing:.5px;}' +
+        '.topo .emp{font-size:11px;color:#444;margin-top:3px;}' +
+        '.topo .dir{text-align:right;font-size:12px;line-height:1.5;}' +
+        '.resp{display:flex;gap:18px;flex-wrap:wrap;background:#f2f2f2;border-radius:6px;padding:8px 10px;margin-bottom:12px;font-size:13px;}' +
+        'h2{font-size:14px;margin:16px 0 6px 0;border-left:6px solid;padding-left:8px;}' +
+        'h2 small{font-weight:normal;color:#555;font-size:11.5px;}' +
+        'table{width:100%;border-collapse:collapse;page-break-inside:auto;}' +
+        'tr{page-break-inside:avoid;}' +
+        'th{background:#222;color:#fff;font-size:11px;text-transform:uppercase;padding:6px;text-align:left;}' +
+        'td{border:1px solid #999;padding:7px 6px;vertical-align:top;}' +
+        'td.num{width:26px;text-align:center;font-weight:bold;}' +
+        'td.area{width:22%;font-weight:bold;}' +
+        'td.prazo{width:70px;text-align:center;}' +
+        'td.prazo .venc{color:#C62828;}' +
+        'td.prazo small{font-size:9.5px;}' +
+        'td.ok{width:48px;text-align:center;}' +
+        '.caixa{display:inline-block;width:20px;height:20px;border:2px solid #111;border-radius:3px;}' +
+        '.obs{margin-top:8px;color:#777;font-size:10.5px;border-bottom:1px dotted #aaa;padding-bottom:10px;}' +
+        'td.desc img{display:block;max-width:140px;max-height:100px;margin-top:6px;border-radius:4px;}' +
+        '.assin{display:flex;gap:40px;margin-top:38px;}' +
+        '.assin div{flex:1;border-top:1px solid #111;padding-top:5px;text-align:center;font-size:11.5px;}' +
+        '.rodape{margin-top:16px;font-size:10px;color:#777;text-align:center;}' +
+        '.barra{position:sticky;top:0;background:#fff;padding:8px 0 12px 0;display:flex;gap:8px;}' +
+        '.barra button{flex:1;padding:12px;font-size:15px;font-weight:bold;border:none;border-radius:10px;background:#111;color:#fff;}' +
+        '.barra button.sec{background:#ddd;color:#111;}' +
+        '@media print{.barra{display:none;}body{padding:0;}}' +
+        '</style></head><body>' +
+        '<div class="barra"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button><button class="sec" onclick="window.close()">Fechar</button></div>' +
+        '<div class="topo"><div><h1>ORDEM DE SERVIÇO — MANUTENÇÃO</h1>' +
+        '<div class="emp">A BELA SINTRA · BETTENCAS RESTAURANTE LTDA · CNPJ 04.439.383/0001-50</div></div>' +
+        '<div class="dir">Emitida em <b>' + dataStr + '</b> às ' + horaStr + '<br>' + n + ' serviço' + (n === 1 ? '' : 's') + ' pendente' + (n === 1 ? '' : 's') + '</div></div>' +
+        '<div class="resp"><span>👷 Responsável: <b>' + manutEsc(MANUT_RESPONSAVEL) + '</b></span>' +
+        '<span>📋 Solicitado por: <b>' + manutEsc(usuarioAtual || '________________') + '</b></span>' +
+        '<span>Marque ☐ Feito ao terminar cada serviço e devolva esta folha.</span></div>' +
+        blocos +
+        '<div class="assin"><div>' + manutEsc(MANUT_RESPONSAVEL) + ' — Manutenção<br>Data: ____/____/______</div>' +
+        '<div>Conferido por<br>Data: ____/____/______</div></div>' +
+        '<div class="rodape">Gerado pelo app A Bela Sintra</div>' +
+        '</body></html>';
+}
+
+function imprimirOrdemManutencao() {
+    if (!problemasAtuais.length) { alert('Nenhum problema pendente no momento.'); return; }
+    var html = manutHtmlOrdemServico();
+    registrarEnvioResumoManutencao(dadosResumoManutencao());   // fica no histórico que a OS foi emitida
+    var w = window.open('', '_blank');
+    if (!w) {
+        // bloqueador de janela: abre como arquivo
+        var blob = new Blob([html], { type: 'text/html' });
+        var url = URL.createObjectURL(blob);
+        location.href = url;
+        return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    // espera as fotos carregarem antes de abrir a impressão
+    var imgs = w.document.images, faltam = imgs.length;
+    var abrir = function() { try { w.print(); } catch (e) { } };
+    if (!faltam) { setTimeout(abrir, 350); return; }
+    var feito = false;
+    var talvez = function() { if (!feito && --faltam <= 0) { feito = true; setTimeout(abrir, 200); } };
+    for (var i = 0; i < imgs.length; i++) {
+        if (imgs[i].complete) talvez();
+        else { imgs[i].onload = talvez; imgs[i].onerror = talvez; }
+    }
+    setTimeout(function() { if (!feito) { feito = true; abrir(); } }, 4000);
 }
 
 </script>
