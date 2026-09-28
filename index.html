@@ -437,6 +437,10 @@
     .nf-import-atencao b { color: #F2C94C; }
     .nf-import-resumo { background: var(--surface-2); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px; font-size: 12.5px; line-height: 1.6; color: var(--text); }
     .nf-dia-subtitulo { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; word-break: break-word; line-height: 1.3; }
+    .nf-setor-grande { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 18px 14px; margin: 0 0 12px 0; border-radius: 18px; color: #1B1420; box-shadow: 0 8px 22px rgba(0,0,0,0.35); animation: nfSetorPop 0.25s ease-out; }
+    .nf-setor-grande-icone { font-size: 2.4em; line-height: 1; }
+    .nf-setor-grande-nome { font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 1.6em; text-transform: uppercase; letter-spacing: 0.3px; }
+    @keyframes nfSetorPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 </style>
 </head>
 <body>
@@ -501,7 +505,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-f</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-j</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -913,6 +917,7 @@
         <input type="file" id="nfInputNota" accept="image/*" capture="environment" onchange="nfFotoNota(event)" style="display:none;">
         <input type="file" id="nfInputBoleto" accept="image/*" capture="environment" onchange="nfFotoBoleto(event)" style="display:none;">
         <div id="nfFotoStatus" class="nf-status" style="display:none;"></div>
+        <div id="nfAvisoSetorGrande" class="nf-setor-grande" style="display:none;"></div>
         <div id="nfFotoPreview" class="nf-foto-preview" style="display:none;">
             <img id="nfFotoImg" src="" alt="Foto da nota" onclick="if(this.src) window.open(this.src, '_blank')">
             <button onclick="nfRemoverFoto()">Remover foto</button>
@@ -6936,6 +6941,21 @@ function nfTokensNome(nome) {
         return t.length > 1 && NF_SUFIXOS.indexOf(t) < 0;
     });
 }
+// diferença entre duas palavras (nº de letras que precisa trocar/tirar/pôr para uma virar a outra)
+// usado só para pegar erro de digitação/leitura (1 letra a mais ou a menos) — não para nomes bem diferentes
+function nfDistanciaEdicao(a, b) {
+    if (a === b) return 0;
+    if (Math.abs(a.length - b.length) > 2) return 99;   // corta cedo, não interessa
+    var d = [], i, j;
+    for (i = 0; i <= a.length; i++) d[i] = [i];
+    for (j = 0; j <= b.length; j++) d[0][j] = j;
+    for (i = 1; i <= a.length; i++) {
+        for (j = 1; j <= b.length; j++) {
+            d[i][j] = a.charAt(i - 1) === b.charAt(j - 1) ? d[i - 1][j - 1] : 1 + Math.min(d[i - 1][j], d[i][j - 1], d[i - 1][j - 1]);
+        }
+    }
+    return d[a.length][b.length];
+}
 function nfNomesCasam(a, b) {
     var ta = nfTokensNome(a), tb = nfTokensNome(b);
     if (!ta.length || !tb.length) return false;
@@ -6943,10 +6963,12 @@ function nfNomesCasam(a, b) {
     var n = Math.min(ta.length, tb.length);
     for (var i = 0; i < n; i++) {
         if (ta[i] === tb[i]) continue;
-        // a última palavra comparada pode estar abreviada: IMPORT / IMPORTADORA
         var curto = ta[i].length < tb[i].length ? ta[i] : tb[i];
         var longo = ta[i].length < tb[i].length ? tb[i] : ta[i];
+        // a última palavra comparada pode estar abreviada: IMPORT / IMPORTADORA
         if (i === n - 1 && curto.length >= 4 && longo.indexOf(curto) === 0) continue;
+        // erro de digitação ou de leitura em qualquer palavra: PRINTPRES / PRINTPRESS (1 letra de diferença)
+        if (curto.length >= 5 && nfDistanciaEdicao(ta[i], tb[i]) <= 1) continue;
         return false;
     }
     if (n >= 3) return true;
@@ -9111,10 +9133,18 @@ function nfProcessarBipada(texto) {
     nfAtualizarBotaoLeitor();
     nfBipSom(true);
 
-    // Bipou a chave de OUTRA nota com a anterior já pronta? fecha a anterior sozinho
+    // Bipou a chave de OUTRA nota com a anterior ainda aberta
     if (r.tipo === 'nota' && nfForm && nfForm.chave && r.dados && r.dados.chave !== nfForm.chave) {
         var grupoAnterior = nfNotaProntaParaFechar();
-        if (grupoAnterior) nfFecharNotaSozinho(grupoAnterior, 'Nota anterior fechada');
+        if (grupoAnterior) {
+            nfFecharNotaSozinho(grupoAnterior, 'Nota anterior fechada');
+        } else {
+            // Não dá pra fechar sozinho (falta setor, vencimento ou valor) — não pode seguir
+            // e trocar os dados da tela pela nota nova, senão perde a nota anterior sem salvar
+            nfBipSom(false);
+            nfAvisoLeitor('⚠️ A nota anterior (' + (document.getElementById('nfNumero').value || 'sem número') + ') ainda não foi salva — falta setor, vencimento ou valor. Complete ou salve ela antes de ler a próxima.');
+            return;
+        }
     }
 
     var tela = nfTelaDeNotasAberta();
@@ -9125,18 +9155,58 @@ function nfProcessarBipada(texto) {
     nfAplicarLeitura(r, 'leitor');
     if (r.tipo === 'nota') {
         nfIrParaPasso('boleto');
+        nfAvisarSetorSeConhecido();
         return;
     }
     if (nfForm && nfForm.passo === 'nota') nfForm.passo = 'boleto';
     nfRenderizarPassos();
     nfRenderizarBoletosForm();
+    nfAvisarSetorSeConhecido();
     // Bipou o último boleto e a soma fechou com o valor da nota: salva na hora
     var grupo = nfNotaProntaParaFechar();
     if (grupo && nfBoletosFecharamNota()) {
+        var formDoFechamento = nfForm;
         setTimeout(function() {
-            if (nfForm && !nfForm.salvoIds) nfFecharNotaSozinho(grupo, 'Boletos bateram com o valor da nota');
+            // só fecha se ainda for a MESMA nota: se enquanto isso já bipou a próxima
+            // (nfForm trocou), esse fechamento é obsoleto e não pode mexer na nota nova
+            if (nfForm === formDoFechamento && nfForm && !nfForm.salvoIds) nfFecharNotaSozinho(grupo, 'Boletos bateram com o valor da nota');
         }, 350);
     }
+}
+
+// Assim que o app já sabe o setor da nota (sozinho ou porque você escolheu), avisa grande + som
+// diferente, pra dar confiança de bipar a próxima sem checar a tela
+function nfAvisarSetorSeConhecido() {
+    if (!nfForm || nfForm.avisoSetorMostrado) return;
+    var grupo = nfGrupoParaSalvar();
+    if (!grupo) return;
+    nfForm.avisoSetorMostrado = true;
+    nfMostrarSetorGrande(nfInfoSetor(grupo));
+}
+function nfBipSetorConhecido() {
+    try {
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [0, 0.14].forEach(function(t) {
+            var o = ctx.createOscillator(), g = ctx.createGain();
+            o.type = 'sine';
+            o.frequency.value = 1560;
+            g.gain.setValueAtTime(0.09, ctx.currentTime + t);
+            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.1);
+            o.connect(g); g.connect(ctx.destination);
+            o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.11);
+        });
+        setTimeout(function() { try { ctx.close(); } catch (e) { } }, 500);
+    } catch (e) { }
+}
+function nfMostrarSetorGrande(info) {
+    var el = document.getElementById('nfAvisoSetorGrande');
+    if (!el) return;
+    el.style.background = info.cor;
+    el.innerHTML = '<span class="nf-setor-grande-icone">' + info.icone + '</span><span class="nf-setor-grande-nome">' + nfEsc(info.nome) + '</span>';
+    el.style.display = 'flex';
+    nfBipSetorConhecido();
+    clearTimeout(nfMostrarSetorGrande.t);
+    nfMostrarSetorGrande.t = setTimeout(function() { el.style.display = 'none'; }, 2400);
 }
 
 function nfAvisoLeitor(msg) {
