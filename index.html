@@ -515,7 +515,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-s</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-t</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -7800,12 +7800,21 @@ function nfSalvarNota() {
     };
     function formaDe(b) { return b.cartao ? 'cartao' : (b.linha ? 'boleto' : 'manual'); }
 
+    if (!nfForm.editandoId && base.protocolo_data !== nfHojeIso() &&
+        !confirm('⚠️ A data do protocolo está ' + nfDataBR(base.protocolo_data) + ', não hoje (' + nfDataBR(nfHojeIso()) + ').\n\nSalvar no protocolo de ' + nfDataBR(base.protocolo_data) + ' mesmo assim?')) return;
     if (!nfConferirAntesDeSalvar(base, boletos)) return;
 
     if (nfForm.editandoId) {
         var b0 = boletos[0];
         var alteracao = Object.assign({}, base, { vencimento: b0.cartao ? null : (b0.vencimento || null), valor: b0.valor, linha_digitavel: b0.linha || null, forma_pagto: formaDe(b0) });
         var anterior = nfAcharNota(nfForm.editandoId);
+        // mudou o dia do protocolo? a nota vai junto para o protocolo daquele dia
+        // (senão fica ligada ao protocolo antigo e aparece um "protocolo fantasma" com a data nova)
+        if (anterior && base.protocolo_data && base.protocolo_data !== nfDiaProtocolo(anterior)) {
+            var pidAnt = String(anterior.protocolo_id || '');
+            if (!pidAnt || pidAnt.indexOf('app-') === 0 || pidAnt.indexOf('dia-') === 0) alteracao.protocolo_id = 'app-' + base.protocolo_data;
+            if (!confirm('Mover esta nota do protocolo de ' + nfDataBR(nfDiaProtocolo(anterior)) + ' para o protocolo de ' + nfDataBR(base.protocolo_data) + '?')) return;
+        }
         if (b0.cartao) { alteracao.status = 'pago'; if (!anterior || !anterior.pago_em) alteracao.pago_em = new Date().toISOString(); }
         else if (anterior && anterior.forma_pagto === 'cartao') { alteracao.status = 'pendente'; alteracao.pago_em = null; }
         for (var i = 0; i < notasCache.length; i++) {
