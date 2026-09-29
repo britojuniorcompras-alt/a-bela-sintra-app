@@ -515,7 +515,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-r</div>
+                <div class="logo-subtitulo">Gestão de Compras · v25set-s</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -8452,6 +8452,11 @@ function nfMontarPlanilha(id) {
     var abas = NF_ABAS.slice().sort(function(a, b) { return a.ordem - b.ordem; });
     // nota com setor desconhecido vai para GERAIS
     function abaDa(n) { var i = nfInfoSetor(n.setor); return i.id === 'semsetor' ? 'gerais' : i.id; }
+
+    // só as abas dos setores que têm nota neste protocolo (se não tiver nenhuma, gera todas vazias)
+    var comNota = {};
+    notas.forEach(function(n) { comNota[abaDa(n)] = true; });
+    if (Object.keys(comNota).length) abas = abas.filter(function(a) { return comNota[a.id]; });
 
     abas.forEach(function(a) {
         var daAba = notas.filter(function(n) { return abaDa(n) === a.id; });
