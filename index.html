@@ -519,7 +519,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v2out-b</div>
+                <div class="logo-subtitulo">Gestão de Compras · v2out-c</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -967,10 +967,10 @@
         <div id="nfEmissaoDica" class="nf-dica"></div>
         <div id="nfChaveDica" class="nf-dica"></div>
 
-        <div class="nf-secao-titulo">Boletos e vencimentos</div>
+        <div class="nf-secao-titulo" id="nfSecaoBoletos">Boletos e vencimentos</div>
         <div id="nfBoletosLista"></div>
         <div id="nfSomaParcelas" class="nf-soma-parcelas" style="display:none;"></div>
-        <label class="nf-label" for="nfValorNota" style="margin-top:8px;">Valor total da nota (opcional — para conferir)</label>
+        <label class="nf-label" for="nfValorNota" id="nfLabelValorNota" style="margin-top:8px;">Valor total da nota (opcional — para conferir)</label>
         <input type="text" id="nfValorNota" class="text-input" inputmode="decimal" placeholder="0,00" oninput="nfAtualizarSomaParcelas()">
         <button id="nfBtnAddVenc" class="ficha-add-ingrediente-btn" onclick="nfAdicionarBoletoManual()">+ Adicionar vencimento sem boleto</button>
 
@@ -7337,6 +7337,7 @@ function nfAlternarBonificada() {
     if (nfForm.setor === 'bonificada') { nfForm.setor = null; nfForm.trocarSetor = true; }
     else { nfForm.setor = 'bonificada'; nfForm.trocarSetor = false; nfForm.avisoSetorMostrado = false; }
     nfRenderizarTipoDoc();
+    nfRenderizarBoletosForm();
     nfRenderizarPassos();
     if (nfForm.setor === 'bonificada') nfAvisarSetorSeConhecido();
 }
@@ -7347,7 +7348,8 @@ function nfRenderizarPassos() {
     if (!nfForm || nfForm.editandoId) { el.style.display = 'none'; el.innerHTML = ''; return; }
     el.style.display = 'block';
     var p = nfForm.passo;
-    var etapas = [['nota', '1 Nota'], ['boleto', '2 Boleto'], ['setor', '3 Setor']];
+    var bonif = nfInfoSetor(nfForm.setor).id === 'bonificada';
+    var etapas = [['nota', '1 Nota'], ['boleto', bonif ? '2 Valor' : '2 Boleto'], ['setor', bonif ? '3 Salvar' : '3 Setor']];
     var ordem = { nota: 0, boleto: 1, setor: 2 };
     var trilha = (p === 'manual' || nfForm.manual) ? '' : '<div class="nf-trilha">' + etapas.map(function(e) {
         var cls = ordem[e[0]] < ordem[p] ? 'feito' : (ordem[e[0]] === ordem[p] ? 'atual' : '');
@@ -7361,6 +7363,14 @@ function nfRenderizarPassos() {
             '<button class="nf-passo-btn" onclick="nfAbrirCameraNota()">📸 Fotografar nota</button>' +
             '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfDigitarCodigo(\'nota\')">⌨️ Digitar a chave da nota (44 números)</button>' +
             '<button class="nf-passo-link" onclick="nfIrParaPasso(\'boleto\')">Preencher a nota à mão →</button>';
+    } else if (p === 'boleto' && nfInfoSetor(nfForm.setor).id === 'bonificada') {
+        // bonificada não tem boleto: só confere o valor e salva
+        var vb = nfValorBonificada();
+        corpo = '<div class="nf-passo-titulo">🎁 Nota bonificada</div>' +
+            '<div class="nf-passo-texto">Bonificada não tem boleto nem vencimento. Confira o <b>valor total da nota</b> abaixo e salve.</div>' +
+            (vb ? '<button class="nf-passo-btn" style="background:linear-gradient(160deg,#7FD6A6,#7FD6A699);color:#1B1420;" onclick="nfSalvarNoSetor(\'bonificada\')">✅ Salvar bonificada — ' + nfMoeda(vb) + '</button>'
+                : '<div class="nf-passo-texto">⚠️ Preencha o <b>valor total da nota</b> no campo abaixo para salvar.</div>') +
+            '<button class="nf-passo-link" onclick="nfAlternarBonificada()">Não é bonificada — voltar ao boleto</button>';
     } else if (p === 'boleto') {
         var qtd = nfForm.boletos.filter(function(b) { return b.linha; }).length;
         corpo = '<div class="nf-passo-titulo">Foto 2 · Código de barras do boleto</div>' +
@@ -7759,6 +7769,17 @@ function nfVoltarLista() {
 function nfRenderizarBoletosForm() {
     var cont = document.getElementById('nfBoletosLista');
     if (!nfForm) { cont.innerHTML = ''; return; }
+    // Bonificada não tem boleto: esconde a seção e pede só o valor da nota
+    var bon = nfInfoSetor(nfForm.setor).id === 'bonificada';
+    var sec = document.getElementById('nfSecaoBoletos'), add = document.getElementById('nfBtnAddVenc'), lab = document.getElementById('nfLabelValorNota');
+    if (sec) sec.style.display = bon ? 'none' : '';
+    if (add) add.style.display = bon ? 'none' : (nfForm.editandoId ? 'none' : 'block');
+    if (lab) lab.innerText = bon ? '🎁 Valor total da nota bonificada' : 'Valor total da nota (opcional — para conferir)';
+    if (bon) {
+        cont.innerHTML = '';
+        document.getElementById('nfSomaParcelas').style.display = 'none';
+        return;
+    }
     if (!nfForm.boletos.length) {
         cont.innerHTML = '<div class="nf-dica" style="margin:0 2px 10px 2px;">Nenhum boleto ainda.</div>';
         return;
@@ -7858,12 +7879,20 @@ function nfSalvarNota() {
     if (!nfForm.setor) { alert('Escolha o setor da nota.'); return; }
     if (nfForm.manual && !nfForm.editandoId && !nfForm.boletos.some(function(b) { return b.valor; })) { alert('Informe o valor.'); return; }
     var boletos = nfForm.boletos.slice();
-    if (!boletos.length) {
-        if (!confirm('Nenhum vencimento informado. Salvar a nota mesmo assim?')) return;
-        boletos = [{ linha: null, vencimento: null, valor: null }];
+    var ehBonificada = nfInfoSetor(nfForm.setor).id === 'bonificada';
+    if (ehBonificada) {
+        // brinde do fornecedor: uma linha só, sem boleto e sem vencimento, com o valor da nota
+        var vb = nfValorBonificada();
+        if (!vb) { alert('Informe o valor total da nota bonificada.'); return; }
+        boletos = [{ linha: null, vencimento: null, valor: vb, cartao: false }];
+    } else {
+        if (!boletos.length) {
+            if (!confirm('Nenhum vencimento informado. Salvar a nota mesmo assim?')) return;
+            boletos = [{ linha: null, vencimento: null, valor: null }];
+        }
+        var semVenc = boletos.filter(function(b) { return !b.vencimento && !b.cartao; }).length;
+        if (semVenc && boletos.length && !confirm(semVenc === 1 && boletos.length === 1 ? 'A nota está sem data de vencimento. Salvar assim?' : semVenc + ' vencimento(s) sem data. Salvar assim?')) return;
     }
-    var semVenc = boletos.filter(function(b) { return !b.vencimento && !b.cartao; }).length;
-    if (semVenc && boletos.length && !confirm(semVenc === 1 && boletos.length === 1 ? 'A nota está sem data de vencimento. Salvar assim?' : semVenc + ' vencimento(s) sem data. Salvar assim?')) return;
 
     var base = {
         chave_acesso: nfForm.chave || null,
@@ -7916,8 +7945,8 @@ function nfSalvarNota() {
                 valor: b.valor,
                 linha_digitavel: b.linha || null,
                 forma_pagto: formaDe(b),
-                status: (b.cartao || base.setor === 'caixa') ? 'pago' : 'pendente',
-                pago_em: (b.cartao || base.setor === 'caixa') ? agora : null,
+                status: (b.cartao || nfSemPagamento(base.setor)) ? 'pago' : 'pendente',
+                pago_em: (b.cartao || nfSemPagamento(base.setor)) ? agora : null,
                 criado_por: usuarioAtual || null,
                 criado_em: agora,
                 protocolo_id: 'app-' + (base.protocolo_data || nfHojeIso()),
@@ -8103,8 +8132,12 @@ function nfContagemAlertas() {
 }
 
 // O pagamento é de outro setor: aqui mostramos só o dado da nota, sem cobrança
+// Bonificada é brinde do fornecedor: não tem boleto, nem vencimento, nem pagamento
+function nfSemPagamento(setor) { var s = nfInfoSetor(setor).id; return s === 'bonificada' || s === 'caixa'; }
+
 function nfEtiquetaVencimento(n) {
     if (n.forma_pagto === 'cartao') return { classe: 'nf-badge-futuro', texto: '💳 Cartão' };
+    if (!n.vencimento && nfInfoSetor(n.setor).id === 'bonificada') return { classe: 'nf-badge-futuro', texto: '🎁 Bonificada' };
     if (!n.vencimento && n.setor === 'caixa') return { classe: 'nf-badge-futuro', texto: '💵 Dinheiro' };
     if (!n.vencimento) return { classe: 'nf-badge-futuro', texto: 'Sem vencimento' };
     return { classe: 'nf-badge-futuro', texto: 'Venc. ' + nfDataBR(n.vencimento) };
@@ -8490,7 +8523,7 @@ function nfAbrirDia(id) {
                 '<span class="nf-gh-info">' + itens.length + ' · ' + nfMoeda(nfSomar(porAba[id])) + '</span></div>' +
                 '<div class="nf-tabela">' + itens.map(function(g) {
                     var n = g.nota;
-                    var venc = n.forma_pagto === 'cartao' ? 'CARTÃO' : (n.vencimento ? nfDataBR(n.vencimento, true) : (n.setor === 'caixa' ? 'DINHEIRO' : '—'));
+                    var venc = n.forma_pagto === 'cartao' ? 'CARTÃO' : (n.vencimento ? nfDataBR(n.vencimento, true) : (nfInfoSetor(n.setor).id === 'bonificada' ? 'BONIFICADA' : (n.setor === 'caixa' ? 'DINHEIRO' : '—')));
                     var av = [];
                     g.notas.forEach(function(x) { nfAvisosDaNota(x).forEach(function(a) { if (av.indexOf(a.txt) < 0) av.push(a.txt); }); });
                     var parc = g.parcelas > 1 ? ' · ' + g.parcelas + ' boletos (1º em ' + nfDataBR(n.vencimento, true) + ')' : '';
@@ -8589,7 +8622,9 @@ function nfMontarPlanilha(id) {
             var n = g ? g.nota : null;
             if (n) {
                 var numero = String(n.numero_nota || '');
-                row.getCell(1).value = n.forma_pagto === 'cartao' ? 'CARTÃO' : (!n.vencimento && n.setor === 'caixa' ? 'DINHEIRO' : nfDataExcel(n.vencimento));
+                row.getCell(1).value = n.forma_pagto === 'cartao' ? 'CARTÃO'
+                    : (!n.vencimento && nfInfoSetor(n.setor).id === 'bonificada' ? 'BONIFICADA'
+                    : (!n.vencimento && n.setor === 'caixa' ? 'DINHEIRO' : nfDataExcel(n.vencimento)));
                 row.getCell(2).value = n.razao_social || '';
                 row.getCell(3).value = n.tipo_doc === 'recibo' ? ('RECIBO' + (numero ? ' ' + numero : '')) : (/^\d{1,15}$/.test(numero) ? Number(numero) : numero);
                 row.getCell(4).value = nfDataExcel(n.data_emissao);
@@ -9266,6 +9301,14 @@ function nfBipSom(ok) {
 
 // ---------- fechamento automático da nota (para bipar em sequência) ----------
 // Qual grupo usar sem perguntar: o já escolhido, ou o que o fornecedor sempre usa
+// Bonificada não tem boleto: o valor é o total da nota
+function nfValorBonificada() {
+    var v = nfParseValor(document.getElementById('nfValorNota').value);
+    if (v) return v;
+    var b = (nfForm && nfForm.boletos || []).filter(function(x) { return Number(x.valor) > 0; })[0];
+    return b ? Number(b.valor) : 0;
+}
+
 function nfGrupoParaSalvar() {
     if (!nfForm) return null;
     if (nfForm.setor) return nfForm.setor;
@@ -9278,6 +9321,8 @@ function nfNotaProntaParaFechar() {
     if (!nfForm || nfForm.editandoId) return null;
     if (!nfForm.chave) return null;                                  // nota ainda não foi lida
     if (!document.getElementById('nfNumero').value) return null;
+    // bonificada não tem boleto: basta a nota lida e o valor
+    if (nfForm.setor === 'bonificada') return nfValorBonificada() ? 'bonificada' : null;
     var comValor = nfForm.boletos.filter(function(b) { return Number(b.valor) > 0; });
     if (!comValor.length) return null;                               // sem boleto ninguém fecha sozinho
     var faltaVenc = comValor.some(function(b) { return !b.cartao && !b.vencimento; });
@@ -9976,7 +10021,7 @@ function nfGravarImportacao() {
                 jaTem[k] = true;
                 // notas antigas sem vencimento também não devem ficar na lista de "a pagar"
                 var antiga = n.protocolo_data && nfDiasEntre(n.protocolo_data, hoje) > 45;
-                var pago = n.forma_pagto === 'cartao' || n.setor === 'caixa' ||
+                var pago = n.forma_pagto === 'cartao' || nfSemPagamento(n.setor) ||
                     (marcarPagas && ((n.vencimento && n.vencimento < hoje) || (!n.vencimento && antiga)));
                 novasNotas.push(Object.assign({}, n, {
                     id: gerarIdUnico(),
@@ -10146,7 +10191,7 @@ function nfNotaRepetida(dados, ignorarId) {
 function nfAvisosDaNota(n) {
     var avisos = [];
     if (!n.valor) avisos.push({ tipo: 'valor', txt: 'sem valor' });
-    if (!n.vencimento && n.forma_pagto !== 'cartao' && n.setor !== 'caixa') avisos.push({ tipo: 'venc', txt: 'sem vencimento' });
+    if (!n.vencimento && n.forma_pagto !== 'cartao' && !nfSemPagamento(n.setor)) avisos.push({ tipo: 'venc', txt: 'sem vencimento' });
     if (!n.numero_nota && n.tipo_doc !== 'recibo') avisos.push({ tipo: 'num', txt: 'sem número' });
     if (!n.data_emissao) avisos.push({ tipo: 'emis', txt: 'sem data de emissão' });
     if (!n.razao_social) avisos.push({ tipo: 'forn', txt: 'sem fornecedor' });
@@ -10182,6 +10227,7 @@ function nfConferirAntesDeSalvar(base, boletos) {
     soma = Math.round(soma * 100) / 100;
     var valorNota = nfParseValor(document.getElementById('nfValorNota').value);
 
+    if (nfInfoSetor(base.setor).id === 'bonificada') return true;   // bonificada: sem boleto, nada a conferir
     if (valorNota && Math.abs(valorNota - soma) >= 0.02) {
         problemas.push('• As parcelas somam ' + nfMoeda(soma) + ', mas o valor da nota é ' + nfMoeda(valorNota) +
             ' (diferença de ' + nfMoeda(Math.abs(valorNota - soma)) + ').');
@@ -10210,6 +10256,12 @@ function nfConferirAntesDeSalvar(base, boletos) {
 
 // Mostra a soma das parcelas embaixo dos boletos e compara com o valor da nota
 function nfAtualizarSomaParcelas() {
+    if (nfForm && nfInfoSetor(nfForm.setor).id === 'bonificada') {
+        var elb = document.getElementById('nfSomaParcelas');
+        if (elb) elb.style.display = 'none';
+        nfRenderizarPassos();
+        return;
+    }
     var el = document.getElementById('nfSomaParcelas');
     if (!el || !nfForm) return;
     var soma = nfForm.boletos.reduce(function(s, b) { return s + (Number(b.valor) || 0); }, 0);
