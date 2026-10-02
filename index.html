@@ -451,6 +451,10 @@
     #buffet-screen .screen-header h2 { flex: 1; }
     .buffet-frame { flex: 1 1 auto; width: 100%; border: none; background: #fff; display: block; }
     .buffet-carregando { display: none; align-items: center; justify-content: center; padding: 14px; font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-dim); }
+    .nf-bonificada { margin: 8px 0 2px 0; }
+    .nf-bonificada button { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 14px; border: 1px dashed rgba(127,214,166,0.55); background: transparent; color: #7FD6A6; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .nf-bonificada.ativo button { border: none; border-radius: 14px; background: linear-gradient(160deg, #7FD6A6, #7FD6A699); color: #1B1420; font-size: 15px; letter-spacing: 0.5px; }
+    .nf-bonificada-dica { margin-top: 6px; font-family: 'Inter', sans-serif; font-size: 11.5px; line-height: 1.45; color: var(--text-dim); text-align: center; }
 </style>
 </head>
 <body>
@@ -515,7 +519,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v25set-t</div>
+                <div class="logo-subtitulo">Gestão de Compras · v2out-b</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -935,6 +939,7 @@
         </div>
 
         <div class="nf-segmento" id="nfTipoDoc" style="margin-top: 4px;"></div>
+        <div class="nf-bonificada" id="nfBonificada"></div>
         <div class="nf-secao-titulo" id="nfSecaoDocTitulo">Nota fiscal</div>
         <label class="nf-label" for="nfRazao">Razão social do fornecedor</label>
         <input type="text" id="nfRazao" class="text-input" placeholder="Preenchida automaticamente pelo CNPJ" onchange="nfFornecedorDigitado()">
@@ -6708,7 +6713,7 @@ function nfLerCanvas(canvas, qual, binarizador, formatos) {
         try {
             var ctx = canvas.getContext('2d', { willReadFrequently: true });
             var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            return ZXingWASM.readBarcodes(img, { formats: formatos || ['Code128', 'ITF', 'QRCode'], tryHarder: true, tryInvert: false, maxNumberOfSymbols: 2, binarizer: binarizador || 'LocalAverage' })
+            return ZXingWASM.readBarcodes(img, { formats: formatos || ['Code128', 'ITF', 'QRCode'], tryHarder: true, tryInvert: true, tryRotate: true, maxNumberOfSymbols: 4, binarizer: binarizador || 'LocalAverage' })
                 .then(function(r) { return r.filter(function(x) { return x.isValid !== false && x.text; }).map(function(x) { return x.text; }); })
                 .catch(function() { return []; });
         } catch (e) { return Promise.resolve([]); }
@@ -6729,6 +6734,16 @@ function nfAbrirImagem(arquivo) {
     };
     if (!window.createImageBitmap) return viaImg();
     return createImageBitmap(arquivo).catch(viaImg);
+}
+// gira o canvas 90 graus (foto do código deitado/em pé)
+function nfCanvasGirado(c) {
+    var g = document.createElement('canvas');
+    g.width = c.height; g.height = c.width;
+    var ctx = g.getContext('2d', { willReadFrequently: true });
+    ctx.translate(g.width / 2, g.height / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(c, -c.width / 2, -c.height / 2);
+    return g;
 }
 function nfCanvasDe(img, sx, sy, sw, sh, maxLado, filtro, ampliar) {
     var e = maxLado / Math.max(sw, sh);
@@ -6889,11 +6904,23 @@ function nfLerCodigosDoArquivo(arquivo, tipo, imgPronta) {
                         tentativas.push({ r: [0, quarto, W, meio], max: 2400, q: 'zxing', bin: 'GlobalHistogram' });
                     }
                     if (temNativo) tentativas.push({ r: [0, 0, W, H], max: 3000, q: 'nativo' });
+                    // 3º: últimas cartadas — contraste forçado e imagem girada (código deitado/em pé)
+                    if (temZx) {
+                        regioes.forEach(function(rg) {
+                            var comprido = rg.o === 'h' ? rg.w : rg.h;
+                            var max = Math.max(rg.w, rg.h) * Math.min(2.5, Math.max(0.6, 2000 / comprido));
+                            tentativas.push({ r: [rg.x, rg.y, rg.w, rg.h], max: max, q: 'zxing', bin: 'LocalAverage', amp: 1, filtro: 'grayscale(1) contrast(1.8)' });
+                            tentativas.push({ r: [rg.x, rg.y, rg.w, rg.h], max: max, q: 'zxing', bin: 'LocalAverage', amp: 1, girar: 1 });
+                        });
+                        tentativas.push({ r: [0, 0, W, H], max: 2200, q: 'zxing', bin: 'LocalAverage', filtro: 'grayscale(1) contrast(1.8)' });
+                        tentativas.push({ r: [0, 0, W, H], max: 2200, q: 'zxing', bin: 'LocalAverage', girar: 1 });
+                    }
                     var i = 0;
                     (function proxima() {
                         if (achou() || i >= tentativas.length || Date.now() - inicio > 30000) { resolve(resultados); return; }
                         var t = tentativas[i++];
-                        var c = nfCanvasDe(img, t.r[0], t.r[1], t.r[2], t.r[3], t.max, null, !!t.amp);
+                        var c = nfCanvasDe(img, t.r[0], t.r[1], t.r[2], t.r[3], t.max, t.filtro || null, !!t.amp);
+                        if (t.girar) c = nfCanvasGirado(c);
                         nfLerCanvas(c, t.q, t.bin, formatos).then(function(l) {
                             guardar(l);
                             setTimeout(proxima, 0);
@@ -6952,6 +6979,31 @@ function nfAplicarLeitura(r, origem) {
         nfAtualizarSomaParcelas();
         nfStatusForm((origem === 'leitor' ? '🔫 ' : '') + '✅ Boleto lido: vence ' + (b.vencimento ? nfDataBR(b.vencimento) : '(sem data no código — informe abaixo)') + ' · ' + nfMoeda(b.valor));
     }
+}
+
+// Última saída quando a foto não lê: digitar os números impressos embaixo do código de barras.
+// Vale tanto para a chave da nota (44 dígitos) quanto para a linha do boleto (47/48).
+function nfDigitarCodigo(tipo) {
+    if (!nfForm) return;
+    var ehNota = tipo === 'nota';
+    var texto = prompt(ehNota
+        ? 'Digite a CHAVE DE ACESSO da nota — os 44 números impressos embaixo do código de barras da DANFE.\n\nPode digitar com espaços.'
+        : 'Digite a LINHA DIGITÁVEL do boleto — os números impressos no alto do boleto (47 ou 48 dígitos).\n\nPode digitar com pontos e espaços.');
+    if (texto === null) return;
+    var dig = nfSoDigitos(texto);
+    if (!dig) return;
+    var r = nfInterpretarCodigo(dig);
+    if (!r) {
+        var quantos = ehNota ? 44 : 47;
+        alert('❌ Não reconheci esse número.\n\nDigitei ' + dig.length + ' dígito(s); o esperado são ' + quantos + '.\n\nConfira se não faltou ou sobrou algum número e tente de novo.');
+        return;
+    }
+    if (ehNota && r.tipo !== 'nota') { alert('❌ Esse número é de boleto, não da nota. Use o botão do boleto.'); return; }
+    if (!ehNota && r.tipo !== 'boleto') { alert('❌ Esse número é da nota, não do boleto. Use o botão da nota.'); return; }
+    nfAplicarLeitura(r, 'digitado');
+    if (r.tipo === 'nota') { nfIrParaPasso('boleto'); nfAvisarSetorSeConhecido(); return; }
+    nfRenderizarPassos();
+    nfChecarFechamentoAutomatico();
 }
 
 function nfStatusForm(t) {
@@ -7259,8 +7311,15 @@ function nfRenderizarTipoDoc() {
     var el = document.getElementById('nfTipoDoc');
     if (!el || !nfForm) return;
     var r = nfForm.tipoDoc === 'recibo';
+    var bon = nfForm.setor === 'bonificada';
     el.innerHTML = '<button class="' + (r ? '' : 'ativo') + '" onclick="nfMudarTipoDoc(\'nf\')">🧾 Nota fiscal</button>' +
         '<button class="' + (r ? 'ativo' : '') + '" onclick="nfMudarTipoDoc(\'recibo\')">📝 Recibo</button>';
+    var av = document.getElementById('nfBonificada');
+    if (av) {
+        av.className = 'nf-bonificada' + (bon ? ' ativo' : '');
+        av.innerHTML = '<button type="button" onclick="nfAlternarBonificada()">' + (bon ? '🎁 BONIFICADA' : '🎁 Marcar como bonificada') + '</button>' +
+            (bon ? '<div class="nf-bonificada-dica">Vai para o grupo Bonificada e <b>não entra na soma das compras</b> do mês.</div>' : '');
+    }
     document.getElementById('nfSecaoDocTitulo').innerText = r ? 'Recibo' : 'Nota fiscal';
     document.querySelector('label[for="nfNumero"]').innerText = r ? 'Nº do recibo (opcional)' : 'Nº da nota';
     document.querySelector('label[for="nfCnpj"]').innerText = r ? 'CNPJ / CPF (opcional)' : 'CNPJ';
@@ -7271,6 +7330,15 @@ function nfMudarTipoDoc(t) {
     if (!nfForm) return;
     nfForm.tipoDoc = t;
     nfRenderizarTipoDoc();
+}
+// Bonificada é característica DA NOTA (não do fornecedor): marca aqui e o setor já vai fechado
+function nfAlternarBonificada() {
+    if (!nfForm) return;
+    if (nfForm.setor === 'bonificada') { nfForm.setor = null; nfForm.trocarSetor = true; }
+    else { nfForm.setor = 'bonificada'; nfForm.trocarSetor = false; nfForm.avisoSetorMostrado = false; }
+    nfRenderizarTipoDoc();
+    nfRenderizarPassos();
+    if (nfForm.setor === 'bonificada') nfAvisarSetorSeConhecido();
 }
 
 function nfRenderizarPassos() {
@@ -7291,6 +7359,7 @@ function nfRenderizarPassos() {
             '<div class="nf-passo-texto">' + (nfLeitorLigado ? '🔫 <b>Bipe o código de barras da nota com o leitor</b> — ou fotografe.<br>' : '') +
             'Pode fotografar a nota inteira ou só a parte de cima com o código de barras. Boa luz e celular firme (espere focar).</div>' +
             '<button class="nf-passo-btn" onclick="nfAbrirCameraNota()">📸 Fotografar nota</button>' +
+            '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfDigitarCodigo(\'nota\')">⌨️ Digitar a chave da nota (44 números)</button>' +
             '<button class="nf-passo-link" onclick="nfIrParaPasso(\'boleto\')">Preencher a nota à mão →</button>';
     } else if (p === 'boleto') {
         var qtd = nfForm.boletos.filter(function(b) { return b.linha; }).length;
@@ -7298,6 +7367,7 @@ function nfRenderizarPassos() {
             (qtd ? '<div class="nf-passo-texto">✅ ' + qtd + (qtd === 1 ? ' boleto lido.' : ' boletos lidos.') + ' Tem outra parcela?</div>'
                  : '<div class="nf-passo-texto">' + (nfLeitorLigado ? '🔫 <b>Bipe o boleto com o leitor</b> — ou fotografe.<br>' : '') + 'Fotografe o código de barras do boleto.</div>') +
             '<button class="nf-passo-btn" onclick="nfAbrirCameraBoleto()">📸 ' + (qtd ? 'Fotografar outra parcela' : 'Fotografar boleto') + '</button>' +
+            '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfDigitarCodigo(\'boleto\')">⌨️ Digitar a linha do boleto</button>' +
             (qtd ? (function() {
                     var fb = nfForm.fornecedor || nfAcharFornecedor(nfLimpaCnpj(document.getElementById('nfCnpj').value), document.getElementById('nfRazao').value);
                     var ab = nfGrupoAutomatico(fb);
@@ -7405,7 +7475,7 @@ function nfFotoNota(evento) {
                 var achou = texto ? nfExtrairDoTexto(texto) : {};
                 if (achou.nota) { nfIrParaPasso('boleto'); nfAvisarSetorSeConhecido(); return; }
                 nfStatusForm('❌ Não consegui ler essa foto. Tire outra mais de perto, com o código de barras deitado ocupando a largura da foto — ou preencha à mão.');
-            });
+            }, true);
         });
     }).catch(function() {
         nfStatusForm('❌ Não consegui abrir essa foto. Tente de novo.');
@@ -7455,7 +7525,7 @@ function nfFotoBoleto(evento) {
                 var achou = texto ? nfExtrairDoTexto(texto, true) : {};
                 if (achou.boleto) { nfRenderizarPassos(); nfChecarFechamentoAutomatico(); return; }
                 nfStatusForm('❌ Não consegui ler esse boleto. Tire outra foto mais de perto, com o código de barras deitado — ou toque em "Sem boleto" e preencha à mão.');
-            });
+            }, true);
         });
     }).catch(function() {
         nfStatusForm('❌ Não consegui abrir essa foto. Tente de novo.');
@@ -7500,10 +7570,21 @@ function nfObterWorkerOCR() {
     }
     return nfOcrWorkerP;
 }
-function nfOCRCanvas(canvas, cb) {
+function nfOCRCanvas(canvas, cb, soNumeros) {
     nfFilaOCR = nfFilaOCR.then(function() {
-        return nfObterWorkerOCR().then(function(w) { return w.recognize(canvas); })
-            .then(function(res) { cb((res && res.data && res.data.text) || ''); })
+        return nfObterWorkerOCR().then(function(w) {
+            // chave de acesso e linha digitável só têm dígitos: avisar isso ao leitor evita
+            // confundir 0/O, 1/I, 5/S, 8/B
+            var prep = soNumeros && w.setParameters
+                ? w.setParameters({ tessedit_char_whitelist: '0123456789 .-' }).catch(function() { })
+                : Promise.resolve();
+            return prep.then(function() { return w.recognize(canvas); }).then(function(res) {
+                var texto = (res && res.data && res.data.text) || '';
+                if (soNumeros && w.setParameters) { try { w.setParameters({ tessedit_char_whitelist: '' }); } catch (e) { } }
+                return texto;
+            });
+        })
+            .then(function(texto) { cb(texto); })
             .catch(function() { cb(null); });
     });
 }
@@ -7588,6 +7669,7 @@ function nfAbrirNovaNota(semCamera) {
     document.getElementById('nfAcoesSalvar').style.display = 'none';
     nfRenderizarBoletosForm();
     nfRenderizarPassos();
+    nfRenderizarTipoDoc();
     trocarTela('nota-edit-screen');
     // no celular já abre a câmera direto pra foto 1; com leitor/PC espera a bipada
     var temToque = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -7824,7 +7906,7 @@ function nfSalvarNota() {
         supabasePatch('notas_fiscais', 'id=eq.' + encodeURIComponent(nfForm.editandoId), alteracao, function(err) {
             if (err) console.warn('Nota salva localmente, sincroniza depois:', err);
         });
-        nfRegistrarFornecedor(cnpj, razao, nfForm.setor, base.subgrupo);
+        if (nfForm.setor !== 'bonificada') nfRegistrarFornecedor(cnpj, razao, nfForm.setor, base.subgrupo);
     } else {
         var agora = new Date().toISOString();
         var novos = boletos.map(function(b) {
@@ -7849,7 +7931,7 @@ function nfSalvarNota() {
             });
         });
         nfSalvarNotasLocal();
-        nfRegistrarFornecedor(cnpj, razao, nfForm.setor, base.subgrupo);
+        if (nfForm.setor !== 'bonificada') nfRegistrarFornecedor(cnpj, razao, nfForm.setor, base.subgrupo);
         nfForm.salvoIds = novos.map(function(r) { return r.id; });
         nfLerDataEmissaoDepois();
         var setorInfo = nfInfoSetor(nfForm.setor);
@@ -9030,8 +9112,28 @@ var nfLeitorLigado = (function() {
 })();
 var nfLeitorUsadoAgora = false;      // vira true na primeira bipada da sessão
 var nfBuf = { txt: '', ultimo: 0, engolindo: false, inseridos: 0, alvo: null, timer: null };
-var NF_GAP_MAX = 45;    // ms entre teclas: acima disso é gente digitando
-var NF_MIN_ENGOLIR = 5; // a partir de quantos caracteres a gente começa a engolir
+var NF_GAP_MAX = 45;     // ms entre teclas: acima disso é gente digitando
+var NF_GAP_LENDO = 350;  // já no meio de um código: aguenta engasgo do leitor/aparelho sem perder o começo
+var NF_MIN_ENGOLIR = 5;  // a partir de quantos caracteres a gente começa a engolir
+var nfPedaco = null;     // pedaço de código que chegou cortado, esperando o resto
+
+// Já estamos no meio de uma bipada? (serve para aguentar pausa sem jogar fora o que já veio)
+function nfNoMeioDoCodigo() {
+    return nfBuf.engolindo && nfBuf.txt.length >= 10 && /^[0-9A-Za-z]+$/.test(nfBuf.txt);
+}
+// Guarda o pedaço para juntar com o próximo, se vier logo em seguida
+function nfGuardarPedaco(txt) {
+    nfPedaco = (txt && txt.length >= 8 && /^[0-9A-Za-z]+$/.test(txt)) ? { txt: txt, t: Date.now() } : null;
+}
+// Tenta o código sozinho; se não valer, tenta colado no pedaço anterior (leitor que corta o código em dois)
+function nfCodigoCompleto(lido) {
+    if (nfInterpretarCodigo(lido)) return lido;
+    if (nfPedaco && Date.now() - nfPedaco.t < 2500) {
+        var junto = nfPedaco.txt + lido;
+        if (nfInterpretarCodigo(junto)) return junto;
+    }
+    return null;
+}
 
 function nfAlternarLeitorUSB() {
     nfLeitorLigado = !nfLeitorLigado;
@@ -9085,12 +9187,14 @@ function nfTeclaLeitor(ev) {
     var gap = agora - nfBuf.ultimo;
 
     if (ev.key === 'Enter' || ev.key === 'Tab') {
-        if (nfBuf.txt.length >= 20 && gap <= 300) {
+        if (nfBuf.txt.length >= 20 && gap <= 1200) {
             ev.preventDefault();
             ev.stopPropagation();
             var lido = nfBuf.txt;
             nfLimparBufLeitor(false);
-            nfProcessarBipada(lido);
+            var inteiro = nfCodigoCompleto(lido);
+            if (inteiro) { nfPedaco = null; nfProcessarBipada(inteiro); }
+            else { nfGuardarPedaco(lido); nfProcessarBipada(lido); }
         } else {
             nfLimparBufLeitor(false);
         }
@@ -9099,8 +9203,19 @@ function nfTeclaLeitor(ev) {
 
     if (ev.key.length !== 1) return;   // ignora setas, shift, etc.
 
-    if (gap > NF_GAP_MAX) {
+    // Código de barras só tem número (e letra maiúscula no QR). Veio espaço, vírgula ou
+    // letra minúscula? é gente digitando: devolve ao campo o que já tinha sido engolido.
+    if (!/[0-9A-Z]/.test(ev.key)) {
+        nfLimparBufLeitor(true);
+        return;
+    }
+
+    // No meio de um código o leitor pode engasgar (tela renderizando, internet, aparelho ocupado).
+    // Antes isso jogava fora tudo que já tinha vindo e o código se perdia — agora ele aguenta a pausa.
+    var limiteGap = nfNoMeioDoCodigo() ? NF_GAP_LENDO : NF_GAP_MAX;
+    if (gap > limiteGap) {
         // começo de uma nova sequência (ou gente digitando devagar)
+        if (nfBuf.engolindo) nfGuardarPedaco(nfBuf.txt);
         nfLimparBufLeitor(false);
         nfBuf.txt = ev.key;
         nfBuf.ultimo = agora;
@@ -9124,9 +9239,15 @@ function nfTeclaLeitor(ev) {
     nfBuf.timer = setTimeout(function() {
         var lido = nfBuf.txt;
         var tinha = nfBuf.engolindo;
+        // curto demais para ser código: era digitação — devolve as teclas ao campo
+        if (!tinha || lido.length < 20) { nfLimparBufLeitor(true); return; }
         nfLimparBufLeitor(false);
-        if (tinha && lido.length >= 40 && nfInterpretarCodigo(lido)) nfProcessarBipada(lido);
-    }, 220);
+        if (!tinha || lido.length < 20) return;   // (nfLimparBufLeitor(true) acima já devolveu ao campo)
+        var inteiro = nfCodigoCompleto(lido);
+        if (inteiro) { nfPedaco = null; nfProcessarBipada(inteiro); return; }
+        nfGuardarPedaco(lido);                       // guarda: pode ser metade de um código
+        if (lido.length >= 40) nfProcessarBipada(lido);   // tamanho de código inteiro: avisa que veio errado
+    }, NF_GAP_LENDO + 60);
 }
 
 function nfBipSom(ok) {
@@ -9181,9 +9302,20 @@ function nfProcessarBipada(texto) {
     var r = nfInterpretarCodigo(texto);
     if (!r) {
         nfBipSom(false);
-        nfAvisoLeitor('❌ Código não reconhecido pelo leitor. Só leio código de nota fiscal (DANFE) ou de boleto.');
+        var d = nfSoDigitos(texto);
+        var msg;
+        if (d.length === 44 || d.length === 47 || d.length === 48) {
+            // tamanho certo, conta errada: quase sempre um número trocado/perdido na bipada
+            msg = '⚠️ Vieram ' + d.length + ' números (tamanho certo), mas a conta de conferência não bateu — algum número veio trocado. Bipe de novo, mais devagar e com o leitor firme. Se insistir, use "⌨️ Digitar".';
+        } else if (d.length >= 20) {
+            msg = '⚠️ O código veio pela metade: li ' + d.length + ' números (a nota tem 44 e o boleto 47). Bipe de novo — se continuar, use "⌨️ Digitar".';
+        } else {
+            msg = '❌ Código não reconhecido. Só leio código de barras de nota fiscal (DANFE) ou de boleto.';
+        }
+        nfAvisoLeitor(msg);
         return;
     }
+    nfPedaco = null;
     nfLeitorUsadoAgora = true;
     nfAtualizarBotaoLeitor();
     nfBipSom(true);
