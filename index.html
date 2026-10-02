@@ -519,7 +519,7 @@
                 </g>
             </svg>
             <div class="logo-text">
-                <div class="logo-subtitulo">Gestão de Compras · v2out-c</div>
+                <div class="logo-subtitulo">Gestão de Compras · v2out-d</div>
                 <div>A Bela Sintra</div>
             </div>
         </div>
@@ -9154,11 +9154,11 @@ var nfPedaco = null;     // pedaço de código que chegou cortado, esperando o r
 
 // Já estamos no meio de uma bipada? (serve para aguentar pausa sem jogar fora o que já veio)
 function nfNoMeioDoCodigo() {
-    return nfBuf.engolindo && nfBuf.txt.length >= 10 && /^[0-9A-Za-z]+$/.test(nfBuf.txt);
+    return nfBuf.engolindo && nfBuf.txt.length >= 10 && /^[0-9A-Za-z.\- ]+$/.test(nfBuf.txt);
 }
 // Guarda o pedaço para juntar com o próximo, se vier logo em seguida
 function nfGuardarPedaco(txt) {
-    nfPedaco = (txt && txt.length >= 8 && /^[0-9A-Za-z]+$/.test(txt)) ? { txt: txt, t: Date.now() } : null;
+    nfPedaco = (txt && txt.length >= 8 && /^[0-9A-Za-z.\- ]+$/.test(txt)) ? { txt: txt, t: Date.now() } : null;
 }
 // Tenta o código sozinho; se não valer, tenta colado no pedaço anterior (leitor que corta o código em dois)
 function nfCodigoCompleto(lido) {
@@ -9238,10 +9238,12 @@ function nfTeclaLeitor(ev) {
 
     if (ev.key.length !== 1) return;   // ignora setas, shift, etc.
 
-    // Código de barras só tem número (e letra maiúscula no QR). Veio espaço, vírgula ou
-    // letra minúscula? é gente digitando: devolve ao campo o que já tinha sido engolido.
-    if (!/[0-9A-Z]/.test(ev.key)) {
-        nfLimparBufLeitor(true);
+    // Código de barras só tem número (e letra maiúscula no QR). Mas no "modo FEBRABAN" o leitor
+    // manda a linha digitável formatada (34191.09008 61713.95775 ...), com ponto e espaço —
+    // então ponto/traço/espaço valem enquanto o que veio até agora for só número e separador.
+    var sepOk = /[.\- ]/.test(ev.key) && nfBuf.txt.length >= 4 && /^[0-9.\- ]+$/.test(nfBuf.txt);
+    if (!/[0-9A-Z]/.test(ev.key) && !sepOk) {
+        nfLimparBufLeitor(true);   // letra minúscula, vírgula etc: é gente digitando
         return;
     }
 
