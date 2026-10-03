@@ -12,6 +12,11 @@
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    /* ===== Profundidade e resposta ao toque, para todos os botões do app ===== */
+    button { box-shadow: 0 4px 12px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.06) inset; transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease, background 0.15s; }
+    button:active { transform: translateY(2px) scale(0.98); box-shadow: 0 1px 3px rgba(0,0,0,0.25); filter: brightness(0.9); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; box-shadow: none; }
+    .tema-card:active, a.history-share-btn:active, a.btn-whatsapp-link:active, a.btn-email-link:active { filter: brightness(0.9); transform: translateY(2px) scale(0.98); box-shadow: 0 1px 3px rgba(0,0,0,0.25) !important; }
 
     :root {
         --bg: #271B31;
@@ -275,12 +280,12 @@
     .summary-item-info strong { font-weight: 700; color: var(--accent); font-size: 16px; font-family: 'Space Grotesk', sans-serif;}
 
     .summary-footer { padding: 24px 20px 40px 20px; text-align: center; background: transparent; display: flex; flex-direction: column; gap: 12px; }
-    .btn-whatsapp-link { display: block; box-sizing: border-box; text-decoration: none; background: #25D366; color: white; border: none; padding: 16px; width: 100%; font-size: 14px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 24px; cursor: pointer; text-align: center; }
+    .btn-whatsapp-link { display: block; box-sizing: border-box; text-decoration: none; background: #25D366; color: white; border: none; padding: 16px; width: 100%; font-size: 14px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 24px; cursor: pointer; text-align: center; box-shadow: 0 4px 12px rgba(37,211,102,0.35); transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease; }
     .btn-copiar { background: transparent; color: var(--text); border: 1px solid var(--line); padding: 16px; width: 100%; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 24px; cursor: pointer; }
-    .btn-email-link { display: block; box-sizing: border-box; text-decoration: none; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); padding: 16px; width: 100%; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 24px; cursor: pointer; text-align: center; }
+    .btn-email-link { display: block; box-sizing: border-box; text-decoration: none; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); padding: 16px; width: 100%; font-size: 13px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-radius: 24px; cursor: pointer; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.25); transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease; }
 
     .history-card-actions { display: flex; gap: 8px; margin-top: 14px; }
-    .history-share-btn { flex: 1; text-decoration: none; text-align: center; background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--line); padding: 10px 6px; border-radius: 16px; font-size: 11px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; }
+    .history-share-btn { flex: 1; text-decoration: none; text-align: center; background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--line); padding: 10px 6px; border-radius: 16px; font-size: 11px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.2); transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease; }
     .history-share-btn.whats { color: #25D366; border-color: rgba(37,211,102,0.35); }
     .history-share-btn.del { color: #E85D5D; border-color: rgba(232,93,93,0.35); }
 
