@@ -378,6 +378,9 @@
     .nf-linha2 { display: flex; gap: 10px; }
     .nf-linha2 > * { flex: 1; min-width: 0; }
     .nf-form input[type="date"] { color-scheme: dark; }
+    .nf-sem-boleto { background: var(--surface-2); border: 1px dashed var(--line); border-radius: 14px; padding: 12px; margin: 10px 0 8px; }
+    .nf-sem-boleto-tit { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .nf-sem-boleto .text-input { background: var(--surface); }
     .nf-boleto { background: var(--surface); border-radius: 16px; padding: 12px; margin-bottom: 10px; }
     .nf-boleto-topo { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: var(--text-dim); margin-bottom: 8px; }
     .nf-boleto-topo button { background: none; border: none; color: var(--text-dim); font-size: 18px; cursor: pointer; padding: 0 4px; }
@@ -7841,9 +7844,9 @@ function nfRenderizarPassos() {
             '<button class="nf-passo-link" onclick="nfAlternarBonificada()">Não é bonificada — voltar ao boleto</button>';
     } else if (p === 'boleto') {
         var qtd = nfForm.boletos.filter(function(b) { return b.linha; }).length;
-        corpo = '<div class="nf-passo-titulo">Foto 2 · Código de barras do boleto</div>' +
+        corpo = '<div class="nf-passo-titulo">' + (qtd ? 'Foto 2 · Código de barras do boleto' : 'Passo 2 · Boleto (se tiver)') + '</div>' +
             (qtd ? '<div class="nf-passo-texto">✅ ' + qtd + (qtd === 1 ? ' boleto lido.' : ' boletos lidos.') + ' Tem outra parcela?</div>'
-                 : '<div class="nf-passo-texto">' + (nfLeitorLigado ? '🔫 <b>Bipe o boleto com o leitor</b> — ou fotografe.<br>' : '') + 'Fotografe o código de barras do boleto.</div>') +
+                 : '<div class="nf-passo-texto">' + (nfLeitorLigado ? '🔫 <b>Bipe o boleto com o leitor</b> — ou fotografe.<br>' : '') + 'Se a nota tem boleto, fotografe o código de barras. <b>Se não tem, é só preencher o vencimento e o valor aqui embaixo.</b></div>') +
             '<button class="nf-passo-btn" onclick="nfAbrirCameraBoleto()">📸 ' + (qtd ? 'Fotografar outra parcela' : 'Fotografar boleto') + '</button>' +
             '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfDigitarCodigo(\'boleto\')">⌨️ Digitar a linha do boleto</button>' +
             (qtd ? (function() {
@@ -7854,7 +7857,7 @@ function nfRenderizarPassos() {
                     return '<button class="nf-passo-btn" style="background:linear-gradient(160deg,' + sb.cor + ',' + sb.cor + '99);color:#1B1420;" onclick="nfSalvarNoSetor(\'' + ab.id + '\')">✅ Salvar em ' + sb.icone + ' ' + nfEsc(sb.nome) + '</button>' +
                         '<button class="nf-passo-link" onclick="nfIrParaPasso(\'setor\')">Lançar em outro grupo</button>';
                 })()
-                 : '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfSemBoleto()">Sem boleto — preencher vencimento à mão</button>' +
+                 : nfBlocoSemBoleto() +
                    '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfPagoNoCartao()">💳 Pago no cartão</button>');
     } else if (p === 'manual') {
         var fm = nfForm.fornecedor || nfAcharFornecedor(nfLimpaCnpj(document.getElementById('nfCnpj').value), document.getElementById('nfRazao').value);
@@ -7914,6 +7917,42 @@ function nfSemBoleto() {
         var campo = document.querySelector('#nfBoletosLista input[type="date"]');
         if (campo) { campo.scrollIntoView({ block: 'center' }); campo.focus(); }
     }, 150);
+}
+
+// Nota sem boleto: os dois campos que importam (vencimento e valor) ficam aqui mesmo,
+// no passo, pra não ter que digitar linha digitável nenhuma.
+function nfBlocoSemBoleto() {
+    var b = (nfForm.boletos && nfForm.boletos[0] && !nfForm.boletos[0].linha) ? nfForm.boletos[0] : {};
+    return '<div class="nf-sem-boleto">' +
+        '<div class="nf-sem-boleto-tit">Nota sem boleto? Preencha só isto:</div>' +
+        '<div class="nf-linha2">' +
+            '<div><label class="nf-label">Vencimento</label>' +
+            '<input type="date" id="nfSbVenc" class="text-input" value="' + (b.vencimento || '') + '" onchange="nfSemBoletoCampo(\'vencimento\', this.value)"></div>' +
+            '<div><label class="nf-label">Valor (R$)</label>' +
+            '<input type="text" id="nfSbValor" inputmode="decimal" class="text-input" placeholder="0,00" value="' + nfValorParaCampo(b.valor) + '" onchange="nfSemBoletoCampo(\'valor\', this.value)"></div>' +
+        '</div>' +
+        '<button class="nf-passo-btn nf-passo-btn-sec" style="margin-top:8px;" onclick="nfContinuarSemBoleto()">Continuar sem boleto →</button>' +
+        '</div>';
+}
+
+function nfSemBoletoCampo(campo, valor) {
+    if (!nfForm) return;
+    if (!nfForm.boletos.length || nfForm.boletos[0].linha) {
+        nfForm.boletos.unshift({ barras: null, linha: null, vencimento: null, valor: null });
+    }
+    nfForm.boletos[0][campo] = (campo === 'valor') ? nfParseValor(valor) : (valor || null);
+    nfRenderizarBoletosForm();   // espelha nos campos de baixo, sem re-render do passo (não perde o foco)
+}
+
+function nfContinuarSemBoleto() {
+    if (!nfForm) return;
+    // pega o que estiver digitado e ainda não disparou "change"
+    var cv = document.getElementById('nfSbVenc'), cl = document.getElementById('nfSbValor');
+    if (cv) nfSemBoletoCampo('vencimento', cv.value);
+    if (cl) nfSemBoletoCampo('valor', cl.value);
+    var b = nfForm.boletos[0] || {};
+    if (!b.vencimento && !b.valor) { nfSemBoleto(); return; }   // nada preenchido: cai no fluxo antigo
+    nfIrParaPasso('setor');
 }
 
 function nfSalvarNoSetor(id) {
