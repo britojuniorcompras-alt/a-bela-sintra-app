@@ -584,7 +584,7 @@ body.com-rasc .shtoast{bottom:104px}
 
     <div class="info" style="background:var(--acl);border-left-color:var(--ac)">
       <strong>⚠️ Ponto de atenção: capacidade de produção</strong>
-      A dark kitchen planejada (2 salas 5×3m) comporta cerca de <span id="tx-capun"></span> unidades/mês. Para produzir <span id="tx-capvol"></span> unidades, você precisará de uma <strong>planta industrial ou co-manufacturing</strong> — aproximadamente <span id="tx-capx"></span> a estrutura atual. O investimento de R$ 290.200 previsto pode ser a base, mas certamente precisará ser ampliado. Isso não muda a viabilidade dos preços — confirma que a escala está bem pensada. Valide a estrutura de produção com um parceiro industrial ou consulte o Sebrae/SENAI para dimensionamento.
+      A casa em adequação, no ritmo configurado em Ficha de Custo, comporta cerca de <span id="tx-capun"></span> unidades/mês. Para produzir <span id="tx-capvol"></span> unidades, você precisará de uma <strong>planta industrial ou co-manufacturing</strong> — aproximadamente <span id="tx-capx"></span> a estrutura atual. O investimento de R$ 290.200 previsto pode ser a base, mas certamente precisará ser ampliado. Isso não muda a viabilidade dos preços — confirma que a escala está bem pensada. Valide a estrutura de produção com um parceiro industrial ou consulte o Sebrae/SENAI para dimensionamento.
     </div>
   </div>
 
@@ -753,7 +753,7 @@ body.com-rasc .shtoast{bottom:104px}
         <div class="cg">
           <div class="cl"><span>Volume mensal</span><span class="cv" id="sv-v">100.000 un</span></div>
           <input type="range" min="1000" max="300000" step="1000" value="100000" oninput="svol(this.value)">
-          <div class="rl"><span>1k</span><span>← dark kitchen · industrial →</span><span>300k</span></div>
+          <div class="rl"><span>1k</span><span>← casa adaptada · industrial →</span><span>300k</span></div>
         </div>
         <hr class="sp">
         <div class="slb">Preço por Canal (ajuste à vontade)</div>
@@ -1249,9 +1249,20 @@ body.com-rasc .shtoast{bottom:104px}
     </div>
 
     <div class="card" style="margin-bottom:16px">
+      <div class="sec-ttl">🏠 Adequação da casa — o que precisa estar resolvido antes da obra</div>
+      <div style="padding:13px 19px">
+        <div class="pc"><span class="ic">1️⃣</span><span><strong>Uso permitido no endereço.</strong> Indústria de alimentos em imóvel residencial depende do zoneamento. Peça na prefeitura a consulta de viabilidade (uso Ind-1) antes de assinar contrato ou começar obra — é o item que pode inviabilizar o endereço inteiro.</span></div>
+        <div class="pc"><span class="ic">2️⃣</span><span><strong>Autorização do proprietário por escrito.</strong> O contrato de locação precisa permitir uso não residencial e a obra. Benfeitoria em imóvel alugado normalmente não volta para você no fim do contrato — por isso a obra é depreciada no prazo do contrato, e não em 60 meses.</span></div>
+        <div class="pc"><span class="ic">3️⃣</span><span><strong>Vigilância sanitária e SIF/MAPA.</strong> Produto à base de pescado exige registro no SIF. O projeto da casa precisa atender fluxo de marcha à frente, área suja e limpa separadas, piso e parede laváveis, vestiário e barreira sanitária. Vale contratar o projeto com quem já aprovou planta de pescado.</span></div>
+        <div class="pc"><span class="ic">4️⃣</span><span><strong>Infraestrutura da casa.</strong> Carga elétrica (câmara fria e ultracongelamento costumam exigir trifásico), ponto de água e esgoto com caixa de gordura, ventilação e exaustão, e acesso para carga e descarga. Levante isso antes do orçamento da obra, porque costuma pesar mais que o acabamento.</span></div>
+        <div class="pc"><span class="ic">5️⃣</span><span><strong>Vizinhança.</strong> Casa em rua residencial tem limite de ruído e movimento de veículos. Um desentendimento com vizinho vira reclamação e paralisa obra.</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
       <div class="sec-ttl">⚠️ Os Quatro Pontos de Decisão Críticos</div>
       <div style="padding:13px 19px">
-        <div class="pc"><span class="ic">1️⃣</span><span><strong>Capacidade real antes de vender.</strong> 100k un/mês exigem ~<span id="tx-bd100"></span> batches/dia; 300k exigem ~<span id="tx-bd300"></span>. A estrutura de 2 salas comporta cerca de 3. Não feche contrato de volume sem a planta dimensionada — inadimplência de entrega em B2B queima a relação de uma vez.</span></div>
+        <div class="pc"><span class="ic">1️⃣</span><span><strong>Capacidade real antes de vender.</strong> 100k un/mês exigem ~<span id="tx-bd100"></span> batches/dia; 300k exigem ~<span id="tx-bd300"></span>. A casa em adequação comporta <span class="capv">3</span> batches/dia no ajuste atual (campo em Ficha de Custo). Não feche contrato de volume sem a planta dimensionada — inadimplência de entrega em B2B queima a relação de uma vez.</span></div>
         <div class="pc"><span class="ic">2️⃣</span><span><strong>Sublimite do Simples em R$ 3,6 mi/ano.</strong> Com os preços atuais: <span id="tx-sl25b"></span> (25%), <span id="tx-sl35b"></span> (35%) e <span id="tx-sl50b"></span> (50%). Desenquadramento no meio do ano gera passivo retroativo — o contador precisa saber disso com antecedência.</span></div>
         <div class="pc"><span class="ic">3️⃣</span><span><strong>SIF/MAPA é pré-requisito, não etapa.</strong> Produto à base de pescado exige registro federal. O prazo costuma ser longo e trava a venda interestadual. Comece por aí.</span></div>
         <div class="pc"><span class="ic">4️⃣</span><span><strong>Custos que ainda não estão nas margens.</strong> Embalagem, quebra de produção e comissão já entram no cálculo, e o frete é por conta do cliente. Ficam de fora o estoque de bacalhau parado, o custo financeiro do prazo de recebimento e os encargos de folha no Lucro Presumido — confira a aba Caixa e feche esses valores com o contador.</span></div>
@@ -1478,7 +1489,7 @@ function rProj(){
 
 
 /* ===== PREMISSAS — fonte única de verdade do painel ===== */
-const A = { emb:0.05, com:0, per:0.03, fix:40637, pz:45, vol:100000, inv:290200, depMeses:60, peso:30, cap:3, rbt12:0, escFix:0 };  // cap = batches/dia que a estrutura comporta
+const A = { emb:0.05, com:0, per:0.03, fix:40637, pz:45, vol:100000, inv:290200, depMeses:60, peso:30, cap:3, rbt12:0, escFix:0, obra:0, obraMeses:36 };  // cap = batches/dia que a estrutura comporta
 
 
 // quebra: perde-se a MASSA, nao a embalagem -> divide o ingrediente por (1-quebra)
@@ -1549,7 +1560,7 @@ const instantaneo = () => ({
   insumos:REC.map(i=>({id:i.id,preco:i.preco})),
   fixos:FIX.map(i=>({id:i.id,valor:i.valor})),
   precos:Object.fromEntries(Object.keys(F).map(k=>[k,F[k].pv])),
-  A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses,peso:A.peso,cap:A.cap,rbt12:A.rbt12,escFix:A.escFix},
+  A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses,peso:A.peso,cap:A.cap,rbt12:A.rbt12,escFix:A.escFix,obra:A.obra,obraMeses:A.obraMeses},
   dias:INS.dias,
   canais:{...sim.pr},
   producao:{mx25:prj.mx25,mx35:prj.mx35},
@@ -1587,6 +1598,7 @@ function aplicar(d){
     A.depMeses=Math.max(1,Math.round(A.depMeses||60)); A.com=Math.min(0.9,Math.max(0,A.com||0));
     A.rbt12=Math.max(0,A.rbt12||0); A.escFix=A.escFix?1:0;
     A.emb=Math.max(0,A.emb||0); A.inv=Math.max(0,A.inv||0); A.pz=Math.max(0,A.pz||0);
+    A.obra=Math.max(0,A.obra||0); A.obraMeses=Math.max(1,Math.round(A.obraMeses||36));
     if(isFinite(d.dias)) INS.dias=d.dias;
     for(const k in (d.canais||{})) if(k in sim.pr && isFinite(d.canais[k])) sim.pr[k]=d.canais[k];
     const p=d.producao||{}; ['mx25','mx35'].forEach(k=>{ if(isFinite(p[k])) prj[k]=p[k]; });
@@ -2019,7 +2031,7 @@ function verificar(){
 
   // 3. custo fixo = soma das linhas + depreciação
   testar('Custo fixo = linhas + depreciação', A.fix,
-         FIX.reduce((t,i)=>t+i.valor,0) + A.inv/A.depMeses, 0.01);
+         FIX.reduce((t,i)=>t+i.valor,0) + A.inv/A.depMeses + A.obra/A.obraMeses, 0.01);
 
   // 4. DRE fecha: receita − variável − fixo − comissão − imposto = líquido
   for (const k in F){
@@ -2190,13 +2202,13 @@ function rCash(){
   const al=r0.al, liq=r0.liq, gc=liq+depMensal();                 // geração de caixa = lucro + depreciação
   kp.innerHTML=`
     <div class="bm"><div class="bml">Capital de Giro</div><div class="bmv" style="font-size:1.1rem;color:var(--ac)">${R(wc,0)}</div><div class="bms">${A.pz} dias · ref. ${LN}</div></div>
-    <div class="bm"><div class="bml">Necessidade Total</div><div class="bmv" style="font-size:1.1rem">${R(wc+A.inv,0)}</div><div class="bms">giro + planta</div></div>
+    <div class="bm"><div class="bml">Necessidade Total</div><div class="bmv" style="font-size:1.1rem">${R(wc+INVT(),0)}</div><div class="bms">giro + planta</div></div>
     <div class="bm"><div class="bml">Lucro Líquido</div><div class="bmv" style="font-size:1.1rem;color:${liq>=0?'var(--gn)':'var(--rd)'}">${R(liq,0)}</div><div class="bms">mês · ${LN}</div></div>
-    <div class="bm"><div class="bml">Payback Total</div><div class="bmv" style="font-size:1.1rem">${gc>0?((wc+A.inv)/gc).toFixed(1)+' m':'—'}</div><div class="bms">incluindo o giro · pela geração de caixa</div></div>`;
+    <div class="bm"><div class="bml">Payback Total</div><div class="bmv" style="font-size:1.1rem">${gc>0?((wc+INVT())/gc).toFixed(1)+' m':'—'}</div><div class="bms">incluindo o giro · pela geração de caixa</div></div>`;
 
   const nm={f25:'25%',f35:'35%',f50:'50%'};
   document.getElementById('wctb').innerHTML=Object.keys(F).map(k=>{
-    const d=cvar(k)*A.vol+FX()-depMensal(), w=d*A.pz/30, r=w/A.inv;
+    const d=cvar(k)*A.vol+FX()-depMensal(), w=d*A.pz/30, r=INVT()>0?w/INVT():0;
     return `<tr><td><strong>${nm[k]}</strong></td><td class="tr fn">${R(d,0)}</td>
       <td class="tr fn" style="color:var(--ac);font-weight:700">${R(w,0)}</td>
       <td class="tr"><span class="badge-${r>1?'rd':(r>0.6?'wn':'gn')}">${r.toFixed(1)}× o investimento</span></td></tr>`;
@@ -2204,7 +2216,7 @@ function rCash(){
 
   document.getElementById('fulltb').innerHTML=Object.keys(F).map(k=>{
     const r=calc(k), rec=r.rec, cvt=r.cvt, eb=r.eb, imp=r.imp, liq=r.liq;
-    const gck=liq+depMensal(), pb=gck>0?(A.inv/gck).toFixed(1)+' meses':'—';
+    const gck=liq+depMensal(), pb=gck>0?(INVT()/gck).toFixed(1)+' meses':'—';
     return `<tr><td><strong>${nm[k]}</strong></td>
       <td class="tr fn">${R(rec,0)}</td><td class="tr fn">${R(cvt,0)}</td><td class="tr fn">${R(FX(),0)}</td>
       <td class="tr fn">${R(eb,0)}</td><td class="tr fn" style="color:var(--rd)">− ${R(imp,0)}</td>
@@ -2238,7 +2250,8 @@ const FIX = [
   {id:'net', nome:'Internet',           valor:300},
   {id:'gas', nome:'Gás',                valor:3000},
 ];
-const depMensal = () => A.inv / A.depMeses;
+const depMensal = () => A.inv/A.depMeses + A.obra/A.obraMeses;   // equipamentos + obra de adequação da casa
+const INVT = () => A.inv + A.obra;                               // dinheiro total colocado antes de faturar
 function recalcFix(){ A.fix = FIX.reduce((t,i)=>t+i.valor,0) + depMensal(); }
 function setFixItem(id,v){
   const it=FIX.find(x=>x.id===id), el=document.getElementById('fx-'+id);
@@ -2252,6 +2265,18 @@ function setInv(v){
   if(n===null||n<0){ if(el) el.classList.add('bad'); return; }
   if(el) el.classList.remove('bad');
   A.inv=n; recalcFix(); renderAll();
+}
+function setObra(v){
+  const el=document.getElementById('fx-obra'), n=parseNum(v);
+  if(n===null||n<0){ if(el) el.classList.add('bad'); return; }
+  if(el) el.classList.remove('bad');
+  A.obra=n; recalcFix(); renderAll();
+}
+function setObraMeses(v){
+  const el=document.getElementById('fx-obrames'), n=parseNum(v);
+  if(n===null||n<1){ if(el) el.classList.add('bad'); return; }
+  if(el) el.classList.remove('bad');
+  A.obraMeses=Math.round(n); recalcFix(); renderAll();
 }
 function setDep(v){
   const el=document.getElementById('fx-dep'), n=parseNum(v);
@@ -2345,7 +2370,7 @@ function rTextos(){
     mg300:K.map(k=>{const r=calc(k,300000,fixoEsc(300000));return pct(r.eb/r.rec);}).join(', '),
     pe25:pe?R(pe)+' (equilíbrio da F25)':'—', bd100:bd(100000), bd300:bd(300000),
     pv25:R(F.f25.pv), pv35:R(F.f35.pv), bacsh2:faixa(Math.min(...bac),Math.max(...bac)), pz:A.pz,
-    wcx:(()=>{const w=(cvar(RK)*A.vol+FX()-depMensal())*A.pz/30/A.inv; return w.toFixed(1).replace('.',',')+'×';})(),
+    wcx:(()=>{const w=(cvar(RK)*A.vol+FX()-depMensal())*A.pz/30/Math.max(1,INVT()); return w.toFixed(1).replace('.',',')+'×';})(),
     ...Object.fromEntries(K.flatMap(k=>{const v=SUBLIM/12/F[k].pv, t=N(Math.round(v/500)*500)+' un/mês'; return [['sl'+k.slice(1),t],['sl'+k.slice(1)+'b',t]];})),
   };
   for(const [id,v] of Object.entries(T)) st('tx-'+id, v);
@@ -2448,16 +2473,16 @@ function rRisco(){
   const acum   = liqMes*RISK.meses;
   const saldo  = acum-naRua;
 
-  st('r-pv', R(f.pv)); st('r-vol', N(A.vol)+' un/mês'); st('r-inv', R(A.inv,0));
+  st('r-pv', R(f.pv)); st('r-vol', N(A.vol)+' un/mês'); st('r-inv', R(INVT(),0));
 
   kp.innerHTML=`
-    <div class="bm"><div class="bml">Na Rua</div><div class="bmv" style="font-size:1.1rem;color:${naRua>A.inv?'var(--rd)':'var(--ac)'}">${R(naRua,0)}</div><div class="bms">${RISK.pz} dias de entrega</div></div>
-    <div class="bm"><div class="bml">vs. Investimento</div><div class="bmv" style="font-size:1.1rem">${A.inv>0?(naRua/A.inv).toFixed(1)+'×':'—'}</div><div class="bms">a planta vale ${R(A.inv,0)}</div></div>
+    <div class="bm"><div class="bml">Na Rua</div><div class="bmv" style="font-size:1.1rem;color:${naRua>INVT()?'var(--rd)':'var(--ac)'}">${R(naRua,0)}</div><div class="bms">${RISK.pz} dias de entrega</div></div>
+    <div class="bm"><div class="bml">vs. Investimento</div><div class="bmv" style="font-size:1.1rem">${INVT()>0?(naRua/INVT()).toFixed(1)+'×':'—'}</div><div class="bms">a planta vale ${R(A.inv,0)}</div></div>
     <div class="bm"><div class="bml">Lucro em ${RISK.meses} meses</div><div class="bmv" style="font-size:1.1rem;color:${acum>=0?'var(--gn)':'var(--rd)'}">${R(acum,0)}</div><div class="bms">deste cliente</div></div>
     <div class="bm"><div class="bml">Saldo no Calote</div><div class="bmv" style="font-size:1.1rem;color:${saldo>=0?'var(--gn)':'var(--rd)'}">${saldo<0?'− ':''}${R(Math.abs(saldo),0)}</div><div class="bms">${saldo>=0?'sobra':'prejuízo'}</div></div>`;
 
   document.getElementById('exptb').innerHTML=[0,15,30,45,60,90].map(d=>{
-    const v=recCli*d/30, mult=A.inv>0?v/A.inv:0;
+    const v=recCli*d/30, mult=INVT()>0?v/INVT():0;
     const mes=liqMes>0?v/liqMes:0;
     const aqui=(d===RISK.pz);
     const bd = d===0?'gn':(mult<=0.5?'gn':(mult<=1?'wn':'rd'));
@@ -2493,8 +2518,8 @@ function rFixBox(){
     ${FIX.map(i=>`<div class="mr"><span class="ml">${i.nome}</span>${campo(i.id,i.valor,'setFixItem')}</div>`).join('')}
     <div class="mr"><span class="ml" style="font-weight:700">Subtotal operacional</span><span class="mv">${R(soma,0)}</span></div>
     <hr class="sp">
-    <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:8px">Depreciação de Equipamentos</div>
-    <div class="mr"><span class="ml">Investimento</span>
+    <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:8px">Investimento e Depreciação</div>
+    <div class="mr"><span class="ml">Equipamentos</span>
       <span class="pinw"><span class="cur">R$</span><input class="pin" type="text" inputmode="decimal" autocomplete="off"
         id="fx-inv" style="width:104px" value="${fmtNum(A.inv)}" oninput="setInv(this.value)"
         onblur="rFixBox()" onkeydown="if(event.key==='Enter')this.blur()"></span></div>
@@ -2502,7 +2527,17 @@ function rFixBox(){
       <span class="pinw"><input class="pin" type="text" inputmode="numeric" autocomplete="off" id="fx-dep"
         style="width:58px" value="${A.depMeses}" oninput="setDep(this.value)"
         onblur="rFixBox()" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">meses</span></span></div>
+    <div class="mr"><span class="ml">Obra de adequação da casa</span>
+      <span class="pinw"><span class="cur">R$</span><input class="pin" type="text" inputmode="decimal" autocomplete="off"
+        id="fx-obra" style="width:104px" value="${fmtNum(A.obra)}" oninput="setObra(this.value)"
+        onblur="rFixBox()" onkeydown="if(event.key==='Enter')this.blur()"></span></div>
+    <div class="mr"><span class="ml">Prazo da obra</span>
+      <span class="pinw"><input class="pin" type="text" inputmode="numeric" autocomplete="off" id="fx-obrames"
+        style="width:58px" value="${A.obraMeses}" oninput="setObraMeses(this.value)"
+        onblur="rFixBox()" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">meses</span></span></div>
+    ${A.obra>0?'':'<div class="nt" style="margin:2px 0 8px;padding:8px 10px">Obra ainda sem orçamento. Enquanto estiver zerada, o payback e o retorno ficam melhores do que serão de verdade.</div>'}
     <div class="mr"><span class="ml">Depreciação/mês</span><span class="mv">${R(dep,0)}</span></div>
+    <div class="mr"><span class="ml" style="font-weight:700">Investimento total</span><span class="mv">${R(INVT(),0)}</span></div>
     <hr class="sp">
     <div class="mr" style="border:none"><span class="ml" style="font-weight:700;font-size:.97rem">TOTAL FIXO MENSAL</span>
       <span class="mv" style="font-size:1.1rem;color:var(--ac)">${R(FX(),0)}</span></div>
@@ -2811,10 +2846,10 @@ function resumoAba(t){
   } else if(t==='cash'){
     const k=REF.k, r=calc(k), dep=depMensal(), wc=(r.cv*A.vol+FX()-dep)*A.pz/30;
     L.push(`Linha de referência: ${linha(k)}`);
-    L.push(`• Capital de giro (${A.pz} dias): ${R(wc,0)}`); L.push(`• Necessidade total (giro + planta): ${R(wc+A.inv,0)}`);
+    L.push(`• Capital de giro (${A.pz} dias): ${R(wc,0)}`); L.push(`• Necessidade total (giro + obra + equipamentos): ${R(wc+INVT(),0)}`);
     L.push(`• Lucro líquido: ${R(r.liq,0)}/mês · geração de caixa ${R(r.liq+dep,0)}/mês`);
-    L.push(`• Payback total: ${r.liq+dep>0?((wc+A.inv)/(r.liq+dep)).toFixed(1).replace('.',',')+' meses':'—'}`);
-    for(const k2 of K){ const r2=calc(k2), g=r2.liq+dep; L.push(`• ${linha(k2)} — lucro ${R(r2.liq,0)}/mês · payback da planta ${g>0?(A.inv/g).toFixed(1).replace('.',',')+' meses':'—'}`); }
+    L.push(`• Payback total: ${r.liq+dep>0?((wc+INVT())/(r.liq+dep)).toFixed(1).replace('.',',')+' meses':'—'}`);
+    for(const k2 of K){ const r2=calc(k2), g=r2.liq+dep; L.push(`• ${linha(k2)} — lucro ${R(r2.liq,0)}/mês · payback da planta ${g>0?(INVT()/g).toFixed(1).replace('.',',')+' meses':'—'}`); }
   } else if(t==='tax'){
     for(const k of K){ const r=calc(k), ra=r.rec*12; const reg= ra<=SUBLIM?'Simples Nacional':(ra<=TETO?'Acima do sublimite → Presumido':'Lucro Presumido');
       L.push(`• ${linha(k)} — faturamento ${R(ra/1e6,2).replace('R$ ','R$ ')} mi/ano · ${reg} · ${pctx(r.al)} · imposto ${R(r.imp,0)}/mês`); }
@@ -2822,7 +2857,7 @@ function resumoAba(t){
   } else if(t==='risco'){
     const k=REF.k, r=calc(k), rec=r.rec*RISK.conc, rua=rec*RISK.pz/30, acum=r.liq*RISK.conc*RISK.meses;
     L.push(`Linha de referência: ${linha(k)} · prazo ${RISK.pz} dias · ${Math.round(RISK.conc*100)}% do faturamento neste cliente`);
-    L.push(`• Valor na rua: ${R(rua,0)} (${A.inv>0?(rua/A.inv).toFixed(1).replace('.',','):'—'}× o investimento)`);
+    L.push(`• Valor na rua: ${R(rua,0)} (${INVT()>0?(rua/INVT()).toFixed(1).replace('.',','):'—'}× o investimento)`);
     L.push(`• Lucro em ${RISK.meses} meses: ${R(acum,0)}`); L.push(`• Saldo se houver calote: ${R(acum-rua,0)}`);
   } else if(t==='cons'){
     const u=CONS[0];
