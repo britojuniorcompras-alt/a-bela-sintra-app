@@ -193,6 +193,15 @@
     .av-linha { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); }
     .av-linha b { font-family: 'Space Grotesk', sans-serif; color: var(--text); font-weight: 600; }
     .av-vazio { font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-dim); text-align: center; padding: 30px 10px; line-height: 1.5; }
+    .av-imp-nota { font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); line-height: 1.45; }
+    .av-arq { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px dashed var(--line); border-radius: 12px;
+        background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 12px; }
+    .av-arq::file-selector-button { font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 700; margin-right: 10px;
+        padding: 6px 10px; border: none; border-radius: 8px; background: var(--surface-2); color: var(--text); cursor: pointer; }
+    .av-imp-status { font-family: 'Inter', sans-serif; font-size: 12px; line-height: 1.5; margin-top: 12px; white-space: pre-line; }
+    .av-imp-status.ok { color: #6FE0AE; }
+    .av-imp-status.erro { color: #FF8A98; }
+    .av-imp-status.andamento { color: var(--text-dim); }
     .ficha-view-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--line); font-family: 'Inter', sans-serif; font-size: 13.5px; color: var(--text); }
     .ficha-view-item span:last-child { color: var(--text-dim); }
     .ficha-btn-excluir { color: #E85D5D; border-color: rgba(232,93,93,0.35); }
@@ -1400,7 +1409,26 @@
         <h2>Custo x Venda</h2>
     </div>
     <div style="padding: 14px 20px 0;">
-        <label class="ficha-label" style="margin-top:0;">Mês de referência</label>
+        <button type="button" class="vinho-faixas-toggle" onclick="avAlternarImportar()">
+            <span>📥 Carregar relatórios do mês</span>
+            <span id="avImpSeta">▾</span>
+        </button>
+        <div class="vinho-faixas-painel" id="avImpPainel">
+            <div class="av-imp-nota">Exporte do sistema em PDF e solte os dois aqui. Eu confiro os totais
+            antes de gravar — se não bater com o relatório, não entra nada.</div>
+
+            <label class="ficha-label" style="margin-top:12px;">1 · Compras (entrada de notas por produto)</label>
+            <input type="file" id="avArqCompras" accept="application/pdf,.pdf" class="av-arq" onchange="avArquivoEscolhido()">
+
+            <label class="ficha-label">2 · Vendas (venda de produtos por grupo)</label>
+            <input type="file" id="avArqVendas" accept="application/pdf,.pdf" class="av-arq" onchange="avArquivoEscolhido()">
+
+            <button type="button" id="avBtnImportar" class="btn-confirm" style="width:100%; margin-top:14px;"
+                onclick="avImportarRelatorios()" disabled>Conferir e carregar</button>
+            <div id="avImpStatus" class="av-imp-status"></div>
+        </div>
+
+        <label class="ficha-label">Mês de referência</label>
         <select id="avSelMes" class="ficha-input" onchange="renderizarAnaliseVinhos()"></select>
     </div>
     <div id="avConteudo" style="padding: 0 20px;"></div>
@@ -1408,6 +1436,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 // ============================================================
 // TEMAS — aparência do app (igual ao app do Buffet)
@@ -4498,6 +4527,275 @@ function avItemGarrafa(g) {
 function escHtmlSeguro(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+}
+
+// ============================================================
+// VINHOS — importar os relatórios do mês em PDF (compras e vendas)
+// ============================================================
+
+function avAlternarImportar() {
+    var p = document.getElementById('avImpPainel');
+    var aberto = p.classList.toggle('aberto');
+    document.getElementById('avImpSeta').innerText = aberto ? '▴' : '▾';
+}
+
+function avArquivoEscolhido() {
+    var c = document.getElementById('avArqCompras').files.length;
+    var v = document.getElementById('avArqVendas').files.length;
+    document.getElementById('avBtnImportar').disabled = !(c || v);
+    avStatus('', '');
+}
+
+function avStatus(texto, classe) {
+    var el = document.getElementById('avImpStatus');
+    if (!el) return;
+    el.className = 'av-imp-status ' + (classe || '');
+    el.innerText = texto;
+}
+
+function avNum(s) {
+    s = String(s || '').trim().replace(/\./g, '').replace(',', '.');
+    var n = parseFloat(s);
+    return isNaN(n) ? null : n;
+}
+
+// Lê o PDF e devolve as linhas de texto, reconstruindo o espaçamento das colunas
+// (o leitor entrega pedaços soltos com a posição de cada um na página).
+var PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+function avLinhasDoPdf(arquivo) {
+    try {
+        if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+        }
+    } catch (erro) { }
+    return arquivo.arrayBuffer().then(function(buf) {
+        return pdfjsLib.getDocument({ data: buf }).promise;
+    }).then(function(pdf) {
+        var paginas = [];
+        for (var i = 1; i <= pdf.numPages; i++) { paginas.push(i); }
+        return paginas.reduce(function(cadeia, num) {
+            return cadeia.then(function(acc) {
+                var pagina;
+                return pdf.getPage(num).then(function(pg) { pagina = pg; return pg.getTextContent(); })
+                    .then(function(tc) {
+                        // Estes relatórios saem em paisagem (página girada), então as coordenadas
+                        // do texto vêm trocadas. A transformação da viewport põe tudo na posição
+                        // que a pessoa enxerga, qualquer que seja a rotação da página.
+                        var vp = pagina.getViewport({ scale: 1 });
+                        var linhas = {};
+                        tc.items.forEach(function(it) {
+                            if (!it.str || !it.str.trim()) return;
+                            var m = pdfjsLib.Util.transform(vp.transform, it.transform);
+                            var x = m[4], y = Math.round(m[5]);
+                            var chave = null;
+                            for (var k in linhas) { if (Math.abs(Number(k) - y) <= 2) { chave = k; break; } }
+                            if (chave === null) { chave = String(y); linhas[chave] = []; }
+                            linhas[chave].push({ x: x, s: it.str, w: it.width || 0 });
+                        });
+                        Object.keys(linhas).map(Number).sort(function(a, b) { return a - b; })
+                            .forEach(function(y) {
+                                var itens = linhas[String(y)].sort(function(a, b) { return a.x - b.x; });
+                                var texto = '', fim = null;
+                                itens.forEach(function(it) {
+                                    var larguraChar = it.s.length ? (it.w / it.s.length) : 0;
+                                    if (!larguraChar || larguraChar < 1) larguraChar = 3.6;
+                                    if (fim !== null) {
+                                        var n = Math.round((it.x - fim) / larguraChar);
+                                        texto += ' '.repeat(Math.max(1, Math.min(n, 60)));
+                                    }
+                                    texto += it.s;
+                                    fim = it.x + it.w;
+                                });
+                                acc.push(texto);
+                            });
+                        return acc;
+                    });
+            });
+        }, Promise.resolve([]));
+    });
+}
+
+// Competência (AAAA-MM) a partir do período impresso no cabeçalho do relatório
+function avCompetenciaDasLinhas(linhas) {
+    for (var i = 0; i < linhas.length; i++) {
+        var m = linhas[i].match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (m) return m[3] + '-' + m[2];
+    }
+    return null;
+}
+
+// --- relatório de COMPRAS: entrada de notas por produto/grupo ---
+function avLerCompras(linhas) {
+    var reProduto = /^(\d{3,6})\s{2,}(\S.*?)\s*$/;
+    var reNota = /^(\S+)\s+(\d+)\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{5})\s+(.+?)\s{2,}.*?([\d.,]+)\s*(UN|LT)\s+([\d.,]+)\s+([\d.,]+)\s*$/;
+    var reTotalGrupo = /Total Grupo=>>\s+([\d.,]+)\s+([\d.,]+)/;
+    var reGrupo = /^([A-ZÇÃÉÁÍÓÚÂÊÔ][A-ZÇÃÉÁÍÓÚÂÊÔ ]{3,})\s*$/;
+    var IGN = ['Número N.F', 'Núm ero', 'ENTRADA DE NOTAS', 'Ordem:', 'De:', 'Até:', 'Loja:', 'Versão'];
+
+    var itens = [], totais = {}, grupo = null, codigo = null, produto = null;
+
+    linhas.forEach(function(ln) {
+        if (!ln.trim()) return;
+        var corpo = ln.trim();
+        for (var i = 0; i < IGN.length; i++) { if (corpo.indexOf(IGN[i]) === 0) return; }
+        if (ln.indexOf('Pagina:') !== -1) return;
+
+        var mg = ln.match(reTotalGrupo);
+        if (mg) { totais[grupo] = { qtde: avNum(mg[1]), valor: avNum(mg[2]) }; return; }
+        if (ln.indexOf('Total Produto') !== -1) return;
+
+        var mn = ln.match(reNota);
+        if (mn) {
+            itens.push({ grupo: grupo, codigo: codigo, produto: produto, nf: mn[1],
+                emissao: mn[3].split('/').reverse().join('-'), fornecedor: mn[5].trim(),
+                qtde: avNum(mn[6]), unidade: mn[7], custo: avNum(mn[8]), total: avNum(mn[9]) });
+            return;
+        }
+        var mp = ln.match(reProduto);
+        if (mp) { codigo = mp[1]; produto = mp[2].trim(); return; }
+        var mgr = corpo.match(reGrupo);
+        if (mgr) { grupo = mgr[1].trim(); }
+    });
+
+    return { itens: itens, totais: totais };
+}
+
+// --- relatório de VENDAS: venda de produtos por grupo ---
+function avLerVendas(linhas) {
+    var reItem = /^\s*(\d{3,6})\s+(\S.*?)\s{2,}(\d+)\s+R\$\s*([\d.,]+)\s+R\$\s*([\d.,]+)\s+([\d.,]+)\s*%?\s*$/;
+    var reTotalGrupo = /Total Grupo:\s+(\d+)\s+R\$\s*([\d.,]+)/;
+    var GRUPOS = ['ESPUMANTES E CHAMPAG', 'TACAS', 'TAÇAS', 'VINHO BRANCO', 'VINHO SOBREMESA',
+                  'VINHO TINTO', 'VINHO ROSE', 'VINHO ROSÉ'];
+
+    var itens = [], totais = {}, grupo = null;
+
+    linhas.forEach(function(ln) {
+        if (!ln.trim()) return;
+        var corpo = ln.trim();
+        for (var i = 0; i < GRUPOS.length; i++) {
+            if (corpo.indexOf(GRUPOS[i]) === 0) { grupo = GRUPOS[i]; return; }
+        }
+        var mg = ln.match(reTotalGrupo);
+        if (mg) { totais[grupo] = { qtde: avNum(mg[1]), valor: avNum(mg[2]) }; return; }
+
+        var mi = ln.match(reItem);
+        if (mi) {
+            itens.push({ grupo: grupo, codigo: mi[1], produto: mi[2].trim(),
+                qtde: avNum(mi[3]), preco: avNum(mi[4]), total: avNum(mi[5]) });
+        }
+    });
+
+    return { itens: itens, totais: totais };
+}
+
+// Confere o que foi lido contra os totais impressos no próprio relatório
+function avConferir(itens, totais, campoValor) {
+    var problemas = [], grupos = 0;
+    for (var g in totais) {
+        grupos++;
+        var ls = itens.filter(function(x) { return x.grupo === g; });
+        var sq = 0, sv = 0;
+        ls.forEach(function(x) { sq += x.qtde; sv += x[campoValor]; });
+        sq = Math.round(sq * 100) / 100; sv = Math.round(sv * 100) / 100;
+        if (Math.abs(sq - totais[g].qtde) > 0.05 || Math.abs(sv - totais[g].valor) > 0.05) {
+            problemas.push(g + ': li ' + sq + ' / ' + avMoeda(sv) +
+                ', o relatório diz ' + totais[g].qtde + ' / ' + avMoeda(totais[g].valor));
+        }
+    }
+    if (!grupos) problemas.push('não encontrei os totais do relatório para conferir');
+    return problemas;
+}
+
+// Grava em lote, ignorando o que já foi carregado antes (dá para reenviar o mesmo PDF sem duplicar)
+function avGravarLote(tabela, registros) {
+    if (!registros.length) return Promise.resolve();
+    return fetch(SUPABASE_URL + '/rest/v1/' + tabela, {
+        method: 'POST',
+        headers: supabaseHeaders({ 'Prefer': 'return=minimal,resolution=ignore-duplicates' }),
+        body: JSON.stringify(registros)
+    }).then(function(r) {
+        if (!r.ok) { return r.text().then(function(t) { throw new Error(t || ('status ' + r.status)); }); }
+    });
+}
+
+function avImportarRelatorios() {
+    var arqC = document.getElementById('avArqCompras').files[0];
+    var arqV = document.getElementById('avArqVendas').files[0];
+    if (!arqC && !arqV) return;
+    if (typeof pdfjsLib === 'undefined') {
+        avStatus('O leitor de PDF não carregou. Confira a internet e abra a tela de novo.', 'erro');
+        return;
+    }
+    document.getElementById('avBtnImportar').disabled = true;
+    avStatus('Lendo os PDFs...', 'andamento');
+
+    var resumo = [], competencia = null;
+
+    function etapaCompras() {
+        if (!arqC) return Promise.resolve();
+        return avLinhasDoPdf(arqC).then(function(linhas) {
+            var r = avLerCompras(linhas);
+            if (!r.itens.length) throw new Error('Não encontrei lançamentos no PDF de compras. Confira se é o relatório de entrada de notas por produto.');
+            var comp = avCompetenciaDasLinhas(linhas);
+            if (!comp) throw new Error('Não achei a data do período no PDF de compras.');
+            competencia = comp;
+            var probs = avConferir(r.itens, r.totais, 'total');
+            if (probs.length) throw new Error('A conferência das compras não bateu:\n' + probs.join('\n'));
+            var total = 0; r.itens.forEach(function(x) { total += x.total; });
+            resumo.push('Compras: ' + r.itens.length + ' lançamentos, ' + avMoeda(total) + ' — confere com o relatório');
+            return avGravarLote('vinhos_compras', r.itens.map(function(x) {
+                return { competencia: comp, grupo: x.grupo, codigo_produto: x.codigo, produto: x.produto,
+                    nf: x.nf, emissao: x.emissao, fornecedor: x.fornecedor, qtde: x.qtde,
+                    unidade: x.unidade, custo_unitario: x.custo, total: x.total };
+            }));
+        });
+    }
+
+    function etapaVendas() {
+        if (!arqV) return Promise.resolve();
+        return avLinhasDoPdf(arqV).then(function(linhas) {
+            var r = avLerVendas(linhas);
+            if (!r.itens.length) throw new Error('Não encontrei itens no PDF de vendas. Confira se é o relatório de venda de produtos por grupo.');
+            var comp = avCompetenciaDasLinhas(linhas);
+            if (!comp) throw new Error('Não achei a data do período no PDF de vendas.');
+            if (competencia && comp !== competencia) {
+                throw new Error('Os dois relatórios são de meses diferentes (' + competencia + ' e ' + comp + '). Carregue um mês por vez.');
+            }
+            competencia = comp;
+            var probs = avConferir(r.itens, r.totais, 'total');
+            if (probs.length) throw new Error('A conferência das vendas não bateu:\n' + probs.join('\n'));
+            var total = 0; r.itens.forEach(function(x) { total += x.total; });
+            resumo.push('Vendas: ' + r.itens.length + ' itens, ' + avMoeda(total) + ' — confere com o relatório');
+            return avGravarLote('vinhos_vendas', r.itens.map(function(x) {
+                return { competencia: comp, grupo: x.grupo, codigo_produto: x.codigo,
+                    produto: x.produto, qtde: x.qtde, preco_unit: x.preco, total: x.total };
+            }));
+        });
+    }
+
+    etapaCompras().then(etapaVendas).then(function() {
+        avStatus(resumo.join('\n') + '\n\nCarregado. Atualizando a análise...', 'ok');
+        avCarregado = false;
+        document.getElementById('avArqCompras').value = '';
+        document.getElementById('avArqVendas').value = '';
+        var faltam = 2;
+        function pronto() {
+            faltam--;
+            if (faltam > 0) return;
+            avCarregado = true;
+            avMontarSeletorMeses();
+            var sel = document.getElementById('avSelMes');
+            if (sel && competencia) { sel.value = competencia; }
+            renderizarAnaliseVinhos();
+            avStatus(resumo.join('\n') + '\n\nPronto — a análise abaixo já é deste mês.', 'ok');
+        }
+        supabaseGet('vinhos_compras', 'select=*', function(err, d) { avCompras = (!err && d) ? d : avCompras; pronto(); });
+        supabaseGet('vinhos_vendas', 'select=*', function(err, d) { avVendas = (!err && d) ? d : avVendas; pronto(); });
+    }).catch(function(erro) {
+        avStatus('Nada foi gravado.\n\n' + (erro && erro.message ? erro.message : erro), 'erro');
+        document.getElementById('avBtnImportar').disabled = false;
     });
 }
 
