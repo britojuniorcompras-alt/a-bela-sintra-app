@@ -169,6 +169,30 @@
     .vinho-hist-acoes { display: flex; gap: 8px; margin: 10px 20px 0; }
     .vinho-hist-acoes button { flex: 1; }
     .vinho-hist-limpar { display: block; text-align: right; margin: 6px 20px 0; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); cursor: pointer; text-decoration: underline; }
+
+    /* ===== Análise custo x venda ===== */
+    .av-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 14px; }
+    .av-tile { background: var(--surface); border-radius: 14px; padding: 12px 14px; }
+    .av-tile .rot { font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-dim); }
+    .av-tile .val { font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 700; margin-top: 3px; }
+    .av-tile .det { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+    .av-resumo { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 14px; padding: 14px 16px; margin-top: 14px; font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.55; color: var(--text); }
+    .av-resumo b { color: var(--accent-light); }
+    .av-sec { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-dim); margin: 22px 0 4px; }
+    .av-sec-nota { font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); margin-bottom: 10px; line-height: 1.45; }
+    .av-item { background: var(--surface); border-radius: 14px; padding: 11px 13px; margin-bottom: 8px; border-left: 3px solid transparent; }
+    .av-item.abaixo { border-left-color: #E0445B; }
+    .av-item.acima { border-left-color: #3FC98A; }
+    .av-item.ok { border-left-color: var(--line); }
+    .av-item-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .av-nome { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; flex: 1; min-width: 0; }
+    .av-tag { font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
+    .av-tag.abaixo { background: rgba(224,68,91,0.16); color: #FF8A98; }
+    .av-tag.acima { background: rgba(63,201,138,0.16); color: #6FE0AE; }
+    .av-tag.ok { background: var(--surface-2); color: var(--text-dim); }
+    .av-linha { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); }
+    .av-linha b { font-family: 'Space Grotesk', sans-serif; color: var(--text); font-weight: 600; }
+    .av-vazio { font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-dim); text-align: center; padding: 30px 10px; line-height: 1.5; }
     .ficha-view-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--line); font-family: 'Inter', sans-serif; font-size: 13.5px; color: var(--text); }
     .ficha-view-item span:last-child { color: var(--text-dim); }
     .ficha-btn-excluir { color: #E85D5D; border-color: rgba(232,93,93,0.35); }
@@ -1347,6 +1371,11 @@
             <div id="vinhoFaixasLista"></div>
             <span class="vinho-faixas-restaurar" onclick="restaurarFaixasMargemVinhoPadrao()">Restaurar padrão</span>
         </div>
+
+        <button type="button" class="vinho-faixas-toggle" style="margin-top:10px;" onclick="abrirAnaliseVinhos()">
+            <span>📊 Análise de custo x venda</span>
+            <span>›</span>
+        </button>
     </div>
 
     <div class="search-bar" style="position: static; padding: 24px 20px 6px 20px;">
@@ -1363,6 +1392,19 @@
         <button type="button" class="ficha-add-ingrediente-btn" onclick="exportarCsvVinhos()">Exportar CSV</button>
     </div>
     <div style="height:30px;"></div>
+</div>
+
+<div id="vinhos-analise-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('vinhos-screen')">←</button>
+        <h2>Custo x Venda</h2>
+    </div>
+    <div style="padding: 14px 20px 0;">
+        <label class="ficha-label" style="margin-top:0;">Mês de referência</label>
+        <select id="avSelMes" class="ficha-input" onchange="renderizarAnaliseVinhos()"></select>
+    </div>
+    <div id="avConteudo" style="padding: 0 20px;"></div>
+    <div style="height:40px;"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -4287,6 +4329,264 @@ function restaurarFaixasMargemVinhoPadrao() {
     if (!confirmou) { return; }
     salvarFaixasMargemVinho(FAIXAS_MARGEM_VINHO_PADRAO.slice());
     renderizarFaixasMargemVinho();
+}
+
+// ============================================================
+// VINHOS — análise de custo x venda (cruza as compras e as vendas do mês)
+// ============================================================
+
+var avCompras = [], avVendas = [], avCarregado = false;
+
+// Vinhos vendidos em taça: código da taça -> código da garrafa + quantas doses a garrafa rende.
+// Vinho de mesa e espumante: taça de 150ml (5 por garrafa). Vinho do Porto: dose de 85ml (8,8 por garrafa).
+var AV_TACAS = {
+    '102220': { gf: '101545', doses: 5 },    // Coelheiros tinto
+    '102219': { gf: '101544', doses: 5 },    // Coelheiros branco
+    '102235': { gf: '102233', doses: 5 },    // Quinta Santiago Alvarinho
+    '102441': { gf: '102442', doses: 5 },    // Vallontano Brut
+    '102424': { gf: '102406', doses: 5 },    // Castello D'Alba
+    '101119': { gf: '237',    doses: 8.8 },  // Graham's 20 anos
+    '101121': { gf: '357',    doses: 8.8 },  // Graham's 10 anos
+    '101120': { gf: '293',    doses: 8.8 },  // Graham's 30 anos
+    '101561': { gf: '241',    doses: 8.8 },  // Graham's Fine Tawny
+    '102260': { gf: '102263', doses: 8.8 },  // Graham's Extra Dry White
+    '101890': { gf: '357',    doses: 8.8 }   // Graham's 10 anos (dose 85ml)
+};
+// Serviço puro, sem custo de produto
+var AV_SEM_CUSTO = { '101432': 1, '101999': 1 };
+
+function avMoeda(v) {
+    if (v === null || v === undefined || isNaN(Number(v))) return '—';
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function abrirAnaliseVinhos() {
+    trocarTela('vinhos-analise-screen');
+    document.getElementById('avConteudo').innerHTML =
+        '<div class="av-vazio">Carregando compras e vendas...</div>';
+
+    if (avCarregado) { avMontarSeletorMeses(); renderizarAnaliseVinhos(); return; }
+
+    var faltam = 2;
+    function pronto() {
+        faltam--;
+        if (faltam > 0) return;
+        avCarregado = true;
+        avMontarSeletorMeses();
+        renderizarAnaliseVinhos();
+    }
+    supabaseGet('vinhos_compras', 'select=*', function(err, dados) {
+        avCompras = (!err && dados) ? dados : [];
+        pronto();
+    });
+    supabaseGet('vinhos_vendas', 'select=*', function(err, dados) {
+        avVendas = (!err && dados) ? dados : [];
+        pronto();
+    });
+}
+
+function avMontarSeletorMeses() {
+    var sel = document.getElementById('avSelMes');
+    if (!sel) return;
+    var meses = {};
+    avCompras.forEach(function(c) { if (c.competencia) meses[c.competencia] = 1; });
+    avVendas.forEach(function(v) { if (v.competencia) meses[v.competencia] = 1; });
+    var lista = Object.keys(meses).sort().reverse();
+    if (!lista.length) { sel.innerHTML = '<option value="">—</option>'; return; }
+    var NOMES = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+                 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    sel.innerHTML = lista.map(function(m) {
+        var p = m.split('-');
+        return '<option value="' + m + '">' + NOMES[parseInt(p[1], 10)] + ' de ' + p[0] + '</option>';
+    }).join('');
+}
+
+// Custo por GARRAFA de cada código. Compras lançadas em litro viram garrafa de 750ml (x 0,75).
+function avCustoPorGarrafa(competencia) {
+    var mapa = {};
+    for (var i = 0; i < avCompras.length; i++) {
+        var c = avCompras[i];
+        if (c.competencia !== competencia) continue;
+        var ehLitro = (c.unidade === 'LT');
+        var custoGf = Number(c.custo_unitario) * (ehLitro ? 0.75 : 1);
+        var garrafas = ehLitro ? (Number(c.qtde) / 0.75) : Number(c.qtde);
+        var d = mapa[c.codigo_produto];
+        if (!d) { d = mapa[c.codigo_produto] = { produto: c.produto, gf: 0, valor: 0, min: custoGf, max: custoGf }; }
+        d.gf += garrafas;
+        d.valor += Number(c.total);
+        if (custoGf < d.min) d.min = custoGf;
+        if (custoGf > d.max) d.max = custoGf;
+    }
+    for (var k in mapa) {
+        var m = mapa[k];
+        m.medio = m.gf > 0 ? (m.valor / m.gf) : null;
+        m.variacao = m.min > 0 ? ((m.max / m.min - 1) * 100) : 0;
+    }
+    return mapa;
+}
+
+function avMargemDaFaixa(custo) {
+    var faixas = lerFaixasMargemVinho().slice().sort(function(a, b) { return a.custoMin - b.custoMin; });
+    var m = faixas.length ? faixas[0].margem : 0;
+    for (var i = 0; i < faixas.length; i++) { if (custo >= faixas[i].custoMin) m = faixas[i].margem; }
+    return m;
+}
+
+function avCalcular(competencia) {
+    var custos = avCustoPorGarrafa(competencia);
+    var garrafas = [], tacas = [], semCusto = [], servico = [];
+
+    for (var i = 0; i < avVendas.length; i++) {
+        var v = avVendas[i];
+        if (v.competencia !== competencia) continue;
+        var cod = String(v.codigo_produto || '');
+
+        if (AV_SEM_CUSTO[cod]) { servico.push(v); continue; }
+
+        if (v.grupo === 'TACAS') {
+            var t = AV_TACAS[cod];
+            var cg = t ? custos[t.gf] : null;
+            if (t && cg && cg.medio) {
+                var custoDose = cg.medio / t.doses;
+                tacas.push({
+                    produto: v.produto, qtde: Number(v.qtde), preco: Number(v.preco_unit),
+                    doses: t.doses, custoGf: cg.medio, custoDose: custoDose,
+                    markup: (Number(v.preco_unit) / custoDose - 1) * 100,
+                    margem: (Number(v.preco_unit) - custoDose) * Number(v.qtde)
+                });
+            } else { semCusto.push(v); }
+            continue;
+        }
+
+        var c = custos[cod];
+        if (!c || !c.medio) { semCusto.push(v); continue; }
+        var margemFaixa = avMargemDaFaixa(c.medio);
+        var precoTabela = c.medio * (1 + margemFaixa / 100);
+        // arredonda antes de classificar, pra situação bater com o número que aparece na tela
+        var difPct = Math.round((Number(v.preco_unit) / precoTabela - 1) * 1000) / 10;
+        garrafas.push({
+            produto: v.produto, qtde: Number(v.qtde), preco: Number(v.preco_unit),
+            custo: c.medio, custoMin: c.min, custoMax: c.max, variacao: c.variacao,
+            margemFaixa: margemFaixa, precoTabela: precoTabela, difPct: difPct,
+            markup: (Number(v.preco_unit) / c.medio - 1) * 100,
+            diferenca: (Number(v.preco_unit) - precoTabela) * Number(v.qtde),
+            situacao: difPct < -5 ? 'abaixo' : (difPct > 5 ? 'acima' : 'ok')
+        });
+    }
+    return { garrafas: garrafas, tacas: tacas, semCusto: semCusto, servico: servico, custos: custos };
+}
+
+function avItemGarrafa(g) {
+    var rot = g.situacao === 'abaixo' ? 'abaixo da tabela'
+            : (g.situacao === 'acima' ? 'acima da tabela' : 'na faixa');
+    var alerta = g.variacao > 10
+        ? '<div class="av-linha" style="color:#E8BC72;">⚠️ entrou com preços diferentes no mês: ' +
+          avMoeda(g.custoMin) + ' a ' + avMoeda(g.custoMax) + '</div>'
+        : '';
+    return '<div class="av-item ' + g.situacao + '">' +
+        '<div class="av-item-topo"><span class="av-nome">' + escHtmlSeguro(g.produto) + '</span>' +
+        '<span class="av-tag ' + g.situacao + '">' + (g.difPct >= 0 ? '+' : '') + g.difPct.toFixed(0) + '% ' + rot + '</span></div>' +
+        '<div class="av-linha"><span>custo <b>' + avMoeda(g.custo) + '</b></span>' +
+        '<span>vende <b>' + avMoeda(g.preco) + '</b></span>' +
+        '<span>tabela <b>' + avMoeda(g.precoTabela) + '</b></span>' +
+        '<span>markup <b>' + g.markup.toFixed(0) + '%</b></span>' +
+        '<span>' + g.qtde + ' un</span>' +
+        (g.situacao === 'abaixo' ? '<span style="color:#FF8A98;">deixou de entrar <b style="color:#FF8A98;">' + avMoeda(Math.abs(g.diferenca)) + '</b></span>' : '') +
+        '</div>' + alerta + '</div>';
+}
+
+function escHtmlSeguro(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+}
+
+function renderizarAnaliseVinhos() {
+    var el = document.getElementById('avConteudo');
+    if (!el) return;
+    var sel = document.getElementById('avSelMes');
+    var mes = sel ? sel.value : '';
+    if (!mes) {
+        el.innerHTML = '<div class="av-vazio">Nenhum mês carregado ainda.<br>Peça para carregar os relatórios de compras e vendas.</div>';
+        return;
+    }
+
+    var r = avCalcular(mes);
+    if (!r.garrafas.length && !r.tacas.length) {
+        el.innerHTML = '<div class="av-vazio">Esse mês não tem compras e vendas que se cruzem.</div>';
+        return;
+    }
+
+    var abaixo = r.garrafas.filter(function(g) { return g.situacao === 'abaixo'; })
+                           .sort(function(a, b) { return a.diferenca - b.diferenca; });
+    var acima = r.garrafas.filter(function(g) { return g.situacao === 'acima'; })
+                          .sort(function(a, b) { return b.diferenca - a.diferenca; });
+    var naFaixa = r.garrafas.filter(function(g) { return g.situacao === 'ok'; });
+
+    var recG = 0, custoG = 0;
+    r.garrafas.forEach(function(g) { recG += g.preco * g.qtde; custoG += g.custo * g.qtde; });
+    var recT = 0, custoT = 0;
+    r.tacas.forEach(function(t) { recT += t.preco * t.qtde; custoT += t.custoDose * t.qtde; });
+    var perdido = 0;
+    abaixo.forEach(function(g) { perdido += Math.abs(g.diferenca); });
+
+    var html = '<div class="av-tiles">' +
+        '<div class="av-tile"><div class="rot">Garrafas</div><div class="val">' +
+            (custoG > 0 ? (recG / custoG - 1) * 100 : 0).toFixed(0) + '%</div><div class="det">markup médio</div></div>' +
+        '<div class="av-tile"><div class="rot">Taças</div><div class="val">' +
+            (custoT > 0 ? (recT / custoT - 1) * 100 : 0).toFixed(0) + '%</div><div class="det">markup médio</div></div>' +
+        '<div class="av-tile"><div class="rot">Fora da tabela</div><div class="val">' + abaixo.length + '</div>' +
+            '<div class="det">vendendo abaixo</div></div>' +
+        '<div class="av-tile"><div class="rot">Deixou de entrar</div><div class="val" style="font-size:16px;">' +
+            avMoeda(perdido) + '</div><div class="det">no mês</div></div>' +
+        '</div>';
+
+    html += '<div class="av-resumo">De <b>' + r.garrafas.length + '</b> rótulos vendidos em garrafa que também ' +
+        'foram comprados no mês, <b>' + abaixo.length + '</b> estão abaixo da tabela, <b>' + naFaixa.length +
+        '</b> na faixa e <b>' + acima.length + '</b> acima.' +
+        (r.semCusto.length ? ' Outros <b>' + r.semCusto.length + '</b> venderam de estoque anterior, sem custo deste mês para comparar.' : '') +
+        '</div>';
+
+    if (abaixo.length) {
+        html += '<div class="av-sec">Abaixo da tabela — rever preço</div>' +
+            '<div class="av-sec-nota">Cobrando menos que a faixa de margem manda. O valor ao lado é o que deixou de entrar com a quantidade já vendida.</div>' +
+            abaixo.map(avItemGarrafa).join('');
+    }
+    if (r.tacas.length) {
+        html += '<div class="av-sec">Vinho em taça</div>' +
+            '<div class="av-sec-nota">Custo da dose = custo da garrafa dividido pelas doses que ela rende (5 taças de vinho, 8,8 doses de Porto).</div>' +
+            r.tacas.sort(function(a, b) { return a.markup - b.markup; }).map(function(t) {
+                return '<div class="av-item ok">' +
+                    '<div class="av-item-topo"><span class="av-nome">' + escHtmlSeguro(t.produto) + '</span>' +
+                    '<span class="av-tag ok">markup ' + t.markup.toFixed(0) + '%</span></div>' +
+                    '<div class="av-linha"><span>garrafa <b>' + avMoeda(t.custoGf) + '</b></span>' +
+                    '<span>dose <b>' + avMoeda(t.custoDose) + '</b></span>' +
+                    '<span>vende <b>' + avMoeda(t.preco) + '</b></span>' +
+                    '<span>' + t.qtde + ' taças</span>' +
+                    '<span>margem <b>' + avMoeda(t.margem) + '</b></span></div></div>';
+            }).join('');
+    }
+    if (acima.length) {
+        html += '<div class="av-sec">Acima da tabela</div>' +
+            '<div class="av-sec-nota">Esses rótulos sustentam margem maior do que a faixa prevê.</div>' +
+            acima.map(avItemGarrafa).join('');
+    }
+    if (naFaixa.length) {
+        html += '<div class="av-sec">Dentro da faixa</div>' + naFaixa.map(avItemGarrafa).join('');
+    }
+    if (r.semCusto.length) {
+        html += '<div class="av-sec">Vendidos sem compra no mês</div>' +
+            '<div class="av-sec-nota">Saíram de estoque anterior. Entram na análise quando as compras desses meses forem carregadas.</div>';
+        html += r.semCusto.sort(function(a, b) { return Number(b.total) - Number(a.total); }).map(function(s) {
+            return '<div class="av-item ok"><div class="av-item-topo">' +
+                '<span class="av-nome">' + escHtmlSeguro(s.produto) + '</span>' +
+                '<span class="av-tag ok">' + avMoeda(s.total) + '</span></div>' +
+                '<div class="av-linha"><span>vende <b>' + avMoeda(s.preco_unit) + '</b></span>' +
+                '<span>' + s.qtde + ' un</span></div></div>';
+        }).join('');
+    }
+
+    el.innerHTML = html;
 }
 
 function sincronizarProblemasSupabase() {
