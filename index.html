@@ -551,6 +551,9 @@
     #buffet-screen .screen-header h2 { flex: 1; }
     .buffet-frame { flex: 1 1 auto; width: 100%; border: none; background: #fff; display: block; }
     .buffet-carregando { display: none; align-items: center; justify-content: center; padding: 14px; font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-dim); }
+    .buffet-erro { display: none; flex-direction: column; align-items: center; gap: 10px; padding: 34px 24px; text-align: center; }
+    .buffet-erro-tit { font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700; color: var(--text); }
+    .buffet-erro-txt { font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-dim); line-height: 1.5; max-width: 320px; margin-bottom: 4px; }
     .nf-bonificada { margin: 8px 0 2px 0; }
     .nf-bonificada button { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 14px; border: 1px dashed rgba(127,214,166,0.55); background: transparent; color: #7FD6A6; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; }
     .nf-bonificada.ativo button { border: none; border-radius: 14px; background: linear-gradient(160deg, #7FD6A6, #7FD6A699); color: #1B1420; font-size: 15px; letter-spacing: 0.5px; }
@@ -1232,6 +1235,12 @@
         <button class="buffet-acao" onclick="abrirBuffetTelaCheia()" title="Abrir em tela cheia">↗</button>
     </div>
     <div id="buffetCarregando" class="buffet-carregando">Carregando o app de eventos...</div>
+    <div id="buffetErro" class="buffet-erro" style="display:none;">
+        <div class="buffet-erro-tit">O app de eventos não carregou</div>
+        <div class="buffet-erro-txt">Costuma ser internet instável. Toque em tentar de novo — se insistir, abra em tela cheia.</div>
+        <button type="button" class="btn-confirm" style="width:100%; max-width:260px;" onclick="recarregarBuffet()">Tentar de novo</button>
+        <button type="button" class="ficha-add-ingrediente-btn" style="width:100%; max-width:260px;" onclick="abrirBuffetTelaCheia()">Abrir em tela cheia</button>
+    </div>
     <iframe id="buffetFrame" class="buffet-frame" title="App de eventos" allow="clipboard-write; camera; fullscreen" ></iframe>
 </div>
 <div id="fichas-screen" class="screen">
@@ -12196,32 +12205,65 @@ function imprimirOrdemManutencao() {
 var BUFFET_URL = 'https://britojuniorcompras-alt.github.io/buffet-app/';
 
 // Toda vez que entra, carrega o buffet do zero (dados atualizados, tela inicial).
-function abrirEventosDireto() {
-    var fr = document.getElementById('buffetFrame');
-    if (fr) {
-        document.getElementById('buffetCarregando').style.display = 'flex';
-        fr.onload = function() {
-            if (fr.getAttribute('src') && fr.getAttribute('src') !== 'about:blank') document.getElementById('buffetCarregando').style.display = 'none';
-        };
-        fr.setAttribute('src', BUFFET_URL + (BUFFET_URL.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now());
+var buffetPronto = false;      // o app de eventos confirmou que carregou
+var buffetRelogio = null;      // vigia o tempo de carregamento
+
+// O app de eventos avisa, por mensagem, quando terminou de carregar. É o único jeito
+// confiável de saber: o navegador avisa "carregou" mesmo quando a página deu erro de rede,
+// e era por isso que às vezes sumia o "Carregando" e ficava a tela em branco.
+window.addEventListener('message', function(evento) {
+    if (evento && evento.data && evento.data.app === 'buffet' && evento.data.pronto) {
+        buffetPronto = true;
+        if (buffetRelogio) { clearTimeout(buffetRelogio); buffetRelogio = null; }
+        buffetMostrarAviso('nenhum');
     }
+});
+
+function buffetMostrarAviso(qual) {
+    var carregando = document.getElementById('buffetCarregando');
+    var erro = document.getElementById('buffetErro');
+    if (carregando) { carregando.style.display = (qual === 'carregando') ? 'flex' : 'none'; }
+    if (erro) { erro.style.display = (qual === 'erro') ? 'flex' : 'none'; }
+}
+
+function buffetCarregar(forcarAtualizacao) {
+    var fr = document.getElementById('buffetFrame');
+    if (!fr) return;
+    buffetPronto = false;
+    buffetMostrarAviso('carregando');
+    if (buffetRelogio) { clearTimeout(buffetRelogio); }
+    buffetRelogio = setTimeout(function() {
+        if (!buffetPronto) { buffetMostrarAviso('erro'); }
+    }, 15000);
+    // Só força baixar tudo de novo quando a pessoa pede (botão ⟳). Na abertura comum
+    // deixa o navegador aproveitar o que já tem — é mais rápido e falha muito menos.
+    var url = forcarAtualizacao
+        ? BUFFET_URL + (BUFFET_URL.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now()
+        : BUFFET_URL;
+    fr.setAttribute('src', url);
+}
+
+function abrirEventosDireto() {
     trocarTela('buffet-screen');
     document.querySelectorAll('.hist-btn').forEach(function(b) { b.classList.remove('hist-btn-ativo'); });
     var btn = document.getElementById('btnEventosTopo');
     if (btn) btn.classList.add('hist-btn-ativo');
-}
-// Ao sair, descarrega o buffet (não fica rodando escondido com a tela antiga)
-function fecharBuffet() {
+
     var fr = document.getElementById('buffetFrame');
-    if (fr) fr.setAttribute('src', 'about:blank');
+    if (!fr) return;
+    var src = fr.getAttribute('src');
+    // Já está carregado de uma visita anterior: mostra na hora, sem baixar de novo
+    if (buffetPronto && src && src !== 'about:blank') { buffetMostrarAviso('nenhum'); return; }
+    buffetCarregar(false);
+}
+
+// Ao sair, a tela de eventos continua carregada: voltar nela fica instantâneo
+function fecharBuffet() {
     document.querySelectorAll('.hist-btn').forEach(function(b) { b.classList.remove('hist-btn-ativo'); });
     trocarTela('main-screen');
 }
-function recarregarBuffet() {
-    var fr = document.getElementById('buffetFrame');
-    document.getElementById('buffetCarregando').style.display = 'flex';
-    fr.setAttribute('src', BUFFET_URL + (BUFFET_URL.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now());
-}
+
+function recarregarBuffet() { buffetCarregar(true); }
 // Tela cheia numa aba nova, mas "ligada" a esta: o "← Compras" do buffet fecha a aba
 // e volta pra cá (já logado), em vez de abrir o app de novo e pedir a senha.
 function abrirBuffetTelaCheia() {
