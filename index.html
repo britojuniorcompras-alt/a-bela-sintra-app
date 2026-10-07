@@ -1432,11 +1432,14 @@
         <select id="avSelMes" class="ficha-input" onchange="renderizarAnaliseVinhos()"></select>
     </div>
     <div id="avConteudo" style="padding: 0 20px;"></div>
+    <div class="vinho-hist-acoes" id="avAcoesPdf" style="display:none;">
+        <button type="button" class="ficha-add-ingrediente-btn" onclick="avCompartilharPdf()">📤 Compartilhar PDF</button>
+        <button type="button" class="ficha-add-ingrediente-btn" onclick="avBaixarPdf()">⬇️ Baixar PDF</button>
+    </div>
     <div style="height:40px;"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 // ============================================================
 // TEMAS — aparência do app (igual ao app do Buffet)
@@ -4562,7 +4565,27 @@ function avNum(s) {
 
 // Lê o PDF e devolve as linhas de texto, reconstruindo o espaçamento das colunas
 // (o leitor entrega pedaços soltos com a posição de cada um na página).
-var PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+var PDFJS_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+var PDFJS_WORKER = PDFJS_BASE + 'pdf.worker.min.js';
+var avPdfJsPromessa = null;
+
+// O leitor de PDF só é baixado quando a pessoa vai importar — são 300 KB que não fazem
+// falta no uso do dia a dia do app.
+function avCarregarPdfJs() {
+    if (typeof pdfjsLib !== 'undefined') { return Promise.resolve(); }
+    if (avPdfJsPromessa) { return avPdfJsPromessa; }
+    avPdfJsPromessa = new Promise(function(resolver, rejeitar) {
+        var s = document.createElement('script');
+        s.src = PDFJS_BASE + 'pdf.min.js';
+        s.onload = function() { resolver(); };
+        s.onerror = function() {
+            avPdfJsPromessa = null;
+            rejeitar(new Error('Não consegui baixar o leitor de PDF. Confira a internet e tente de novo.'));
+        };
+        document.head.appendChild(s);
+    });
+    return avPdfJsPromessa;
+}
 
 function avLinhasDoPdf(arquivo) {
     try {
@@ -4690,6 +4713,19 @@ function avLerVendas(linhas) {
     return { itens: itens, totais: totais };
 }
 
+// O banco ainda tem uma trava antiga que recusa duas linhas idênticas no mesmo relatório
+// (mesma nota, produto, data, preço e quantidade). É raro, mas se acontecer é melhor avisar
+// de forma clara aqui do que deixar o banco devolver um erro técnico.
+function avLinhasIdenticas(itens) {
+    var vistos = {}, repetidas = [];
+    itens.forEach(function(x) {
+        var k = [x.codigo, x.nf, x.emissao, x.custo, x.qtde].join('|');
+        if (vistos[k]) { if (repetidas.indexOf(x.produto) === -1) repetidas.push(x.produto); }
+        vistos[k] = true;
+    });
+    return repetidas;
+}
+
 // Confere o que foi lido contra os totais impressos no próprio relatório
 function avConferir(itens, totais, campoValor) {
     var problemas = [], grupos = 0;
@@ -4708,7 +4744,6 @@ function avConferir(itens, totais, campoValor) {
     return problemas;
 }
 
-// Grava em lote, ignorando o que já foi carregado antes (dá para reenviar o mesmo PDF sem duplicar)
 function avGravarLote(tabela, registros) {
     if (!registros.length) return Promise.resolve();
     return fetch(SUPABASE_URL + '/rest/v1/' + tabela, {
@@ -4720,18 +4755,53 @@ function avGravarLote(tabela, registros) {
     });
 }
 
+// O relatório recém-carregado é a versão boa do mês: o banco troca o mês inteiro de uma vez só,
+// numa única operação. Ou entra tudo, ou nada muda — se a internet cair no meio, o mês que já
+// estava gravado continua intacto. E corrigir uma nota no sistema e reexportar o PDF corrige
+// o app junto, em vez de deixar a linha velha e a nova convivendo.
+function avSubstituirMes(tabela, competencia, registros) {
+    var rpc = (tabela === 'vinhos_compras') ? 'importar_vinhos_compras' : 'importar_vinhos_vendas';
+    return fetch(SUPABASE_URL + '/rest/v1/rpc/' + rpc, {
+        method: 'POST',
+        headers: supabaseHeaders(),
+        body: JSON.stringify({ p_competencia: competencia, p_dados: registros })
+    }).then(function(r) {
+        if (!r.ok) { return r.text().then(function(t) { throw new Error(t || ('status ' + r.status)); }); }
+        return r.json();
+    }).then(function(gravados) {
+        var n = Number(gravados);
+        if (!isNaN(n) && n !== registros.length) {
+            throw new Error('O banco gravou ' + n + ' de ' + registros.length + ' linhas. Me avise para conferir.');
+        }
+    });
+}
+
+// Quantos registros daquele mês já estão gravados (para avisar antes de substituir)
+function avJaTemMes(competencia) {
+    var qtd = 0;
+    avCompras.forEach(function(x) { if (x.competencia === competencia) qtd++; });
+    avVendas.forEach(function(x) { if (x.competencia === competencia) qtd++; });
+    return qtd;
+}
+
 function avImportarRelatorios() {
     var arqC = document.getElementById('avArqCompras').files[0];
     var arqV = document.getElementById('avArqVendas').files[0];
     if (!arqC && !arqV) return;
-    if (typeof pdfjsLib === 'undefined') {
-        avStatus('O leitor de PDF não carregou. Confira a internet e abra a tela de novo.', 'erro');
-        return;
-    }
     document.getElementById('avBtnImportar').disabled = true;
-    avStatus('Lendo os PDFs...', 'andamento');
+    avStatus('Preparando o leitor de PDF...', 'andamento');
 
-    var resumo = [], competencia = null;
+    var resumo = [], competencia = null, avisou = false;
+
+    // Antes de gravar, confirma a substituição se o mês já tiver sido carregado
+    function confirmarSubstituicao(comp) {
+        if (avisou) return true;
+        avisou = true;
+        var qtd = avJaTemMes(comp);
+        if (!qtd) return true;
+        return confirm('O mês ' + comp + ' já foi carregado antes (' + qtd + ' registros).\n\n' +
+            'Vou substituir pelos dados destes relatórios — é o certo se você corrigiu alguma nota no sistema.\n\nPode seguir?');
+    }
 
     function etapaCompras() {
         if (!arqC) return Promise.resolve();
@@ -4743,9 +4813,16 @@ function avImportarRelatorios() {
             competencia = comp;
             var probs = avConferir(r.itens, r.totais, 'total');
             if (probs.length) throw new Error('A conferência das compras não bateu:\n' + probs.join('\n'));
+            var iguais = avLinhasIdenticas(r.itens);
+            if (iguais.length) {
+                throw new Error('Este relatório tem linhas repetidas idênticas (' + iguais.slice(0, 3).join(', ') +
+                    '). O banco ainda não aceita isso — me avise que eu ajusto.');
+            }
+            if (!confirmarSubstituicao(comp)) throw new Error('Cancelado por você. Nada foi alterado.');
             var total = 0; r.itens.forEach(function(x) { total += x.total; });
             resumo.push('Compras: ' + r.itens.length + ' lançamentos, ' + avMoeda(total) + ' — confere com o relatório');
-            return avGravarLote('vinhos_compras', r.itens.map(function(x) {
+            avStatus('Gravando as compras...', 'andamento');
+            return avSubstituirMes('vinhos_compras', comp, r.itens.map(function(x) {
                 return { competencia: comp, grupo: x.grupo, codigo_produto: x.codigo, produto: x.produto,
                     nf: x.nf, emissao: x.emissao, fornecedor: x.fornecedor, qtde: x.qtde,
                     unidade: x.unidade, custo_unitario: x.custo, total: x.total };
@@ -4766,16 +4843,21 @@ function avImportarRelatorios() {
             competencia = comp;
             var probs = avConferir(r.itens, r.totais, 'total');
             if (probs.length) throw new Error('A conferência das vendas não bateu:\n' + probs.join('\n'));
+            if (!confirmarSubstituicao(comp)) throw new Error('Cancelado por você. Nada foi alterado.');
             var total = 0; r.itens.forEach(function(x) { total += x.total; });
             resumo.push('Vendas: ' + r.itens.length + ' itens, ' + avMoeda(total) + ' — confere com o relatório');
-            return avGravarLote('vinhos_vendas', r.itens.map(function(x) {
+            avStatus('Gravando as vendas...', 'andamento');
+            return avSubstituirMes('vinhos_vendas', comp, r.itens.map(function(x) {
                 return { competencia: comp, grupo: x.grupo, codigo_produto: x.codigo,
                     produto: x.produto, qtde: x.qtde, preco_unit: x.preco, total: x.total };
             }));
         });
     }
 
-    etapaCompras().then(etapaVendas).then(function() {
+    avCarregarPdfJs().then(function() {
+        avStatus('Lendo os PDFs...', 'andamento');
+        return etapaCompras();
+    }).then(etapaVendas).then(function() {
         avStatus(resumo.join('\n') + '\n\nCarregado. Atualizando a análise...', 'ok');
         avCarregado = false;
         document.getElementById('avArqCompras').value = '';
@@ -4799,6 +4881,238 @@ function avImportarRelatorios() {
     });
 }
 
+// ============================================================
+// VINHOS — análise em PDF, para mandar no WhatsApp ou guardar
+// ============================================================
+
+function avNomeMes(comp) {
+    var NOMES = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    var p = String(comp || '').split('-');
+    return (NOMES[parseInt(p[1], 10)] || '') + ' de ' + (p[0] || '');
+}
+
+function avGerarPdf(mes) {
+    var jsPDFRef = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
+    if (!jsPDFRef) { return null; }
+    var doc = new jsPDFRef({ unit: 'mm', format: 'a4' });
+
+    var larg = 210, marg = 12, base = larg - marg;
+    var y = 0;
+
+    function moeda(v) {
+        if (v === null || v === undefined || isNaN(Number(v))) return '-';
+        return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function novaPagina() {
+        doc.addPage();
+        y = marg + 6;
+    }
+    function espaco(precisa) {
+        if (y + precisa > 285) { novaPagina(); return true; }
+        return false;
+    }
+    function titulo(texto) {
+        espaco(16);
+        y += 6;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(40, 40, 40);
+        doc.text(texto, marg, y);
+        y += 2;
+        doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3);
+        doc.line(marg, y, base, y);
+        y += 4;
+    }
+    function nota(texto) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120, 120, 120);
+        var linhas = doc.splitTextToSize(texto, base - marg);
+        espaco(linhas.length * 3.6 + 2);
+        doc.text(linhas, marg, y);
+        y += linhas.length * 3.6 + 2;
+    }
+
+    // tabela simples com quebra de página e cabeçalho repetido
+    function tabela(colunas, linhas) {
+        var alturaLinha = 5.4;
+        function cabecalho() {
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(90, 90, 90);
+            colunas.forEach(function(c) {
+                doc.text(c.titulo, c.dir ? c.x : c.x, y, c.dir ? { align: 'right' } : undefined);
+            });
+            y += 1.5;
+            doc.setDrawColor(215, 215, 215); doc.line(marg, y, base, y);
+            y += 3.5;
+        }
+        cabecalho();
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+        linhas.forEach(function(linha) {
+            if (y + alturaLinha > 285) { novaPagina(); cabecalho(); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); }
+            colunas.forEach(function(c, i) {
+                var txt = String(linha[i] === null || linha[i] === undefined ? '' : linha[i]);
+                doc.setTextColor.apply(doc, (c.cor && linha.cor) ? linha.cor : [45, 45, 45]);
+                if (c.largura) { txt = doc.splitTextToSize(txt, c.largura)[0] || ''; }
+                doc.text(txt, c.x, y, c.dir ? { align: 'right' } : undefined);
+            });
+            y += alturaLinha;
+        });
+        doc.setTextColor(45, 45, 45);
+    }
+
+    var r = avCalcular(mes);
+    var abaixo = r.garrafas.filter(function(g) { return g.situacao === 'abaixo'; })
+                           .sort(function(a, b) { return a.diferenca - b.diferenca; });
+    var acima = r.garrafas.filter(function(g) { return g.situacao === 'acima'; })
+                          .sort(function(a, b) { return b.diferenca - a.diferenca; });
+    var naFaixa = r.garrafas.filter(function(g) { return g.situacao === 'ok'; });
+    var recG = 0, custoG = 0, recT = 0, custoT = 0, perdido = 0;
+    r.garrafas.forEach(function(g) { recG += g.preco * g.qtde; custoG += g.custo * g.qtde; });
+    r.tacas.forEach(function(t) { recT += t.preco * t.qtde; custoT += t.custoDose * t.qtde; });
+    abaixo.forEach(function(g) { perdido += Math.abs(g.diferenca); });
+
+    // ---- capa ----
+    y = marg + 8;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(125, 30, 45);
+    doc.text('A BELA SINTRA', marg, y);
+    y += 7;
+    doc.setFontSize(17); doc.setTextColor(30, 30, 30);
+    doc.text('Vinhos — custo x venda', marg, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(110, 110, 110);
+    doc.text(avNomeMes(mes), marg, y);
+    y += 4;
+    doc.setDrawColor(125, 30, 45); doc.setLineWidth(0.6);
+    doc.line(marg, y, base, y);
+    y += 7;
+
+    // ---- resumo ----
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
+    var resumo = [
+        ['Markup médio das garrafas', (custoG > 0 ? (recG / custoG - 1) * 100 : 0).toFixed(0) + '%'],
+        ['Markup médio das taças', (custoT > 0 ? (recT / custoT - 1) * 100 : 0).toFixed(0) + '%'],
+        ['Rótulos abaixo da tabela', String(abaixo.length) + ' de ' + r.garrafas.length],
+        ['Deixou de entrar no mês', 'R$ ' + moeda(perdido)]
+    ];
+    resumo.forEach(function(l) {
+        doc.setTextColor(110, 110, 110); doc.text(l[0], marg, y);
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(40, 40, 40);
+        doc.text(l[1], base, y, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        y += 5.5;
+    });
+
+    var COLS = [
+        { titulo: 'Rótulo', x: marg, largura: 62 },
+        { titulo: 'Custo', x: marg + 76, dir: true },
+        { titulo: 'Cobrado', x: marg + 100, dir: true },
+        { titulo: 'Tabela', x: marg + 124, dir: true },
+        { titulo: 'Dif', x: marg + 140, dir: true },
+        { titulo: 'Un', x: marg + 152, dir: true },
+        { titulo: 'Diferença no mês', x: base, dir: true }
+    ];
+    function linhasDe(lista) {
+        return lista.map(function(g) {
+            return [g.produto, moeda(g.custo), moeda(g.preco), moeda(g.precoTabela),
+                    (g.difPct >= 0 ? '+' : '') + g.difPct.toFixed(0) + '%', String(g.qtde),
+                    (g.diferenca < 0 ? '-' : '+') + ' R$ ' + moeda(Math.abs(g.diferenca))];
+        });
+    }
+
+    if (abaixo.length) {
+        titulo('Abaixo da tabela — rever preço');
+        nota('Preço cobrado menor que o da faixa de margem. A última coluna é quanto deixou de entrar com a quantidade já vendida.');
+        tabela(COLS, linhasDe(abaixo));
+    }
+    if (r.tacas.length) {
+        titulo('Vinho em taça');
+        nota('Custo da dose = custo da garrafa dividido pelas doses que ela rende (5 taças de vinho, 8,8 doses de Porto).');
+        tabela([
+            { titulo: 'Rótulo', x: marg, largura: 62 },
+            { titulo: 'Doses', x: marg + 80, dir: true },
+            { titulo: 'Custo gf', x: marg + 104, dir: true },
+            { titulo: 'Custo dose', x: marg + 130, dir: true },
+            { titulo: 'Cobrado', x: marg + 152, dir: true },
+            { titulo: 'Markup', x: marg + 170, dir: true },
+            { titulo: 'Taças', x: base, dir: true }
+        ], r.tacas.slice().sort(function(a, b) { return a.markup - b.markup; }).map(function(t) {
+            return [t.produto.replace(/^I /, ''), String(t.doses), moeda(t.custoGf), moeda(t.custoDose),
+                    moeda(t.preco), t.markup.toFixed(0) + '%', String(t.qtde)];
+        }));
+    }
+    if (acima.length) {
+        titulo('Acima da tabela');
+        nota('Esses rótulos sustentam margem maior do que a faixa prevê.');
+        tabela(COLS, linhasDe(acima));
+    }
+    if (naFaixa.length) {
+        titulo('Dentro da faixa');
+        tabela(COLS, linhasDe(naFaixa));
+    }
+    if (r.semCusto.length) {
+        titulo('Vendidos sem compra no mês');
+        nota('Saíram de estoque anterior — sem custo deste mês para comparar.');
+        tabela([
+            { titulo: 'Rótulo', x: marg, largura: 80 },
+            { titulo: 'Grupo', x: marg + 96, largura: 34 },
+            { titulo: 'Preço', x: marg + 150, dir: true },
+            { titulo: 'Un', x: marg + 166, dir: true },
+            { titulo: 'Receita', x: base, dir: true }
+        ], r.semCusto.slice().sort(function(a, b) { return Number(b.total) - Number(a.total); }).map(function(s) {
+            return [s.produto, String(s.grupo || '').toLowerCase(), moeda(s.preco_unit), String(s.qtde), moeda(s.total)];
+        }));
+    }
+
+    // rodapé em todas as páginas
+    var total = doc.internal.getNumberOfPages();
+    for (var p = 1; p <= total; p++) {
+        doc.setPage(p);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(150, 150, 150);
+        doc.text('A Bela Sintra · gerado em ' + new Date().toLocaleDateString('pt-BR'), marg, 292);
+        doc.text(p + '/' + total, base, 292, { align: 'right' });
+    }
+    return doc;
+}
+
+function avArquivoPdf(mes) {
+    return 'vinhos-custo-x-venda-' + String(mes || '').replace('-', '-') + '.pdf';
+}
+
+function avPrepararPdf() {
+    var sel = document.getElementById('avSelMes');
+    var mes = sel ? sel.value : '';
+    if (!mes) { alert('Escolha o mês primeiro.'); return null; }
+    var r = avCalcular(mes);
+    if (!r.garrafas.length && !r.tacas.length) { alert('Esse mês não tem dados para gerar o PDF.'); return null; }
+    var doc = avGerarPdf(mes);
+    if (!doc) { alert('Não consegui preparar o PDF. Atualize a página e tente de novo.'); return null; }
+    return { doc: doc, nome: avArquivoPdf(mes) };
+}
+
+function avBaixarPdf() {
+    var p = avPrepararPdf();
+    if (!p) return;
+    p.doc.save(p.nome);
+}
+
+function avCompartilharPdf() {
+    var p = avPrepararPdf();
+    if (!p) return;
+    var arquivo;
+    try {
+        arquivo = new File([p.doc.output('blob')], p.nome, { type: 'application/pdf' });
+    } catch (erro) { arquivo = null; }
+
+    // No celular abre o menu de compartilhar (WhatsApp, e-mail...). No computador,
+    // onde isso quase nunca existe, cai direto no download.
+    if (arquivo && navigator.share && navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+        navigator.share({
+            files: [arquivo],
+            title: 'Vinhos — custo x venda',
+            text: 'Análise de custo x venda dos vinhos — ' + avNomeMes(document.getElementById('avSelMes').value)
+        }).catch(function() { /* a pessoa fechou o menu */ });
+        return;
+    }
+    p.doc.save(p.nome);
+}
+
 function renderizarAnaliseVinhos() {
     var el = document.getElementById('avConteudo');
     if (!el) return;
@@ -4806,12 +5120,14 @@ function renderizarAnaliseVinhos() {
     var mes = sel ? sel.value : '';
     if (!mes) {
         el.innerHTML = '<div class="av-vazio">Nenhum mês carregado ainda.<br>Peça para carregar os relatórios de compras e vendas.</div>';
+        avMostrarAcoesPdf(false);
         return;
     }
 
     var r = avCalcular(mes);
     if (!r.garrafas.length && !r.tacas.length) {
         el.innerHTML = '<div class="av-vazio">Esse mês não tem compras e vendas que se cruzem.</div>';
+        avMostrarAcoesPdf(false);
         return;
     }
 
@@ -4885,6 +5201,12 @@ function renderizarAnaliseVinhos() {
     }
 
     el.innerHTML = html;
+    avMostrarAcoesPdf(true);
+}
+
+function avMostrarAcoesPdf(mostrar) {
+    var acoes = document.getElementById('avAcoesPdf');
+    if (acoes) { acoes.style.display = mostrar ? 'flex' : 'none'; }
 }
 
 function sincronizarProblemasSupabase() {
@@ -5298,6 +5620,10 @@ function atualizarVisuaisDaLista() {
         montarAbas();
         return;
     }
+
+    // A agenda é um calendário, não uma lista de produtos — sem isto, o acesso a setor.produtos
+    // dava erro aqui e interrompia trocarSetor() antes de a agenda sincronizar com o banco.
+    if (setor.tipo === 'agenda') { return; }
 
     var pedidoAtual = pedidos[setor.id];
     var filtro = document.getElementById('searchInput').value.toLowerCase();
