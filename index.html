@@ -3794,7 +3794,10 @@ function sincronizarFichasSupabase() {
 }
 
 function formatarMoeda(valor) {
-    valor = valor || 0;
+    // O banco devolve número como texto ("998.02"), então converte antes de formatar —
+    // sem isso a tela quebrava no meio ao montar a lista.
+    valor = Number(valor);
+    if (isNaN(valor)) { valor = 0; }
     return 'R$ ' + valor.toFixed(2).replace('.', ',');
 }
 
@@ -4142,9 +4145,10 @@ function sincronizarVinhosSupabase() {
                 id: d.id,
                 nome: d.nome,
                 importadora: d.importadora || '',
-                precoCusto: d.preco_custo,
-                margemAplicada: d.margem_aplicada,
-                precoVenda: d.preco_venda,
+                // vêm como texto do banco: converte aqui, na entrada
+                precoCusto: Number(d.preco_custo),
+                margemAplicada: Number(d.margem_aplicada),
+                precoVenda: Number(d.preco_venda),
                 criadoEm: d.criado_em
             };
         });
@@ -4311,9 +4315,9 @@ function exportarCsvVinhos() {
         linhas.push([
             (v.nome || '').replace(/;/g, ','),
             (v.importadora || '').replace(/;/g, ','),
-            (v.precoCusto || 0).toFixed(2).replace('.', ','),
-            v.margemAplicada || 0,
-            (v.precoVenda || 0).toFixed(2).replace('.', ','),
+            (Number(v.precoCusto) || 0).toFixed(2).replace('.', ','),
+            Number(v.margemAplicada) || 0,
+            (Number(v.precoVenda) || 0).toFixed(2).replace('.', ','),
             dataTxt
         ].join(';'));
     }
