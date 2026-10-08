@@ -408,6 +408,14 @@
     .nf-label { display: block; font-size: 12px; font-weight: 700; color: var(--text-dim); margin: 0 0 6px 2px; }
     .nf-dica { font-size: 12px; color: var(--text-dim); margin: -8px 2px 12px 2px; line-height: 1.4; }
     .nf-dica:empty { display: none; }
+    /* lista de fornecedores que aparece ao digitar as primeiras letras da razao social */
+    .nf-sug { margin: -8px 0 10px 0; }
+    .nf-sug:empty { display: none; }
+    .nf-sug-lista { background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 24px rgba(0,0,0,.45); }
+    .nf-sug-item { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--line); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600; padding: 11px 13px; cursor: pointer; line-height: 1.35; }
+    .nf-sug-item:last-child { border-bottom: none; }
+    .nf-sug-item:active { background: rgba(255,255,255,.07); }
+    .nf-sug-item small { display: block; font-size: 11px; font-weight: 500; color: var(--text-dim); margin-top: 2px; }
     .nf-linha2 { display: flex; gap: 10px; }
     .nf-linha2 > * { flex: 1; min-width: 0; }
     .nf-form input[type="date"] { color-scheme: dark; }
@@ -1056,7 +1064,8 @@
         <div class="nf-bonificada" id="nfBonificada"></div>
         <div class="nf-secao-titulo" id="nfSecaoDocTitulo">Nota fiscal</div>
         <label class="nf-label" for="nfRazao">Razão social do fornecedor</label>
-        <input type="text" id="nfRazao" class="text-input" placeholder="Preenchida automaticamente pelo CNPJ" onchange="nfFornecedorDigitado()">
+        <input type="text" id="nfRazao" class="text-input" placeholder="Preenchida automaticamente pelo CNPJ" autocomplete="off" oninput="nfRazaoDigitando()" onblur="nfFecharSugestoes(true)" onchange="nfFornecedorDigitado()">
+        <div id="nfRazaoSug" class="nf-sug"></div>
         <div id="nfRazaoDica" class="nf-dica"></div>
         <div class="nf-linha2">
             <div>
@@ -8677,6 +8686,105 @@ function nfBuscarRazaoDoCampo() {
         nfBuscarRazaoParaForm(c);
     }
 }
+// ---------- Sugestao de fornecedor ao digitar as primeiras letras ----------
+// Junta o cadastro de fornecedores com o historico de notas: quem ele ja lancou
+// alguma vez aparece na lista, mesmo que nunca tenha sido "cadastrado".
+function nfNomesConhecidos() {
+    var por = {};
+    function juntar(razao, cnpj, usos) {
+        var chave = nfSlugNome(razao);
+        if (!chave || chave.length < 3) return;
+        var it = por[chave];
+        if (!it) { it = por[chave] = { razao: razao, cnpj: null, usos: 0 }; }
+        it.usos += usos;
+        if (!it.cnpj && cnpj && String(cnpj).length === 14) it.cnpj = cnpj;
+        // guarda o nome mais completo que apareceu
+        if (String(razao).length > String(it.razao).length) it.razao = razao;
+    }
+    var i;
+    for (i = 0; i < fornecedoresCache.length; i++) {
+        var f = fornecedoresCache[i];
+        juntar(f.razao_social, nfLimpaCnpj(f.cnpj), 1);
+    }
+    for (i = 0; i < notasCache.length; i++) {
+        var n = notasCache[i];
+        juntar(n.razao_social, nfLimpaCnpj(n.cnpj), 1);
+    }
+    var lista = [];
+    for (var k in por) { if (por.hasOwnProperty(k)) lista.push(por[k]); }
+    lista.sort(function(a, b) { return b.usos - a.usos || String(a.razao).localeCompare(String(b.razao)); });
+    return lista;
+}
+
+var nfSugAtual = [];
+
+function nfFecharSugestoes(comAtraso) {
+    // no celular o toque na sugestao chega depois do blur do campo, por isso o atraso
+    if (comAtraso) { setTimeout(function() { nfFecharSugestoes(false); }, 200); return; }
+    var el = document.getElementById('nfRazaoSug');
+    if (el) el.innerHTML = '';
+    nfSugAtual = [];
+}
+
+function nfRazaoDigitando() {
+    var el = document.getElementById('nfRazaoSug');
+    if (!el) return;
+    var txt = nfNormalizar(document.getElementById('nfRazao').value);
+    if (txt.length < 2) { el.innerHTML = ''; nfSugAtual = []; return; }
+    var lista = nfNomesConhecidos(), comeca = [], contem = [];
+    for (var i = 0; i < lista.length; i++) {
+        var alvo = nfNormalizar(lista[i].razao);
+        if (alvo === txt) continue;                       // ja esta digitado por inteiro
+        if (alvo.indexOf(txt) === 0) comeca.push(lista[i]);
+        else if (alvo.indexOf(' ' + txt) > 0 || alvo.indexOf(txt) > 0) contem.push(lista[i]);
+    }
+    nfSugAtual = comeca.concat(contem).slice(0, 8);
+    if (!nfSugAtual.length) { el.innerHTML = ''; return; }
+    el.innerHTML = '<div class="nf-sug-lista">' + nfSugAtual.map(function(it, idx) {
+        var f = nfAcharFornecedor(it.cnpj || '', it.razao);
+        var grupos = f ? nfGruposDoFornecedor(f) : [];
+        var sub = [];
+        if (it.cnpj) sub.push(nfFormatarCnpj(it.cnpj));
+        if (grupos.length === 1) sub.push(nfInfoSetor(grupos[0].id).icone + ' ' + nfInfoSetor(grupos[0].id).nome);
+        else if (grupos.length > 1) sub.push(grupos.length + ' grupos');
+        return '<button type="button" class="nf-sug-item" onmousedown="event.preventDefault()" onclick="nfEscolherSugestao(' + idx + ')">' +
+            nfEsc(it.razao) + (sub.length ? '<small>' + nfEsc(sub.join('  ·  ')) + '</small>' : '') + '</button>';
+    }).join('') + '</div>';
+}
+
+function nfEscolherSugestao(idx) {
+    var it = nfSugAtual[idx];
+    nfFecharSugestoes(false);
+    if (!it) return;
+    document.getElementById('nfRazao').value = it.razao;
+    if (it.cnpj && !nfLimpaCnpj(document.getElementById('nfCnpj').value)) {
+        document.getElementById('nfCnpj').value = nfFormatarCnpj(it.cnpj);
+    }
+    nfFornecedorDigitado();
+    document.getElementById('nfRazao').blur();
+}
+
+// A pistola nao leu (ou a nota nem tem codigo): segue a mao, sem precisar
+// digitar chave nenhuma. So fornecedor, valor e vencimento.
+function nfSeguirSemCodigo() {
+    if (!nfForm) return;
+    nfForm.manual = true;
+    nfForm.passo = 'manual';
+    nfForm.trocarSetor = false;
+    if (!nfForm.boletos.length) nfForm.boletos = [{ barras: null, linha: null, vencimento: null, valor: null }];
+    document.getElementById('nfEditTitulo').innerText = 'Lançamento manual';
+    document.getElementById('nfAcoesExistente').style.display = 'none';
+    document.getElementById('nfBtnAddVenc').style.display = 'block';
+    document.getElementById('nfSecaoSetor').style.display = 'block';
+    document.getElementById('nfAcoesSalvar').style.display = 'none';
+    if (!document.getElementById('nfEmissao').value) document.getElementById('nfEmissao').value = nfHojeIso();
+    nfRenderizarBoletosForm();
+    nfRenderizarSetoresForm();
+    nfRenderizarPassos();
+    window.scrollTo(0, 0);
+    setTimeout(function() { document.getElementById('nfRazao').focus(); }, 200);
+}
+
 // Lançamento manual: ao digitar o nome do fornecedor, o app já sabe o grupo
 function nfFornecedorDigitado() {
     if (!nfForm) return;
@@ -8769,8 +8877,8 @@ function nfRenderizarPassos() {
             '<div class="nf-passo-texto">' + (nfLeitorLigado ? '🔫 <b>Bipe o código de barras da nota com o leitor</b> — ou fotografe.<br>' : '') +
             'Pode fotografar a nota inteira ou só a parte de cima com o código de barras. Boa luz e celular firme (espere focar).</div>' +
             '<button class="nf-passo-btn" onclick="nfAbrirCameraNota()">📸 Fotografar nota</button>' +
-            '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfDigitarCodigo(\'nota\')">⌨️ Digitar a chave da nota (44 números)</button>' +
-            '<button class="nf-passo-link" onclick="nfIrParaPasso(\'boleto\')">Preencher a nota à mão →</button>';
+            '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfSeguirSemCodigo()">✍️ A pistola não leu — preencher à mão</button>' +
+            '<button class="nf-passo-link" onclick="nfDigitarCodigo(\'nota\')">Digitar a chave de 44 números (se quiser)</button>';
     } else if (p === 'boleto' && nfInfoSetor(nfForm.setor).id === 'bonificada') {
         // bonificada não tem boleto: só confere o valor e salva
         var vb = nfValorBonificada();
@@ -8785,7 +8893,7 @@ function nfRenderizarPassos() {
             (qtd ? '<div class="nf-passo-texto">✅ ' + qtd + (qtd === 1 ? ' boleto lido.' : ' boletos lidos.') + ' Tem outra parcela?</div>'
                  : '<div class="nf-passo-texto">' + (nfLeitorLigado ? '🔫 <b>Bipe o boleto com o leitor</b> — ou fotografe.<br>' : '') + 'Se a nota tem boleto, fotografe o código de barras. <b>Se não tem, é só preencher o vencimento e o valor aqui embaixo.</b></div>') +
             '<button class="nf-passo-btn" onclick="nfAbrirCameraBoleto()">📸 ' + (qtd ? 'Fotografar outra parcela' : 'Fotografar boleto') + '</button>' +
-            '<button class="nf-passo-btn nf-passo-btn-sec" onclick="nfDigitarCodigo(\'boleto\')">⌨️ Digitar a linha do boleto</button>' +
+            '<button class="nf-passo-link" onclick="nfDigitarCodigo(\'boleto\')">Digitar a linha do boleto (se quiser)</button>' +
             (qtd ? (function() {
                     var fb = nfForm.fornecedor || nfAcharFornecedor(nfLimpaCnpj(document.getElementById('nfCnpj').value), document.getElementById('nfRazao').value);
                     var ab = nfGrupoAutomatico(fb);
@@ -8861,7 +8969,7 @@ function nfSemBoleto() {
 function nfBlocoSemBoleto() {
     var b = (nfForm.boletos && nfForm.boletos[0] && !nfForm.boletos[0].linha) ? nfForm.boletos[0] : {};
     return '<div class="nf-sem-boleto">' +
-        '<div class="nf-sem-boleto-tit">Nota sem boleto? Preencha só isto:</div>' +
+        '<div class="nf-sem-boleto-tit">Sem boleto ou a pistola não leu? Preencha só isto:</div>' +
         '<div class="nf-linha2">' +
             '<div><label class="nf-label">Vencimento</label>' +
             '<input type="date" id="nfSbVenc" class="text-input" value="' + (b.vencimento || '') + '" onchange="nfSemBoletoCampo(\'vencimento\', this.value)"></div>' +
@@ -8928,7 +9036,7 @@ function nfFotoNota(evento) {
                 if (nfForm !== formRef) return;
                 var achou = texto ? nfExtrairDoTexto(texto) : {};
                 if (achou.nota) { nfIrParaPasso('boleto'); nfAvisarSetorSeConhecido(); return; }
-                nfStatusForm('❌ Não consegui ler essa foto. Tire outra mais de perto, com o código de barras deitado ocupando a largura da foto — ou preencha à mão.');
+                nfStatusForm('❌ Não consegui ler essa foto. Tire outra mais de perto, com o código de barras deitado ocupando a largura da foto — ou toque em ✍️ A pistola não leu e preencha à mão.');
             }, true);
         });
     }).catch(function() {
@@ -8978,7 +9086,7 @@ function nfFotoBoleto(evento) {
                 if (nfForm !== formRef) return;
                 var achou = texto ? nfExtrairDoTexto(texto, true) : {};
                 if (achou.boleto) { nfRenderizarPassos(); nfChecarFechamentoAutomatico(); return; }
-                nfStatusForm('❌ Não consegui ler esse boleto. Tire outra foto mais de perto, com o código de barras deitado — ou toque em "Sem boleto" e preencha à mão.');
+                nfStatusForm('❌ Não consegui ler esse boleto. Tire outra foto mais de perto, com o código de barras deitado — ou preencha só o vencimento e o valor logo abaixo.');
             }, true);
         });
     }).catch(function() {
@@ -9109,6 +9217,7 @@ function nfLimparCamposForm() {
     ['nfRazao', 'nfCnpj', 'nfNumero', 'nfEmissao', 'nfObs', 'nfValorNota'].forEach(function(id) { document.getElementById(id).value = ''; });
     document.getElementById('nfProtocoloData').value = nfHojeIso();
     ['nfRazaoDica', 'nfEmissaoDica', 'nfChaveDica', 'nfSetorDica'].forEach(function(id) { document.getElementById(id).innerText = ''; });
+    nfFecharSugestoes(false);
     nfStatusForm('');
     nfRemoverFoto();
 }
