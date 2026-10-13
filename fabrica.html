@@ -390,6 +390,27 @@ body.com-rasc .shtoast{bottom:104px}
 .hp .leg i{display:inline-block;width:14px;height:0;border-top:2px solid var(--bl);margin-right:4px;vertical-align:middle}
 .hp .leg i.ref{border-top:2px dashed var(--mut)}
 .hp-vaz{font-size:.83rem;color:var(--mut);padding:0 19px 16px}
+.pp-ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.pp-seg{display:inline-flex;border:1px solid var(--bdr);border-radius:20px;overflow:hidden;background:var(--surf2)}
+.pp-seg button{font:inherit;font-size:.8rem;font-weight:700;padding:7px 14px;border:0;background:transparent;color:var(--mut);cursor:pointer}
+.pp-seg button.on{background:var(--ac);color:#fff}
+.pp-tag{font-size:.76rem;color:var(--mut)}
+.pptb input.pp-pin{font:inherit;font-size:.86rem;font-weight:700;width:76px;text-align:right;padding:5px 8px;border:1px solid var(--bdr);border-radius:8px;background:var(--surf2);color:var(--txt)}
+.pptb input.pp-pin.bad{border-color:var(--rd);color:var(--rd)}
+.pptb .melhor{background:var(--gnl)}
+.pptb .ruim{color:var(--rd)}
+.pp-rec{border-left:4px solid var(--gn);background:var(--gnl);border-radius:10px;padding:12px 15px;margin:12px 0;font-size:.88rem;line-height:1.5}
+.pp-rec b{color:var(--gn)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .pp-rec{background:#052817;color:#9BE8BE}:root:not([data-theme="light"]) .pptb .melhor{background:#052817}}
+:root[data-theme="dark"] .pp-rec{background:#052817;color:#9BE8BE}
+:root[data-theme="dark"] .pptb .melhor{background:#052817}
+.pp-cli{border:1px dashed var(--bdr);border-radius:var(--r);padding:14px 17px;margin-top:4px;background:var(--surf2)}
+.pp-cli h4{font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:4px}
+.pp-cli .sub2{font-size:.78rem;color:var(--mut);margin-bottom:10px}
+.pp-cli table{width:100%;border-collapse:collapse;font-size:.9rem}
+.pp-cli th,.pp-cli td{padding:7px 6px;border-bottom:1px solid var(--bdr);text-align:right}
+.pp-cli th:first-child,.pp-cli td:first-child{text-align:left}
+.pp-cli th{font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);font-weight:700}
 .selo-ler{display:inline-block;margin-right:6px;padding:3px 9px;border-radius:14px;background:var(--bll);color:var(--bl);font-size:.7rem;font-weight:700;white-space:nowrap}
 .selo-ler[hidden]{display:none}
 .cnovo{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:10px;background:var(--rd);color:#fff;font-size:.62rem;font-weight:700;vertical-align:middle}
@@ -489,6 +510,7 @@ body.com-rasc .shtoast{bottom:104px}
   <button data-tab="tax">🏛️ Impostos</button>
   <button data-tab="risco">⚠️ Risco do Cliente</button>
   <button data-tab="strat">🎯 Estratégia</button>
+  <button data-tab="prop">📑 Projeção de Venda</button>
   <button data-tab="cons">🧭 Conselheiro <span id="cons-novo" class="cnovo" hidden>novo</span></button>
 </nav>
 
@@ -1277,6 +1299,46 @@ body.com-rasc .shtoast{bottom:104px}
     </div>
   </div>
 
+  <div id="tab-prop" class="pane">
+    <h2 class="sh">Projeção de Venda — Tabela de Preço por Volume</h2>
+    <p class="ss">Simule o preço em cada faixa de volume, veja o lucro que sobra em cada uma e monte a oferta escalonada para o cliente.</p>
+
+    <div class="card cp" style="padding:15px 19px;margin-bottom:16px">
+      <div class="pp-ctrl">
+        <span class="pp-tag">Linha:</span>
+        <span class="pp-seg" id="pp-linha"></span>
+        <span class="pp-tag">Modo:</span>
+        <span class="pp-seg" id="pp-modo">
+          <button data-modo="preco" onclick="ppModo('preco')">Eu defino o preço</button>
+          <button data-modo="margem" onclick="ppModo('margem')">Margem alvo</button>
+        </span>
+        <span id="pp-margem-box" class="pp-ctrl" style="margin:0;gap:6px" hidden>
+          <span class="pp-tag">Margem líquida alvo</span>
+          <span class="pinw"><input class="pin" type="text" inputmode="decimal" id="pp-margem" aria-label="Margem alvo" value="22" style="width:52px" oninput="ppMargem(this.value)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">%</span></span>
+        </span>
+        <button class="vsb" onclick="ppSugerir()" title="Preenche com desconto progressivo a partir do preço base">↘ sugerir escalonado</button>
+        <button class="vsb" onclick="ppReset()">↺ voltar ao preço base</button>
+      </div>
+      <div class="tw"><table class="dtbl pptb" id="pptb"></table></div>
+      <div id="pp-rec"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="sec-ttl">📄 Tabela para o cliente <span style="font-weight:400;font-size:.8rem;color:var(--mut)">· sem custos e sem margens</span></div>
+      <div style="padding:13px 19px">
+        <div id="pp-cliente" class="pp-cli"></div>
+        <div class="pp-ctrl" style="margin:12px 0 0">
+          <button class="shb" onclick="ppCopiar()">📋 Copiar tabela do cliente</button>
+          <button class="shb wa" onclick="ppWhats()">💬 Enviar por WhatsApp</button>
+          <span class="pp-tag">Prazo de pagamento:</span>
+          <span class="pinw"><input class="pin" type="text" inputmode="numeric" id="pp-prazo" aria-label="Prazo de pagamento" value="45" style="width:46px" oninput="ppPrazo(this.value)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">dias</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="nt">Os preços desta aba valem para a linha escolhida e já consideram o custo fixo da estrutura em cada volume (quando a opção de custo fixo por escala está ligada na Ficha de Custo), o imposto sobre o faturamento daquele cenário e a quebra de produção. Confirme a carga tributária com o contador antes de fechar contrato.</div>
+  </div>
+
   <div id="tab-cons" class="pane">
     <h2 class="sh">Conselheiro — Análises Automáticas</h2>
     <p class="ss">Todo dia às 7h e às 17h o Claude lê os números <b>salvos</b> no painel, pesquisa bacalhau, câmbio, Habib's, impostos e energia, e deixa aqui as dicas de decisão.</p>
@@ -1356,6 +1418,7 @@ document.getElementById('nav').addEventListener('click',e=>{
   if(t==='tax')rTax();
   if(t==='strat')rReal();
   if(t==='risco')rRisco();
+  if(t==='prop') rProp();
   if(t==='cons'){ marcarConsVisto(); carregarConselheiro(); rSensi(); }
 });
 
@@ -1565,6 +1628,7 @@ const instantaneo = () => ({
   canais:{...sim.pr},
   producao:{mx25:prj.mx25,mx35:prj.mx35},
   ref:REF.k,
+  proposta:{fid:PROP.fid,modo:PROP.modo,margem:PROP.margem,precos:PROP.precos,prazo:PROP.prazo},
   resultado:resultadoAtual(),
 });
 function resultadoAtual(){                 // números já calculados, para o conselheiro agendado ler
@@ -1602,6 +1666,12 @@ function aplicar(d){
     if(isFinite(d.dias)) INS.dias=d.dias;
     for(const k in (d.canais||{})) if(k in sim.pr && isFinite(d.canais[k])) sim.pr[k]=d.canais[k];
     const p=d.producao||{}; ['mx25','mx35'].forEach(k=>{ if(isFinite(p[k])) prj[k]=p[k]; });
+    const pp=d.proposta||{};
+    if(F[pp.fid]) PROP.fid=pp.fid;
+    if(pp.modo==='margem'||pp.modo==='preco') PROP.modo=pp.modo;
+    if(isFinite(pp.margem)) PROP.margem=Math.min(0.9,Math.max(0,pp.margem));
+    if(isFinite(pp.prazo)) PROP.prazo=Math.max(0,Math.round(pp.prazo));
+    if(pp.precos&&typeof pp.precos==='object'){ PROP.precos={}; VOLP.forEach(v=>{ if(isFinite(pp.precos[v])&&pp.precos[v]>0) PROP.precos[v]=+pp.precos[v]; }); }
     recalcFix(); recalcF();
     return true;
   }catch(e){ return false; }
@@ -2711,6 +2781,134 @@ function rReal(){
 }
 
 
+/* ============================================================
+   PROJEÇÃO DE VENDA — tabela de preço por faixa de volume
+   ============================================================ */
+const VOLP=[100000,150000,200000,250000,300000];
+const hojeBR=()=>new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+let PROP={fid:'f25', modo:'preco', margem:0.22, precos:{}, prazo:45};
+const ppPrecoDe = v => isFinite(PROP.precos[v]) ? PROP.precos[v] : F[PROP.fid].pv;
+function ppCalc(v,p){
+  const k=PROP.fid, cv=cvar(k), fixo=FXv(v), rec=p*v;
+  const eb=rec-cv*v-fixo-rec*A.com, al=aliq(rec*12), imp=rec*al, liq=eb-imp;
+  const bd=v/(1-A.per)/F[k].u/INS.dias;
+  return {p,v,cv,fixo,rec,eb,al,imp,liq,mg:rec>0?liq/rec:0,liqUn:liq/v,bd,cabe:bd<=A.cap};
+}
+function ppPrecoParaMargem(v,m){                 // preço que entrega a margem líquida pedida
+  const k=PROP.fid; let lo=cvar(k), hi=cvar(k)*10+FXv(v)/v*5;
+  if(ppCalc(v,hi).mg<m) return null;
+  for(let i=0;i<80;i++){ const mid=(lo+hi)/2; if(ppCalc(v,mid).mg>=m) hi=mid; else lo=mid; }
+  return hi;
+}
+function ppPrecoIndiferenca(v,lucroAlvo){        // preço que empata o lucro total com a faixa base
+  const k=PROP.fid; let lo=cvar(k), hi=cvar(k)*10+FXv(v)/v*5;
+  if(ppCalc(v,hi).liq<lucroAlvo) return null;
+  for(let i=0;i<80;i++){ const mid=(lo+hi)/2; if(ppCalc(v,mid).liq>=lucroAlvo) hi=mid; else lo=mid; }
+  return hi;
+}
+function ppLinha(fid){ PROP.fid=fid; PROP.precos={}; renderAll(); }
+function ppModo(m){ PROP.modo=m; renderAll(); }
+function ppMargem(v){ const n=parseNum(v); const el=document.getElementById('pp-margem');
+  if(n===null||n<0||n>90){ if(el) el.classList.add('bad'); return; }
+  if(el) el.classList.remove('bad'); PROP.margem=n/100; renderAll(); }
+function ppPrazo(v){ const n=parseNum(v); if(n===null||n<0) return; PROP.prazo=Math.round(n); renderAll(); }
+function ppSetPreco(v,val){
+  const n=parseNum(val), el=document.getElementById('pp-p-'+v);
+  if(n===null||n<=0){ if(el) el.classList.add('bad'); return; }
+  if(el) el.classList.remove('bad');
+  PROP.precos[v]=n; PROP.modo='preco'; renderAll();
+}
+function ppSugerir(){                            // desconto progressivo a partir do preço base
+  const base=F[PROP.fid].pv, d=[0,0.02,0.04,0.06,0.08];
+  PROP.precos={}; VOLP.forEach((v,i)=>PROP.precos[v]=+(base*(1-d[i])).toFixed(2));
+  PROP.modo='preco'; renderAll(); toast('Tabela preenchida com desconto de até 8%');
+}
+function ppReset(){ PROP.precos={}; PROP.modo='preco'; renderAll(); toast('Voltou ao preço base da linha'); }
+
+function rProp(){
+  const tb=document.getElementById('pptb'); if(!tb) return;
+  // seletor de linha
+  const seg=document.getElementById('pp-linha');
+  if(seg) seg.innerHTML=Object.keys(F).map(k=>`<button class="${k===PROP.fid?'on':''}" onclick="ppLinha('${k}')">${NM[k]}</button>`).join('');
+  document.querySelectorAll('#pp-modo button').forEach(b=>b.classList.toggle('on',b.dataset.modo===PROP.modo));
+  const mb=document.getElementById('pp-margem-box'); if(mb) mb.hidden=PROP.modo!=='margem';
+  sv('pp-margem',(PROP.margem*100).toFixed(0)); sv('pp-prazo',PROP.prazo);
+
+  const base=F[PROP.fid].pv;
+  const linhas=VOLP.map(v=>{
+    let p = PROP.modo==='margem' ? (ppPrecoParaMargem(v,PROP.margem)||ppPrecoDe(v)) : ppPrecoDe(v);
+    p=+p.toFixed(4);
+    return {...ppCalc(v,p), desc:1-p/base};
+  });
+  const base100=linhas[0], melhor=linhas.reduce((a,b)=>b.liq>a.liq?b:a);
+  tb.innerHTML=`<thead><tr>
+      <th>Volume/mês</th><th class="tr">Preço/un</th><th class="tr">Desconto</th><th class="tr">Custo/un</th>
+      <th class="tr">Imposto</th><th class="tr">Lucro/un</th><th class="tr">Lucro líq./mês</th><th class="tr">Margem</th>
+      <th class="tr">vs. 100 mil</th><th class="tr">Produção</th></tr></thead><tbody>`+
+    linhas.map(l=>{
+      const dif=l.liq-base100.liq, campo = PROP.modo==='preco'
+        ? `<input class="pp-pin" type="text" inputmode="decimal" id="pp-p-${l.v}" aria-label="Preço para ${N(l.v)} unidades" value="${fmtNum(l.p)}" oninput="ppSetPreco(${l.v},this.value)" onkeydown="if(event.key==='Enter')this.blur()">`
+        : `<strong>${R(l.p)}</strong>`;
+      return `<tr class="${l===melhor?'melhor':''}">
+        <td><strong>${N(l.v)}</strong><span style="display:block;font-size:.72rem;color:var(--mut)">${(l.v/A.vol).toFixed(1).replace('.',',')}× o volume de hoje</span></td>
+        <td class="tr">${campo}</td>
+        <td class="tr fn">${l.desc>0.0001?'−'+(l.desc*100).toFixed(1).replace('.',',')+'%':'—'}</td>
+        <td class="tr fn">${R(l.cv)}<span style="display:block;font-size:.72rem;color:var(--mut)">+ ${R(l.fixo/l.v)} fixo</span></td>
+        <td class="tr fn">${P(l.al)}</td>
+        <td class="tr fn ${l.liqUn<0?'ruim':''}">${R(l.liqUn)}</td>
+        <td class="tr fn ${l.liq<0?'ruim':''}" style="font-weight:700">${R(l.liq,0)}</td>
+        <td class="tr fn ${l.mg<0?'ruim':''}">${P(l.mg)}</td>
+        <td class="tr fn" style="color:${dif>=0?'var(--gn)':'var(--rd)'}">${l.v===100000?'—':(dif>=0?'+':'−')+R(Math.abs(dif),0)}</td>
+        <td class="tr fn ${l.cabe?'':'ruim'}">${l.bd.toFixed(1).replace('.',',')} b/dia<span style="display:block;font-size:.72rem;color:var(--mut)">${l.cabe?'cabe na estrutura':'acima da capacidade ('+fmtCap(A.cap)+')'}</span></td>
+      </tr>`;}).join('')+'</tbody>';
+
+  // recomendação: até onde dá para descontar sem perder lucro, e qual faixa rende mais
+  const rec=document.getElementById('pp-rec');
+  if(rec){
+    const pi=VOLP.slice(1).map(v=>{const q=ppPrecoIndiferenca(v,base100.liq); return {v,q,d:q?1-q/base:null};}).filter(x=>x.q);
+    const aviso = A.escFix ? '' : `<div class="dalert" style="margin-bottom:10px"><strong>⚠️ O custo fixo não está crescendo com o volume</strong>
+      As faixas acima usam a estrutura de hoje (${R(A.fix,0)}/mês) em todos os volumes, então o lucro de 200 a 300 mil un aparece melhor do que será.
+      <button class="vsb" style="margin-top:8px" onclick="setEscFix(true)">Ligar custo fixo por escala</button></div>`;
+    rec.innerHTML=aviso+`<div class="pp-rec">
+      <b>Até onde dá para descontar</b> — mantendo o lucro de ${R(base100.liq,0)}/mês que você tem a 100 mil un:
+      ${pi.map(x=>`<br>• <b>${N(x.v)} un/mês</b>: preço mínimo ${R(x.q)} (desconto de até ${(x.d*100).toFixed(1).replace('.',',')}%)`).join('')}
+      <br><br>Com os preços da tabela acima, a faixa que mais rende é <b>${N(melhor.v)} un/mês</b>, com ${R(melhor.liq,0)}/mês
+      ${melhor.v!==100000?`(${R(melhor.liq-base100.liq,0)} a mais que a faixa de 100 mil)`:''}.
+      ${linhas.some(l=>!l.cabe)?`<br>⚠️ As faixas marcadas em vermelho exigem mais batches/dia do que a estrutura comporta hoje (${fmtCap(A.cap)}) — precisam de turno extra ou equipamento.`:''}
+    </div>`;
+  }
+  rPropCliente(linhas);
+}
+function ppTextoCliente(linhas){
+  const nm=NM[PROP.fid], peso=fmtPeso(A.peso);
+  const L=['🐟 A Bela Sintra · Bolinho de Bacalhau Congelado',
+    `Linha ${nm} de bacalhau · bolinho de ${peso} g · validade 90 dias congelado`,'',
+    'TABELA DE PREÇO POR VOLUME MENSAL',
+    ...linhas.map(l=>`• ${N(l.v)} un/mês — ${R(l.p)}/un${l.desc>0.0001?` (−${(l.desc*100).toFixed(1).replace('.',',')}%)`:''}`),
+    '', `Condições: pagamento em ${PROP.prazo} dias · frete por conta do cliente · preços sujeitos a reajuste do bacalhau`,
+    `Proposta de ${hojeBR()}`];
+  return L.join('\n');
+}
+function rPropCliente(linhas){
+  const el=document.getElementById('pp-cliente'); if(!el) return;
+  el.innerHTML=`<h4>Bolinho de Bacalhau Congelado · Linha ${NM[PROP.fid]}</h4>
+    <div class="sub2">Bolinho de ${fmtPeso(A.peso)} g · validade 90 dias congelado · proposta de ${hojeBR()}</div>
+    <table><thead><tr><th>Volume mensal</th><th>Preço por unidade</th><th>Desconto</th></tr></thead><tbody>
+    ${linhas.map(l=>`<tr><td>${N(l.v)} un</td><td><strong>${R(l.p)}</strong></td><td>${l.desc>0.0001?'−'+(l.desc*100).toFixed(1).replace('.',',')+'%':'—'}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="sub2" style="margin:10px 0 0">Pagamento em ${PROP.prazo} dias · frete por conta do cliente · preços sujeitos a reajuste do bacalhau</div>`;
+  el.dataset.txt=ppTextoCliente(linhas);
+}
+async function ppCopiar(){
+  const t=document.getElementById('pp-cliente').dataset.txt||'';
+  try{ await navigator.clipboard.writeText(t); toast('Tabela do cliente copiada ✅'); }
+  catch(_){ const a=document.createElement('textarea'); a.value=t; document.body.appendChild(a); a.select();
+    try{ document.execCommand('copy'); toast('Tabela do cliente copiada ✅'); }catch(e){ toast('Não foi possível copiar'); } a.remove(); }
+}
+function ppWhats(){
+  const t=document.getElementById('pp-cliente').dataset.txt||'';
+  window.open((ehCelular()?'https://wa.me/?text=':'https://web.whatsapp.com/send?text=')+encodeURIComponent(t),'_blank');
+}
 function rCap(){
   const el=document.getElementById('capbox'); if(!el) return;
   const k=REF.k, prod=A.vol/(1-A.per), bd=prod/F[k].u/INS.dias, capUn=Math.round(A.cap*INS.dias*F[k].u*(1-A.per));
@@ -2799,7 +2997,7 @@ function renderAll(){
     syncControls(); rPeso(); rRef(); rTextos();
     rAlert(); rVCards(); rBE(); rScl(); rProjTb();
     rCash(); rFichas(); rCompras(); rInsumos(); rTax(); rReal(); rFixBox(); rResist(); rRisco();
-    rFCards(); rSim(); rProj(); rSensi(); rRadar(); rCap(); rPesoCmp(); rVerif(); rotularControles();
+    rFCards(); rSim(); rProj(); rSensi(); rRadar(); rCap(); rPesoCmp(); rProp(); rVerif(); rotularControles();
   } finally { _renderizando=false; }
 }
 
@@ -2812,7 +3010,7 @@ const ORIG={
 recalcFix();recalcF();rFCards();rSim();rProj();renderAll();
 
 /* ===== COMPARTILHAR — PDF, WhatsApp, e-mail e copiar em cada aba ===== */
-const ABAS={diag:'Diagnóstico',form:'Formulações',fcust:'Ficha de Custo & Compras',sim:'Simulador de Canal',proj:'Projeção Mensal',cash:'Caixa & Retorno',tax:'Impostos',risco:'Risco do Cliente',strat:'Estratégia',cons:'Conselheiro'};
+const ABAS={diag:'Diagnóstico',form:'Formulações',fcust:'Ficha de Custo & Compras',sim:'Simulador de Canal',proj:'Projeção Mensal',cash:'Caixa & Retorno',tax:'Impostos',risco:'Risco do Cliente',strat:'Estratégia',prop:'Projeção de Venda',cons:'Conselheiro'};
 const dataBR=()=>new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 const pctx=v=>(v*100).toFixed(1).replace('.',',')+'%';
 function premissasTxt(){
@@ -2859,6 +3057,11 @@ function resumoAba(t){
     L.push(`Linha de referência: ${linha(k)} · prazo ${RISK.pz} dias · ${Math.round(RISK.conc*100)}% do faturamento neste cliente`);
     L.push(`• Valor na rua: ${R(rua,0)} (${INVT()>0?(rua/INVT()).toFixed(1).replace('.',','):'—'}× o investimento)`);
     L.push(`• Lucro em ${RISK.meses} meses: ${R(acum,0)}`); L.push(`• Saldo se houver calote: ${R(acum-rua,0)}`);
+  } else if(t==='prop'){
+    const base=F[PROP.fid].pv;
+    L.push(`Linha ${NM[PROP.fid]} · preço base ${R(base)} · prazo ${PROP.prazo} dias`);
+    VOLP.forEach(v=>{ const p=PROP.modo==='margem'?(ppPrecoParaMargem(v,PROP.margem)||ppPrecoDe(v)):ppPrecoDe(v); const c=ppCalc(v,p);
+      L.push(`• ${N(v)} un/mês — preço ${R(p)}${1-p/base>0.0001?` (−${((1-p/base)*100).toFixed(1).replace('.',',')}%)`:''} · custo ${R(c.cv)}/un · lucro líquido ${R(c.liq,0)}/mês (${pctx(c.mg)}) · ${c.bd.toFixed(1).replace('.',',')} batches/dia${c.cabe?'':' ⚠️ acima da capacidade'}`); });
   } else if(t==='cons'){
     const u=CONS[0];
     if(!u) L.push('Nenhuma análise ainda.');
