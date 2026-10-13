@@ -2787,6 +2787,7 @@ function rReal(){
 const VOLP=[100000,150000,200000,250000,300000];
 const hojeBR=()=>new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
 let PROP={fid:'f25', modo:'preco', margem:0.22, precos:{}, prazo:45};
+let PPTXT={};   // texto cru do campo que está sendo digitado (deixa digitar centavos em paz)
 const ppPrecoDe = v => isFinite(PROP.precos[v]) ? PROP.precos[v] : F[PROP.fid].pv;
 function ppCalc(v,p){
   const k=PROP.fid, cv=cvar(k), fixo=FXv(v), rec=p*v;
@@ -2806,27 +2807,33 @@ function ppPrecoIndiferenca(v,lucroAlvo){        // preço que empata o lucro to
   for(let i=0;i<80;i++){ const mid=(lo+hi)/2; if(ppCalc(v,mid).liq>=lucroAlvo) hi=mid; else lo=mid; }
   return hi;
 }
-function ppLinha(fid){ PROP.fid=fid; PROP.precos={}; renderAll(); }
+function ppLinha(fid){ PROP.fid=fid; PROP.precos={}; ppLimpaTxt(); renderAll(); }
 function ppModo(m){ PROP.modo=m; renderAll(); }
 function ppMargem(v){ const n=parseNum(v); const el=document.getElementById('pp-margem');
   if(n===null||n<0||n>90){ if(el) el.classList.add('bad'); return; }
   if(el) el.classList.remove('bad'); PROP.margem=n/100; renderAll(); }
 function ppPrazo(v){ const n=parseNum(v); if(n===null||n<0) return; PROP.prazo=Math.round(n); renderAll(); }
 function ppSetPreco(v,val){
+  PPTXT[v]=val;                                   // guarda o que foi digitado, do jeito que foi digitado
   const n=parseNum(val), el=document.getElementById('pp-p-'+v);
-  if(n===null||n<=0){ if(el) el.classList.add('bad'); return; }
+  if(n===null||n<=0){ if(el) el.classList.add('bad'); return; }   // "2," ainda não é preço: espera o resto
   if(el) el.classList.remove('bad');
   PROP.precos[v]=n; PROP.modo='preco'; renderAll();
 }
+function ppBlur(v){ delete PPTXT[v]; renderAll(); }               // ao sair do campo, formata bonito
+function ppLimpaTxt(){ PPTXT={}; }
 function ppSugerir(){                            // desconto progressivo a partir do preço base
   const base=F[PROP.fid].pv, d=[0,0.02,0.04,0.06,0.08];
-  PROP.precos={}; VOLP.forEach((v,i)=>PROP.precos[v]=+(base*(1-d[i])).toFixed(2));
+  PROP.precos={}; ppLimpaTxt(); VOLP.forEach((v,i)=>PROP.precos[v]=+(base*(1-d[i])).toFixed(2));
   PROP.modo='preco'; renderAll(); toast('Tabela preenchida com desconto de até 8%');
 }
-function ppReset(){ PROP.precos={}; PROP.modo='preco'; renderAll(); toast('Voltou ao preço base da linha'); }
+function ppReset(){ PROP.precos={}; ppLimpaTxt(); PROP.modo='preco'; renderAll(); toast('Voltou ao preço base da linha'); }
 
 function rProp(){
   const tb=document.getElementById('pptb'); if(!tb) return;
+  // quem está sendo digitado agora: devolve o foco e o cursor depois de redesenhar
+  const ae=document.activeElement, focoId=(ae&&ae.id&&ae.id.indexOf('pp-p-')===0)?ae.id:null;
+  const cur=focoId?ae.selectionStart:null;
   // seletor de linha
   const seg=document.getElementById('pp-linha');
   if(seg) seg.innerHTML=Object.keys(F).map(k=>`<button class="${k===PROP.fid?'on':''}" onclick="ppLinha('${k}')">${NM[k]}</button>`).join('');
@@ -2847,7 +2854,7 @@ function rProp(){
       <th class="tr">vs. 100 mil</th><th class="tr">Produção</th></tr></thead><tbody>`+
     linhas.map(l=>{
       const dif=l.liq-base100.liq, campo = PROP.modo==='preco'
-        ? `<input class="pp-pin" type="text" inputmode="decimal" id="pp-p-${l.v}" aria-label="Preço para ${N(l.v)} unidades" value="${fmtNum(l.p)}" oninput="ppSetPreco(${l.v},this.value)" onkeydown="if(event.key==='Enter')this.blur()">`
+        ? `<input class="pp-pin" type="text" inputmode="decimal" id="pp-p-${l.v}" aria-label="Preço para ${N(l.v)} unidades" value="${esc(focoId==='pp-p-'+l.v&&PPTXT[l.v]!=null?PPTXT[l.v]:fmtNum(l.p))}" oninput="ppSetPreco(${l.v},this.value)" onblur="ppBlur(${l.v})" onkeydown="if(event.key==='Enter')this.blur()">`
         : `<strong>${R(l.p)}</strong>`;
       return `<tr class="${l===melhor?'melhor':''}">
         <td><strong>${N(l.v)}</strong><span style="display:block;font-size:.72rem;color:var(--mut)">${(l.v/A.vol).toFixed(1).replace('.',',')}× o volume de hoje</span></td>
@@ -2876,6 +2883,10 @@ function rProp(){
       ${melhor.v!==100000?`(${R(melhor.liq-base100.liq,0)} a mais que a faixa de 100 mil)`:''}.
       ${linhas.some(l=>!l.cabe)?`<br>⚠️ As faixas marcadas em vermelho exigem mais batches/dia do que a estrutura comporta hoje (${fmtCap(A.cap)}) — precisam de turno extra ou equipamento.`:''}
     </div>`;
+  }
+  if(focoId){                                   // volta o cursor para onde estava
+    const el=document.getElementById(focoId);
+    if(el){ el.focus(); try{ el.setSelectionRange(cur,cur); }catch(_){} }
   }
   rPropCliente(linhas);
 }
