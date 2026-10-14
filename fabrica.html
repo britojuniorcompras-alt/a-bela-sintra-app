@@ -1338,7 +1338,8 @@ body:not(.foco) .somenteFoco{display:none!important}
       <div style="padding:13px 19px">
         <div id="pp-cliente" class="pp-cli"></div>
         <div class="pp-ctrl" style="margin:12px 0 0">
-          <button class="shb" onclick="ppCopiar()">📋 Copiar tabela do cliente</button>
+          <button class="shb pdf" onclick="ppPDF(this)">📄 PDF da tabela do cliente</button>
+          <button class="shb" onclick="ppCopiar()">📋 Copiar texto</button>
           <button class="shb wa" onclick="ppWhats()">💬 Enviar por WhatsApp</button>
           <span class="pp-tag">Prazo de pagamento:</span>
           <span class="pinw"><input class="pin" type="text" inputmode="numeric" id="pp-prazo" aria-label="Prazo de pagamento" value="45" style="width:46px" oninput="ppPrazo(this.value)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">dias</span></span>
@@ -2969,6 +2970,74 @@ function rPropCliente(linhas){
     </tbody></table>
     <div class="sub2" style="margin:10px 0 0">Pagamento em ${PROP.prazo} dias · frete por conta do cliente · preços sujeitos a reajuste do bacalhau</div>`;
   el.dataset.txt=ppTextoCliente(linhas);
+}
+// PDF só com a tabela do cliente — sem custo, sem margem, sem nada interno
+async function gerarPDFCliente(){
+  const linhas=VOLP.map(v=>{
+    const p = PROP.modo==='margem' ? (ppPrecoParaMargem(v,PROP.margem)||ppPrecoDe(v)) : ppPrecoDe(v);
+    const base=F[PROP.fid].pv;
+    return {v, p:+p.toFixed(4), desc:1-p/base};
+  });
+  const html=document.documentElement, temaAntes=html.getAttribute('data-theme');
+  html.setAttribute('data-theme','light');
+  const fora=document.createElement('div'); fora.id='pdfpalco';
+  const palco=document.createElement('div'); palco.className='pdfdoc'; fora.appendChild(palco);
+  const logo=document.querySelector('.hd-logo');
+  palco.innerHTML=`
+    <div style="display:flex;align-items:center;gap:14px;border-bottom:2px solid #B5781A;padding:0 0 12px;margin-bottom:18px">
+      ${logo?`<img src="${logo.src}" style="width:52px;height:52px">`:''}
+      <div><div style="font-family:'Playfair Display',serif;font-weight:700;color:#B5781A;font-size:19px">A Bela Sintra · Boutique de Peixes</div>
+        <div style="font-size:12px;color:#547A93">Bolinho de Bacalhau Congelado · Linha ${NM[PROP.fid]} · bolinho de ${fmtPeso(A.peso)} g · validade 90 dias congelado</div></div>
+    </div>
+    <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:4px">Tabela de preço por volume mensal</div>
+    <div style="font-size:12px;color:#547A93;margin-bottom:14px">Proposta de ${hojeBR()}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <thead><tr style="background:#F2F5FA">
+        <th style="text-align:left;padding:9px 10px;border-bottom:2px solid #CDD8E8;font-size:11px;letter-spacing:.05em;color:#547A93">VOLUME MENSAL</th>
+        <th style="text-align:right;padding:9px 10px;border-bottom:2px solid #CDD8E8;font-size:11px;letter-spacing:.05em;color:#547A93">PREÇO POR UNIDADE</th>
+        <th style="text-align:right;padding:9px 10px;border-bottom:2px solid #CDD8E8;font-size:11px;letter-spacing:.05em;color:#547A93">DESCONTO</th>
+      </tr></thead>
+      <tbody>${linhas.map(l=>`<tr>
+        <td style="padding:9px 10px;border-bottom:1px solid #E3EAF3">${N(l.v)} unidades</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #E3EAF3;text-align:right;font-weight:700">${R(l.p)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #E3EAF3;text-align:right">${l.desc>0.0001?'−'+(l.desc*100).toFixed(1).replace('.',',')+'%':'—'}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+    <div style="margin-top:16px;font-size:12.5px;color:#192C3B;background:#FAF0DC;border-left:4px solid #B5781A;border-radius:8px;padding:11px 13px;line-height:1.6">
+      <b>Condições</b><br>
+      Pagamento em ${PROP.prazo} dias · frete por conta do cliente<br>
+      Preços sujeitos a reajuste conforme variação do bacalhau · proposta válida por 15 dias
+    </div>
+    <div style="margin-top:22px;padding-top:12px;border-top:1px solid #CDD8E8;font-size:11.5px;color:#547A93;line-height:1.6">
+      A Bela Cintra Delivery Ltda · Rua Bela Cintra, 2325 · Cerqueira César · São Paulo/SP<br>
+      Contato: (11) 3086-2510 · @restauranteabelasintra
+    </div>`;
+  document.body.appendChild(fora);
+  const nome=`Tabela-Preco-Bolinho-Bacalhau-L${PROP.fid.slice(1)}-${new Date().toISOString().slice(0,10)}.pdf`;
+  try{
+    const h2p=await carregarH2P();
+    const opt={margin:[12,12,14,12],filename:nome,image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
+    const blob=await h2p().set(opt).from(palco).outputPdf('blob');
+    return {blob,nome};
+  } finally {
+    fora.remove();
+    if(temaAntes===null) html.removeAttribute('data-theme'); else html.setAttribute('data-theme',temaAntes);
+  }
+}
+async function ppPDF(btn){
+  ocupado(btn,true,'Gerando PDF…');
+  try{
+    const {blob,nome}=await gerarPDFCliente();
+    const file=new File([blob],nome,{type:'application/pdf'});
+    if(ehCelular() && navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file],title:'Tabela de preço — Bolinho de Bacalhau'}); }
+      catch(e){ if(e.name!=='AbortError') throw e; }
+    } else { baixarBlob(blob,nome); toast('PDF da tabela baixado ✅'); }
+  }catch(e){
+    toast('Gerador de PDF indisponível — tente novamente com internet');
+  }finally{ ocupado(btn,false); }
 }
 async function ppCopiar(){
   const t=document.getElementById('pp-cliente').dataset.txt||'';
