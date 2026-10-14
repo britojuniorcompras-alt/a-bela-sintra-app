@@ -973,10 +973,12 @@ body:not(.foco) .somenteFoco{display:none!important}
     </div>
 
     <div class="dalert">
-      <strong>🚨 Alerta estratégico: o Simples deixa de compensar acima de R$ 3,6 milhões/ano</strong>
-      Acima de R$ 3,6 mi/ano (sublimite) o ICMS sai do Simples e passa a ser pago por fora — a carga total passa do Lucro Presumido, então o painel usa ~15,5% a partir daí. O teto absoluto do Simples é R$ 4,8 mi/ano.
-      Com os preços atuais isso acontece a partir de <span id="tx-subl"></span>. <strong>O lucro cai um degrau ao cruzar essa linha</strong> — como o regime vale para o ano inteiro, planeje o volume do Habib's para ficar claramente abaixo ou claramente acima dela.
-      Não é um problema — é uma decisão que precisa estar planejada com o contador <strong>antes</strong> de acontecer, porque o desenquadramento no meio do ano gera passivo retroativo.
+      <strong>🚨 O imposto tem três degraus — e o painel só conhece dois</strong>
+      <strong>Zona 1, até R$ 3,6 mi/ano (R$ 300 mil/mês):</strong> Simples cheio, ICMS dentro da guia, carga de 11,7% a 12,3%. É aqui que a margem de ~22% existe.
+      <strong>Zona 2, de R$ 3,6 a 4,8 mi:</strong> continua no Simples, mas o <b>ICMS sai da guia</b> e vai para o regime normal de SP (18% menos créditos). Carga real de <b>21% a 24%</b> — o degrau mais caro e o menos conhecido.
+      <strong>Zona 3, acima de R$ 4,8 mi:</strong> fora do Simples, Lucro Presumido, carga de ~20,4% <b>mais o INSS patronal</b> sobre a folha, que no Simples estava embutido.
+      Com os preços atuais a Zona 2 começa em <span id="tx-subl"></span>. <b>Atenção: o cálculo do painel ainda usa 15,5% acima do sublimite</b>, o que é otimista em cerca de 8 pontos — qualquer proposta acima de R$ 300 mil/mês de faturamento precisa de conta à parte antes de ir ao cliente. Veja o estudo tributário completo e as perguntas para o contador.
+      Regra dos 20%: excesso de até 20% muda o regime em 1º de janeiro seguinte; acima de 20%, já no mês seguinte. Desenquadramento no meio do ano gera passivo retroativo — decida com o contador <b>antes</b>.
     </div>
 
     <!-- Composição dos impostos -->
@@ -991,9 +993,13 @@ body:not(.foco) .somenteFoco{display:none!important}
           <div class="mr"><span class="ml">ICMS SP nominal</span><span class="mv">18%</span></div>
           <div class="mr"><span class="ml">ICMS c/ redução Art. 39</span><span class="mv" style="color:var(--gn)">12%</span></div>
           <div class="mr" style="border:none"><span class="ml">Substituição Tributária</span><span class="mv" style="font-size:.8rem;color:var(--ac)">Art. 313-W ⚠️</span></div>
-          <div class="prec-box" style="margin-top:14px">
-            <h4>✅ Boa notícia na ST</h4>
-            <p style="font-size:.81rem">A Substituição Tributária <strong>não se aplica</strong> quando você vende direto para restaurantes e bares que usarão o produto como insumo de refeição (Resposta à Consulta 18546/2018). Como seu foco é B2B para food service, boa parte das vendas escapa da ST.</p>
+          <div class="mr" style="border:none"><span class="ml">CEST</span><span class="mv">17.080.00</span></div>
+          <div class="dalert" style="margin:14px 0 0">
+            <strong>⚠️ ST: depende do que o cliente faz com o produto</strong>
+            A Sefaz-SP decide pelo <b>destino da mercadoria</b>, não pelo tipo de cliente. Restaurante que usa o bolinho no preparo de refeição: <b>não tem ST</b>. Comprador que <b>redistribui ou revende</b> o produto como ele chegou: <b>tem ST, e quem retém somos nós</b> (Art. 313-W RICMS/SP · RC 11997/2016).
+            O Habib's recebe em central de produção e distribui para as lojas — isso puxa para o lado da revenda. <b>Trate como "tem ST" até o contador dizer o contrário.</b>
+            Conta pronta: IVA-ST de 50,81% a ~60% sobre R$ <span id="tx-stpv">—</span> dá <b>R$ <span id="tx-stun">—</span> por unidade</b> de ICMS-ST retido (<span id="tx-stpc">—</span> do preço), ou <b><span id="tx-stmes">—</span>/mês</b> no volume de hoje.
+            A ST é cobrada <b>por fora</b>, somada à nota — se não estiver escrito na proposta, sai da nossa margem. Toda proposta precisa da frase "preços acrescidos de ICMS-ST quando devido".
           </div>
         </div>
       </div>
@@ -1011,12 +1017,16 @@ body:not(.foco) .somenteFoco{display:none!important}
               <tr><td>COFINS cumulativo</td><td class="tr fn">3,00%</td><td class="tr fn">3,00%</td></tr>
               <tr><td>IPI</td><td class="tr fn">alimento isento</td><td class="tr fn" style="color:var(--gn)">0,00%</td></tr>
               <tr style="background:var(--surf2)"><td><strong>Subtotal Federal</strong></td><td class="tr fn">—</td><td class="tr fn"><strong>6,23%</strong></td></tr>
-              <tr><td>ICMS SP (líq. créditos)</td><td class="tr fn">12% − créditos entrada</td><td class="tr fn">~9,3%</td></tr>
-              <tr style="background:var(--surf2)"><td><strong>CARGA TOTAL</strong></td><td class="tr fn">—</td><td class="tr fn" style="color:var(--ac);font-weight:700"><strong>~15,5%</strong></td></tr>
+              <tr><td>ICMS SP (líq. créditos)</td><td class="tr fn">18% − crédito ~4%</td><td class="tr fn">~14,0%</td></tr>
+              <tr><td>INSS patronal</td><td class="tr fn">~26,8% da folha</td><td class="tr fn">~1,0 a 1,4%</td></tr>
+              <tr style="background:var(--surf2)"><td><strong>CARGA TOTAL</strong></td><td class="tr fn">—</td><td class="tr fn" style="color:var(--ac);font-weight:700"><strong>~20,4%</strong></td></tr>
             </tbody>
           </table>
           <p style="font-size:.77rem;color:var(--mut);padding:11px 0 5px">
-            ⚠️ A redução do ICMS para 12% <strong>não vale</strong> em vendas para empresas do Simples Nacional nem para consumidor final — nesses casos volta a 18%. Muitos restaurantes pequenos são Simples.
+            ⚠️ Duas armadilhas no ICMS. A redução para 12% <strong>não vale</strong> para empresa do Simples nem para consumidor final — nesses casos volta a 18%. E <strong>fornecedor do Simples não gera crédito</strong>: o bacalhau é 35% do preço de venda, então o crédito de 4% usado aqui só existe se as compras vierem de empresa do regime normal. Sem crédito, o ICMS vai de 14% para 18% da receita.
+          </p>
+          <p style="font-size:.77rem;color:var(--mut);padding:0 0 5px">
+            O INSS patronal é o item que passa desapercebido: no Simples ele está dentro da guia única (CPP), fora do Simples é despesa nova sobre a folha inteira.
           </p>
         </div>
       </div>
@@ -1235,7 +1245,7 @@ body:not(.foco) .somenteFoco{display:none!important}
           <div class="pp ph2">Fase 2<br>6–18m</div>
           <div>
             <strong>Ampliação e Transição Fiscal · 100k → 200k un/mês</strong><br>
-            <span style="font-size:.84rem;color:var(--mut)">Aqui acontecem duas coisas ao mesmo tempo, e ambas custam dinheiro: você <strong>passa do sublimite de R$ 3,6 mi do Simples</strong> (migração para Lucro Presumido, carga sobe de ~12% para ~15,5%) e precisa <strong>dobrar a equipe e o espaço</strong> (custo fixo de <span id="tx-fix2"></span> para ~<span id="tx-f200b"></span>). Planeje o caixa para absorver as duas coisas juntas.</span>
+            <span style="font-size:.84rem;color:var(--mut)">Aqui acontecem duas coisas ao mesmo tempo, e ambas custam dinheiro: você <strong>passa do sublimite de R$ 3,6 mi do Simples</strong> (o ICMS sai da guia única e a carga real sobe de ~12% para a casa dos 21% a 24%) e precisa <strong>dobrar a equipe e o espaço</strong> (custo fixo de <span id="tx-fix2"></span> para ~<span id="tx-f200b"></span>). Planeje o caixa para absorver as duas coisas juntas.</span>
           </div>
         </div>
         <div class="prow">
@@ -2459,6 +2469,10 @@ function rTextos(){
     subl:K.map(k=>{const v=SUBLIM/12/F[k].pv; return N(Math.round(v/500)*500)+' un/mês (linha '+NM[k]+')';}).join(' · '),
     sublb:K.map(k=>{const v=SUBLIM/12/F[k].pv; return N(Math.round(v/500)*500)+' un/mês ('+NM[k]+')';}).join(' · '),
     pvlinhas:K.map(k=>'a linha '+NM[k]+' a '+R(F[k].pv)).join(' e '), pvplural:K.length>1?'m':'',
+    stpv:F[RK].pv.toFixed(2).replace('.',','),
+    stun:(F[RK].pv*0.5081*0.18).toFixed(4).replace('.',',')+' a '+(F[RK].pv*0.6023*0.18).toFixed(4).replace('.',','),
+    stpc:'9,1% a 10,8%',
+    stmes:R(F[RK].pv*0.5081*0.18*A.vol,0)+' a '+R(F[RK].pv*0.6023*0.18*A.vol,0),
     ...Object.fromEntries(K.flatMap(k=>{const v=SUBLIM/12/F[k].pv, t=N(Math.round(v/500)*500)+' un/mês'; return [['sl'+k.slice(1),t],['sl'+k.slice(1)+'b',t]];})),
   };
   for(const [id,v] of Object.entries(T)) st('tx-'+id, v);
