@@ -396,6 +396,12 @@ body.com-rasc .shtoast{bottom:104px}
 .pp-seg button{font:inherit;font-size:.8rem;font-weight:700;padding:7px 14px;border:0;background:transparent;color:var(--mut);cursor:pointer}
 .pp-seg button.on{background:var(--ac);color:#fff}
 .pp-tag{font-size:.76rem;color:var(--mut)}
+.bac-in{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px 14px;margin-bottom:12px}
+.bac-in label{display:flex;flex-direction:column;gap:5px;font-size:.8rem;font-weight:600;color:var(--txt)}
+.bac-in label small{font-weight:400;color:var(--mut);font-size:.72rem}
+.bac-in .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--ac);color:#fff;font-size:.72rem;margin-right:6px}
+.bac-vd{border-radius:8px;padding:10px 13px;margin:4px 0 12px;font-size:.88rem;line-height:1.5;border-left:5px solid var(--mut);background:var(--surf2)}
+.bac-vd.bom{border-left-color:var(--gn);background:var(--gnl)} .bac-vd.ruim{border-left-color:var(--rd)}
 .neg-g{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 12px}
 @media(max-width:700px){.neg-g{grid-template-columns:1fr}}
 .neg-b{border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;background:var(--surf2)}
@@ -765,6 +771,33 @@ body:not(.foco) .somenteFoco{display:none!important}
             Quantidades já incluem a quebra de produção — é o que entra no pedido de compra, não o que sai como produto acabado. A coluna de gasto usa a <span class="refnm" data-fmt="Linha"></span> (linha de referência).
           </p>
         </div>
+      </div>
+    </div>
+
+    <div class="card" id="bac-card" style="margin-bottom:16px">
+      <div class="sec-ttl">🐟 Bacalhau: rendimento e quantidade certa a comprar <span style="font-weight:400;font-size:.8rem;color:var(--mut)">· comprar sujo e limpar aqui, ou comprar já limpo?</span></div>
+      <div style="padding:13px 19px">
+        <p style="font-size:.84rem;color:var(--mut);margin:0 0 12px">Hoje o painel usa o bacalhau <b>já limpo e processado</b> a <b id="bac-proc">—</b>/kg. Faça um teste com um lote: pese o bacalhau sujo, limpe (dessalgar, tirar pele e espinhas) e pese de novo. O painel calcula o rendimento, o custo real do kg limpo e quanto comprar.</p>
+        <div class="bac-in">
+          <label><span><span class="n">1</span>Preço do bacalhau sujo</span>
+            <span class="pinw"><span class="cur">R$</span><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="bac-sujo" aria-label="Preço do bacalhau sujo por kg" style="width:84px" oninput="setBac('sujo',this.value)" onblur="rBacCampos(true)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">/kg</span></span>
+            <small>o que você paga ao fornecedor, por kg</small></label>
+          <label><span><span class="n">2</span>Peso sujo do teste</span>
+            <span class="pinw"><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="bac-ps" aria-label="Peso do bacalhau sujo no teste, em kg" style="width:84px" oninput="setBac('ps',this.value)" onblur="rBacCampos(true)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">kg</span></span>
+            <small>quanto pesava antes de limpar</small></label>
+          <label><span><span class="n">3</span>Peso depois de limpo</span>
+            <span class="pinw"><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="bac-pl" aria-label="Peso do bacalhau depois de limpo, em kg" style="width:84px" oninput="setBac('pl',this.value)" onblur="rBacCampos(true)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">kg</span></span>
+            <small>dessalgado, sem pele e sem espinha, pronto para a massa</small></label>
+          <label><span><span class="n">4</span>Custo para limpar <small style="display:inline">(opcional)</small></span>
+            <span class="pinw"><span class="cur">R$</span><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="bac-cl" aria-label="Custo para limpar, por kg limpo" style="width:84px" oninput="setBac('cl',this.value)" onblur="rBacCampos(true)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">/kg limpo</span></span>
+            <small>mão de obra, água e gás da dessalga</small></label>
+        </div>
+        <div id="bac-out"></div>
+        <label class="opt" for="ck-bacusar" style="margin-top:6px">
+          <input type="checkbox" id="ck-bacusar" onchange="setBacUsar(this.checked)">
+          <span>Usar o bacalhau comprado sujo no custo do painel
+            <small>Ligado, o custo do bacalhau em todas as abas passa a ser o custo do kg limpo calculado acima, e a lista de compras mostra o bacalhau sujo. Desligado, volta ao preço do bacalhau já limpo.</small></span>
+        </label>
       </div>
     </div>
 
@@ -1765,8 +1798,9 @@ const instantaneo = () => ({
   insumos:REC.map(i=>({id:i.id,preco:i.preco})),
   fixos:FIX.map(i=>({id:i.id,valor:i.valor})),
   precos:Object.fromEntries(Object.keys(F).map(k=>[k,F[k].pv])),
-  A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses,peso:A.peso,cap:A.cap,rbt12:A.rbt12,escFix:A.escFix,obra:A.obra,obraMeses:A.obraMeses,foco:A.foco},
+  A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses,peso:A.peso,cap:A.cap,rbt12:A.rbt12,escFix:A.escFix,obra:A.obra,obraMeses:A.obraMeses,foco:A.foco,credICMS:A.credICMS},
   dias:INS.dias,
+  bacalhau:{...BAC},
   canais:{...sim.pr},
   producao:{mx25:prj.mx25,mx35:prj.mx35},
   ref:REF.k,
@@ -1817,6 +1851,10 @@ function aplicar(d){
     A.foco = F[A.foco] ? A.foco : '';
     if(A.foco){ REF.k=A.foco; sim.fid=A.foco; PROP.fid=A.foco; }
     if(isFinite(d.dias)) INS.dias=d.dias;
+    { const b=d.bacalhau||{}, ok=x=>isFinite(x)&&x>0;
+      BAC.sujo=ok(b.sujo)?+b.sujo:null; BAC.ps=ok(b.ps)?+b.ps:null; BAC.pl=ok(b.pl)?+b.pl:null;
+      BAC.cl=(isFinite(b.cl)&&b.cl>=0)?+b.cl:0; BAC.proc=ok(b.proc)?+b.proc:null; BAC.usar=!!b.usar&&!!bacTeste();
+      if(BAC.usar) REC.find(x=>x.id==='bac').preco=+bacTeste().custo.toFixed(4); }
     for(const k in (d.canais||{})) if(k in sim.pr && isFinite(d.canais[k])) sim.pr[k]=d.canais[k];
     const p=d.producao||{}; ['mx25','mx35'].forEach(k=>{ if(isFinite(p[k])) prj[k]=p[k]; });
     const pp=d.proposta||{};
@@ -2582,7 +2620,64 @@ function fmtPin(id){
   const el=document.getElementById('pin-'+id), it=REC.find(x=>x.id===id);
   if(el&&it){ el.value=fmtNum(it.preco); el.classList.remove('bad'); }
 }
+// ===== BACALHAU: teste de rendimento (sujo → limpo) =====
+const BAC={sujo:null, ps:null, pl:null, cl:0, usar:false, proc:null};
+function bacTeste(){                         // null enquanto o teste estiver incompleto
+  if(!(BAC.sujo>0 && BAC.ps>0 && BAC.pl>0)) return null;
+  const rend=BAC.pl/BAC.ps;
+  return {rend, custo:BAC.sujo/rend+(BAC.cl||0)};
+}
+const bacProc=()=>BAC.usar ? (BAC.proc||REC.find(x=>x.id==='bac').preco) : REC.find(x=>x.id==='bac').preco;
+function aplicaBac(){                        // com a opção ligada, o custo do bacalhau é o do kg limpo calculado
+  const it=REC.find(x=>x.id==='bac'), t=bacTeste();
+  if(BAC.usar && t){ it.preco=+t.custo.toFixed(4); }
+}
+function setBac(k,v){
+  const n=parseNum(v), el=document.getElementById('bac-'+k);
+  const vazio=String(v).trim()==='';
+  if(vazio){ BAC[k]=(k==='cl'?0:null); if(el) el.classList.remove('bad'); }
+  else if(n===null||n<0||(k!=='cl'&&n===0)||n>(k==='sujo'||k==='cl'?5000:100000)){ if(el) el.classList.add('bad'); return; }
+  else { if(el) el.classList.remove('bad'); BAC[k]=n; }
+  if(BAC.usar && !bacTeste()) setBacUsar(false);
+  aplicaBac(); recalcF(); renderAll(); rFCards(); rSim(); rProj();
+}
+function setBacUsar(on){
+  const it=REC.find(x=>x.id==='bac');
+  if(on){ if(!bacTeste()){ toast('Preencha o preço sujo e os dois pesos do teste primeiro'); const ck=document.getElementById('ck-bacusar'); if(ck) ck.checked=false; return; }
+    if(!BAC.usar) BAC.proc=it.preco; BAC.usar=true; aplicaBac(); }
+  else { if(BAC.usar && BAC.proc>0) it.preco=BAC.proc; BAC.usar=false; }
+  recalcF(); renderAll(); rFCards(); rSim(); rProj();
+}
+function rBacCampos(forca){
+  const ae=document.activeElement, f2=x=>x>0?x.toFixed(2).replace('.',','):'';
+  [['sujo',BAC.sujo],['ps',BAC.ps],['pl',BAC.pl],['cl',BAC.cl]].forEach(([k,v])=>{ const el=document.getElementById('bac-'+k); if(el&&el!==ae) el.value=f2(v); });
+  const ck=document.getElementById('ck-bacusar'); if(ck) ck.checked=BAC.usar;
+}
+function rBac(){
+  const out=document.getElementById('bac-out'); if(!out) return;
+  const proc=bacProc(), t=bacTeste(), RK=REF.k, q=1/(1-A.per);
+  const pe=document.getElementById('bac-proc'); if(pe) pe.textContent=R(proc);
+  rBacCampos(false);
+  if(!t){ out.innerHTML=`<p class="cons-vaz" style="margin:0 0 6px">Preencha os passos 1, 2 e 3 para ver o rendimento e a quantidade a comprar.</p>`; return; }
+  const limpoMes=A.vol*q/F[RK].u*F[RK].bac, sujoMes=limpoMes/t.rend;
+  const dif=t.custo-proc, difMes=dif*limpoMes;
+  const vd = Math.abs(dif)<0.005 ? `<div class="bac-vd">Dá no mesmo: o kg limpo sai pelo mesmo preço do bacalhau já limpo.</div>`
+    : dif<0 ? `<div class="bac-vd bom">✅ <b>Compensa comprar sujo e limpar aqui.</b> O kg limpo sai a ${R(t.custo)}, ${R(-dif)} mais barato que o já limpo (${R(proc)}). Na linha ${NM[RK]} isso dá <b>${R(-difMes,0)} a menos por mês</b>.</div>`
+    : `<div class="bac-vd ruim">⚠️ <b>Comprar já limpo sai mais barato.</b> Limpando aqui, o kg limpo custa ${R(t.custo)}, ${R(dif)} acima do já limpo (${R(proc)}): <b>${R(difMes,0)} a mais por mês</b> na linha ${NM[RK]}.</div>`;
+  const linhas=LK().map(k=>{ const b=A.vol*q/F[k].u, bd=b/INS.dias;
+    return `<tr><td><strong>${NM[k]}</strong></td><td class="tr fn">${fmtNum(F[k].bac,2)} kg</td><td class="tr fn" style="font-weight:700;color:var(--ac)">${fmtNum(F[k].bac/t.rend,2)} kg</td>
+      <td class="tr fn">${N(Math.round(F[k].bac/t.rend*bd))} kg</td><td class="tr fn" style="font-weight:700">${N(Math.round(b*F[k].bac/t.rend))} kg</td></tr>`; }).join('');
+  out.innerHTML=`<div class="m4" style="margin-bottom:8px">
+      <div class="bm"><div class="bml">Rendimento</div><div class="bmv">${(t.rend*100).toFixed(1).replace('.',',')}%</div><div class="bms">cada 1 kg sujo vira ${fmtNum(t.rend,3)} kg limpo</div></div>
+      <div class="bm"><div class="bml">Custo do kg limpo</div><div class="bmv" style="color:${dif<=0?'var(--gn)':'var(--rd)'}">${R(t.custo)}</div><div class="bms">já limpo: ${R(proc)}</div></div>
+      <div class="bm"><div class="bml">Comprar por mês</div><div class="bmv" style="font-size:1.15rem">${N(Math.round(sujoMes))} kg</div><div class="bms">sujo · rende ${N(Math.round(limpoMes))} kg limpo</div></div>
+      <div class="bm"><div class="bml">Gasto com bacalhau</div><div class="bmv" style="font-size:1.15rem">${R(sujoMes*BAC.sujo,0)}</div><div class="bms">por mês, só o peixe sujo</div></div>
+    </div>${vd}
+    <div class="tw"><table class="dtbl"><thead><tr><th>Linha</th><th class="tr">Limpo por batch</th><th class="tr">Sujo por batch</th><th class="tr">Sujo por dia</th><th class="tr">Sujo por mês</th></tr></thead><tbody>${linhas}</tbody></table></div>
+    <p style="font-size:.77rem;color:var(--mut);margin:8px 0 0">Para ${N(A.vol)} un/mês, com a quebra de produção. Faça o teste com pelo menos 5 kg e repita com cada lote novo: o rendimento muda com o tamanho do peixe e com o ponto de sal.</p>`;
+}
 function setPreco(id,v){
+  if(id==='bac' && BAC.usar){ toast('O bacalhau está sendo calculado pelo teste de rendimento — desligue a opção para digitar o preço'); return; }
   const it=REC.find(x=>x.id===id); if(!it) return;
   const el=document.getElementById('pin-'+id);
   const n=parseNum(v);
@@ -2831,6 +2926,7 @@ function rFixBox(){
 }
 
 function rInsumos(){
+  rBac();
   const el=document.getElementById('insumostb'); if(!el) return;
   if(el.contains(document.activeElement)) return;   // nao redesenha enquanto o usuario digita
   el.innerHTML=`<thead><tr><th>Ingrediente</th><th class="tr">Qtd/batch</th><th class="tr">Preço</th></tr></thead><tbody>`
@@ -2843,7 +2939,7 @@ function rInsumos(){
         <td class="tr" style="padding-right:19px"><span class="pinw"><span class="cur">R$</span><input class="pin" type="text"
              inputmode="decimal" autocomplete="off" id="pin-${it.id}" aria-label="Preço de ${it.nome}"
              value="${fmtNum(it.preco)}" oninput="setPreco('${it.id}',this.value)" onblur="fmtPin('${it.id}')"
-             onkeydown="if(event.key==='Enter')this.blur()"></span></td></tr>`).join('')
+             onkeydown="if(event.key==='Enter')this.blur()"${it.id==='bac'&&BAC.usar?' readonly title="Calculado pelo teste de rendimento (bacalhau comprado sujo)"':''}></span>${it.id==='bac'&&BAC.usar?'<span style="display:block;font-size:.68rem;color:var(--ac)">kg limpo · comprado sujo</span>':''}</td></tr>`).join('')
     + `</tbody>`;
 }
 
@@ -2890,20 +2986,22 @@ function rCompras(){
   const RK=REF.k, f=F[RK], bt35=A.vol*q/f.u, LN='Linha '+RK.slice(1);
 
   kp.innerHTML=`
-    <div class="bm"><div class="bml">Bacalhau/mês</div><div class="bmv" style="font-size:1.1rem;color:var(--ac)">${N(Math.round(bt35*f.bac))} kg</div><div class="bms">ref. ${LN}</div></div>
+    <div class="bm"><div class="bml">Bacalhau/mês</div><div class="bmv" style="font-size:1.1rem;color:var(--ac)">${N(Math.round(bt35*f.bac/((BAC.usar&&bacTeste())?bacTeste().rend:1)))} kg</div><div class="bms">${(BAC.usar&&bacTeste())?'sujo · ':''}ref. ${LN}</div></div>
     <div class="bm"><div class="bml">Massa batata/mês</div><div class="bmv" style="font-size:1.1rem">${N(Math.round(bt35*f.bat))} kg</div><div class="bms">ref. ${LN}</div></div>
     <div class="bm"><div class="bml">Gasto Insumos</div><div class="bmv" style="font-size:1.1rem">${R(bt35*batchCusto(RK),0)}</div><div class="bms">por mês · ${LN}</div></div>
     <div class="bm"><div class="bml">Batches/dia</div><div class="bmv" style="font-size:1.1rem;color:${bt35/INS.dias>A.cap?'var(--rd)':'var(--gn)'}">${(bt35/INS.dias).toFixed(1)}</div><div class="bms">capacidade atual: ${A.cap}</div></div>`;
 
   const th=document.getElementById('comprasth');
   if(th) th.innerHTML=`<tr><th>Ingrediente</th>${LK().map(k=>`<th class="tr">Linha ${k.slice(1)}</th>`).join('')}<th class="tr">Gasto (L${REF.k.slice(1)})</th></tr>`;
+  const tB=BAC.usar?bacTeste():null;
   document.getElementById('comprastb').innerHTML=REC.map(it=>{
+    const suj=(it.id==='bac'&&tB);
     const cel=LK().map(k=>{
       const b=A.vol*q/F[k].u;
-      return `<td class="tr fn">${N(Math.round(b*qtdDe(it,k)))} ${it.un}</td>`;
+      return `<td class="tr fn">${N(Math.round(b*qtdDe(it,k)/(suj?tB.rend:1)))} ${it.un}</td>`;
     }).join('');
     const custo35=(A.vol*q/F[REF.k].u)*qtdDe(it,REF.k)*it.preco;
-    return `<tr><td><strong>${it.nome}</strong></td>${cel}<td class="tr fn"${it.id==='bac'?' style="color:var(--ac);font-weight:700"':''}>${R(custo35,0)}</td></tr>`;
+    return `<tr><td><strong>${suj?'Bacalhau sujo':it.nome}</strong>${suj?`<span style="display:block;font-size:.7rem;color:var(--mut)">rendimento ${(tB.rend*100).toFixed(1).replace('.',',')}% · a ${R(BAC.sujo)}/kg</span>`:''}</td>${cel}<td class="tr fn"${it.id==='bac'?' style="color:var(--ac);font-weight:700"':''}>${R(custo35,0)}</td></tr>`;
   }).join('') + (()=>{
     const ks=LK(), tot=ks.map(k=>(A.vol*q/F[k].u)*batchCusto(k));
     const iref=Math.max(0,ks.indexOf(REF.k));
