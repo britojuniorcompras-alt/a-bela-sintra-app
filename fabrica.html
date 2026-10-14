@@ -1587,17 +1587,17 @@ function calc(k, vol, fixo){
 
 // break-even VERDADEIRO: inclui o imposto sobre faturamento (itera, pois a aliquota depende da receita)
 function breakEven(k){
-  const pv=F[k].pv, cv=cvar(k), cf=FX();
+  const pv=F[k].pv, cv=cvar(k);
   if(pv<=cv) return null;
-  let q=cf/(pv-cv);
-  for(let i=0;i<200;i++){
-    const al=aliq(pv*q*12, true), den=pv*(1-al-A.com)-cv, cfq=A.escFix?A.fix*fatorEsc(q):cf;
-    if(den<=0) return null;
-    const q2=cfq/den;
-    if(Math.abs(q2-q)<0.5) return q2;
-    q=q2;
-  }
-  return q;
+  const cfDe = q => A.escFix ? A.fix*fatorEsc(q) : FX();
+  // sobra(q) > 0 = o volume q já paga tudo. Busca por bisseção: nunca diverge.
+  const sobra = q => { const al=aliq(pv*q*12, true); return q*(pv*(1-al-A.com)-cv) - cfDe(q); };
+  const MAX=5e6;                                  // acima disso não é mais mini fábrica
+  if(!(sobra(MAX)>0)) return null;                // não fecha em nenhum volume razoável
+  if(sobra(1)>0) return 1;
+  let lo=1, hi=MAX;
+  for(let i=0;i<200;i++){ const m=(lo+hi)/2; if(sobra(m)>0) hi=m; else lo=m; }
+  return hi;
 }
 const TETO = 4800000;
 const SUBLIM = 3600000;   // acima disso o ICMS sai do Simples e é pago por fora
@@ -1928,7 +1928,7 @@ function liqSim(k,o){
   o=o||{}; const pb=o.bac??REC.find(i=>i.id==='bac').preco, vol=o.vol??A.vol, pv=o.pv??F[k].pv;
   const ing=REC.reduce((t,it)=>t+qtdDe(it,k)*(it.id==='bac'?pb:it.preco),0)/F[k].u;
   const cv=ing/(1-A.per)+A.emb, rec=pv*vol, eb=rec-cv*vol-FXv(vol)-rec*A.com;
-  return eb-rec*aliq(rec*12);
+  return eb-rec*aliq(rec*12, vol===A.vol);   // no volume de hoje usa a mesma base do Diagnóstico (RBT12, se informado)
 }
 function rSensi(){
   const el=document.getElementById('sensitb'); if(!el) return;
@@ -2114,7 +2114,8 @@ function verificar(){
   // 5. no break-even o resultado tem de ser zero
   for (const k in F){
     const be=breakEven(k);
-    if(be) testar(`Break-even zera · ${NM[k]}`, calc(k,be,A.escFix?A.fix*fatorEsc(be):A.fix).liq, 0, 2);
+    if(be){ const al=aliq(F[k].pv*be*12,true), cfbe=A.escFix?A.fix*fatorEsc(be):FX();
+      testar(`Break-even zera · ${NM[k]}`, be*(F[k].pv*(1-al-A.com)-cvar(k))-cfbe, 0, 2); }
   }
   // 6. imposto nunca cai quando o faturamento sobe (pega degrau errado de faixa/sublimite)
   { let ant=0, ok=true, onde='';
@@ -2886,13 +2887,22 @@ function rProp(){
   // recomendação: até onde dá para descontar sem perder lucro, e qual faixa rende mais
   const rec=document.getElementById('pp-rec');
   if(rec){
-    const pi=VOLP.slice(1).map(v=>{const q=ppPrecoIndiferenca(v,base100.liq); return {v,q,d:q?1-q/base:null};}).filter(x=>x.q);
+    const piso = v => ppPrecoIndiferenca(v,0);                       // preço que zera o lucro naquele volume
+    const pi = base100.liq>0 ? VOLP.slice(1).map(v=>{
+        const q=ppPrecoIndiferenca(v,base100.liq), z=piso(v), qq=(q&&z)?Math.max(q,z):(q||z);
+        return {v,q:qq,d:qq?1-qq/base:null};
+      }).filter(x=>x.q) : [];
+    const avisoRbt = A.rbt12>0 ? `<div class="info" style="margin-bottom:10px"><strong>ℹ️ Você informou o RBT12 (${R(A.rbt12,0)})</strong>
+      A tabela acima calcula o imposto pelo faturamento anual de <b>cada faixa</b>, que é o certo para comparar cenários de contrato.
+      Por isso a faixa de 100 mil aqui pode mostrar uma alíquota diferente da aba Diagnóstico, que usa o RBT12 real.</div>` : '';
     const aviso = A.escFix ? '' : `<div class="dalert" style="margin-bottom:10px"><strong>⚠️ O custo fixo não está crescendo com o volume</strong>
       As faixas acima usam a estrutura de hoje (${R(A.fix,0)}/mês) em todos os volumes, então o lucro de 200 a 300 mil un aparece melhor do que será.
       <button class="vsb" style="margin-top:8px" onclick="setEscFix(true)">Ligar custo fixo por escala</button></div>`;
-    rec.innerHTML=aviso+`<div class="pp-rec">
-      <b>Até onde dá para descontar</b> — mantendo o lucro de ${R(base100.liq,0)}/mês que você tem a 100 mil un:
-      ${pi.map(x=>`<br>• <b>${N(x.v)} un/mês</b>: preço mínimo ${R(x.q)} (desconto de até ${(x.d*100).toFixed(1).replace('.',',')}%)`).join('')}
+    rec.innerHTML=avisoRbt+aviso+`<div class="pp-rec">
+      ${base100.liq>0
+        ? `<b>Até onde dá para descontar</b> — mantendo o lucro de ${R(base100.liq,0)}/mês que você tem a 100 mil un:
+           ${pi.map(x=>`<br>• <b>${N(x.v)} un/mês</b>: preço mínimo ${R(x.q)} (desconto de até ${(x.d*100).toFixed(1).replace('.',',')}%)`).join('')}`
+        : `<b>⚠️ A faixa de 100 mil un já fecha no vermelho</b> (${R(base100.liq,0)}/mês) com o preço da tabela. Não dá para falar em desconto antes de acertar preço ou custo. O piso de cada faixa, que é o preço em que o lucro zera: ${VOLP.map(v=>{const z=piso(v); return `${N(v)} un ${z?R(z):'—'}`;}).join(' · ')}.`}
       <br><br>Com os preços da tabela acima, a faixa que mais rende é <b>${N(melhor.v)} un/mês</b>, com ${R(melhor.liq,0)}/mês
       ${melhor.v!==100000?`(${R(melhor.liq-base100.liq,0)} a mais que a faixa de 100 mil)`:''}.
       ${linhas.some(l=>!l.cabe)?`<br>⚠️ As faixas marcadas em vermelho exigem mais batches/dia do que a estrutura comporta hoje (${fmtCap(A.cap)}) — precisam de turno extra ou equipamento.`:''}
