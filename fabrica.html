@@ -398,6 +398,9 @@ body.com-rasc .shtoast{bottom:104px}
 .pptb input.pp-pin{font:inherit;font-size:.86rem;font-weight:700;width:76px;text-align:right;padding:5px 8px;border:1px solid var(--bdr);border-radius:8px;background:var(--surf2);color:var(--txt)}
 .pptb input.pp-pin.bad{border-color:var(--rd);color:var(--rd)}
 .pptb .melhor{background:var(--gnl)}
+.pp-use{font:inherit;font-size:.74rem;font-weight:700;padding:5px 11px;border-radius:14px;border:1px solid var(--bdr);background:var(--surf2);color:var(--txt);cursor:pointer;white-space:nowrap}
+.pp-use:hover{border-color:var(--ac);color:var(--ac)}
+.pp-use.on{background:var(--gn);border-color:var(--gn);color:#fff;cursor:default}
 .pptb .ruim{color:var(--rd)}
 .pp-rec{border-left:4px solid var(--gn);background:var(--gnl);border-radius:10px;padding:12px 15px;margin:12px 0;font-size:.88rem;line-height:1.5}
 .pp-rec b{color:var(--gn)}
@@ -1301,7 +1304,7 @@ body.com-rasc .shtoast{bottom:104px}
 
   <div id="tab-prop" class="pane">
     <h2 class="sh">Projeção de Venda — Tabela de Preço por Volume</h2>
-    <p class="ss">Simule o preço em cada faixa de volume, veja o lucro que sobra em cada uma e monte a oferta escalonada para o cliente.</p>
+    <p class="ss">Simule o preço em cada faixa de volume, veja o lucro que sobra em cada uma e monte a oferta escalonada para o cliente. O botão <b>“usar no painel”</b> leva a faixa escolhida para todas as outras abas.</p>
 
     <div class="card cp" style="padding:15px 19px;margin-bottom:16px">
       <div class="pp-ctrl">
@@ -2829,6 +2832,15 @@ function ppSugerir(){                            // desconto progressivo a parti
 }
 function ppReset(){ PROP.precos={}; ppLimpaTxt(); PROP.modo='preco'; renderAll(); toast('Voltou ao preço base da linha'); }
 
+const noPainel = l => A.vol===l.v && Math.abs(F[PROP.fid].pv-l.p)<0.005 && REF.k===PROP.fid;
+function ppAdotar(v,p){
+  const nm=NM[PROP.fid];
+  if(!confirm(`Usar ${N(v)} un/mês na linha ${nm} a ${R(p)} em todas as abas?\n\nDiagnóstico, Ficha de Custo, Projeção, Caixa, Impostos e Risco passam a mostrar esse cenário. Entra como rascunho — só vale para todos depois de Salvar.`)) return;
+  A.vol=v; F[PROP.fid].pv=p; REF.k=PROP.fid; sim.fid=PROP.fid;
+  renderAll();
+  toast(`Painel agora mostra ${N(v)} un/mês · linha ${nm} a ${R(p)}`);
+  abrirAba('diag');
+}
 function rProp(){
   const tb=document.getElementById('pptb'); if(!tb) return;
   // quem está sendo digitado agora: devolve o foco e o cursor depois de redesenhar
@@ -2851,7 +2863,7 @@ function rProp(){
   tb.innerHTML=`<thead><tr>
       <th>Volume/mês</th><th class="tr">Preço/un</th><th class="tr">Desconto</th><th class="tr">Custo/un</th>
       <th class="tr">Imposto</th><th class="tr">Lucro/un</th><th class="tr">Lucro líq./mês</th><th class="tr">Margem</th>
-      <th class="tr">vs. 100 mil</th><th class="tr">Produção</th></tr></thead><tbody>`+
+      <th class="tr">vs. 100 mil</th><th class="tr">Produção</th><th></th></tr></thead><tbody>`+
     linhas.map(l=>{
       const dif=l.liq-base100.liq, campo = PROP.modo==='preco'
         ? `<input class="pp-pin" type="text" inputmode="decimal" id="pp-p-${l.v}" aria-label="Preço para ${N(l.v)} unidades" value="${esc(focoId==='pp-p-'+l.v&&PPTXT[l.v]!=null?PPTXT[l.v]:fmtNum(l.p))}" oninput="ppSetPreco(${l.v},this.value)" onblur="ppBlur(${l.v})" onkeydown="if(event.key==='Enter')this.blur()">`
@@ -2867,6 +2879,8 @@ function rProp(){
         <td class="tr fn ${l.mg<0?'ruim':''}">${P(l.mg)}</td>
         <td class="tr fn" style="color:${dif>=0?'var(--gn)':'var(--rd)'}">${l.v===100000?'—':(dif>=0?'+':'−')+R(Math.abs(dif),0)}</td>
         <td class="tr fn ${l.cabe?'':'ruim'}">${l.bd.toFixed(1).replace('.',',')} b/dia<span style="display:block;font-size:.72rem;color:var(--mut)">${l.cabe?'cabe na estrutura':'acima da capacidade ('+fmtCap(A.cap)+')'}</span></td>
+        <td class="tr">${noPainel(l)?'<button class="pp-use on" disabled>✓ no painel</button>'
+          :`<button class="pp-use" onclick="ppAdotar(${l.v},${l.p})" title="Leva este volume e este preço para todas as abas">usar no painel →</button>`}</td>
       </tr>`;}).join('')+'</tbody>';
 
   // recomendação: até onde dá para descontar sem perder lucro, e qual faixa rende mais
