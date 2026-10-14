@@ -433,6 +433,41 @@ body:not(.foco) .somenteFoco{display:none!important}
 .selo-ler[hidden]{display:none}
 .cnovo{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:10px;background:var(--rd);color:#fff;font-size:.62rem;font-weight:700;vertical-align:middle}
 .cnovo[hidden]{display:none}
+.rx{background:var(--surf);border:1px solid var(--bdr);border-top:4px solid var(--ac);border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;margin-bottom:16px}
+.rx-hd{display:flex;justify-content:space-between;align-items:baseline;gap:6px 12px;flex-wrap:wrap;margin-bottom:12px}
+.rx-hd h3{font-size:1.05rem;margin:0}
+.rx-hd span{font-size:.76rem;color:var(--mut)}
+.rx-st{border-radius:8px;padding:11px 13px;margin-bottom:12px;font-size:.88rem;line-height:1.5;background:var(--surf2);border-left:5px solid var(--mut)}
+.rx-st b.t{display:block;font-size:.98rem;margin-bottom:2px}
+.rx-st.z1{background:var(--gnl);border-left-color:var(--gn)} .rx-st.z1 b.t{color:var(--gn)}
+.rx-st.z2{border-left-color:var(--rd)} .rx-st.z2 b.t{color:var(--rd)}
+.rx-st.z3{background:var(--acl);border-left-color:var(--ac)} .rx-st.z3 b.t{color:var(--ac)}
+.rx-rw{position:relative;margin:30px 4px 26px}
+.rx-reg{display:flex;height:12px;border-radius:6px;overflow:hidden}
+.rx-reg i{display:block;height:100%}
+.rx-pin{position:absolute;top:-6px;width:3px;height:24px;background:var(--txt);border-radius:2px}
+.rx-pin span{position:absolute;bottom:26px;font-size:.72rem;font-weight:700;white-space:nowrap;color:var(--txt)}
+.rx-lb span{position:absolute;top:16px;transform:translateX(-50%);font-size:.7rem;color:var(--mut);white-space:nowrap}
+.rx-mud{border:1px dashed var(--ac);border-radius:8px;padding:9px 12px;margin:0 0 12px;font-size:.84rem;line-height:1.5;background:var(--acl)}
+.rx-h4{font-size:.86rem;margin:14px 0 8px;color:var(--txt)}
+.rx-mn{display:grid;gap:8px}
+.rx-m{display:grid;grid-template-columns:auto 1fr auto;gap:2px 12px;align-items:start;border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;background:var(--surf2)}
+.rx-m .ic{font-size:1.35rem;line-height:1.2;grid-row:span 3}
+.rx-m b.t{font-size:.9rem;line-height:1.35}
+.rx-m p{grid-column:2;font-size:.82rem;line-height:1.45;margin:2px 0 0}
+.rx-m .tg{grid-column:2;font-size:.74rem;color:var(--mut);margin-top:3px}
+.rx-m .g{grid-column:3;grid-row:1 / span 2;font-weight:800;color:var(--gn);font-size:1.02rem;white-space:nowrap;text-align:right}
+.rx-m .g small{display:block;font-weight:400;font-size:.7rem;color:var(--mut)}
+.rx-m.top{border-color:var(--gn);box-shadow:0 0 0 1px var(--gn) inset}
+@media(max-width:560px){.rx-m{grid-template-columns:auto 1fr}.rx-m .g{grid-column:2;grid-row:auto;text-align:left}}
+.rx-nt{font-size:.75rem;color:var(--mut);margin-top:10px;line-height:1.5}
+.rx-rec{border-left:4px solid var(--gn);background:var(--gnl);border-radius:8px;padding:9px 12px;margin:10px 0;font-size:.86rem;line-height:1.5}
+.rx-rec b{display:block;margin-bottom:2px}
+.rx-sec{margin-top:12px}
+.rx-sec h5{font-size:.82rem;margin:0 0 6px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.rx-sec ul{margin:0;padding-left:18px;font-size:.83rem;line-height:1.55}
+.rx-sec li{margin-bottom:4px}
+.rx-sec a{color:var(--bl)}
 .cmini{display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--bll);border:1px solid var(--bdr);border-left:4px solid var(--bl);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:.86rem;line-height:1.4}
 .cmini[hidden]{display:none}
 .cmini .cm-t{flex:1;min-width:0} .cmini b{color:var(--bl)} .cmini .cm-v{font-weight:700;color:var(--bl);white-space:nowrap}
@@ -958,6 +993,9 @@ body:not(.foco) .somenteFoco{display:none!important}
     <h2 class="sh">Carga Tributária e Impacto no Resultado</h2>
     <p class="ss">NCM 1604.20.90 · Preparações de pescado congeladas · Indústria em São Paulo · Ano-base 2026</p>
 
+    <div id="raiox" class="rx"></div>
+    <div id="trib-parecer" class="cons" style="border-top-color:var(--gn)"><p class="cons-vaz">Carregando o parecer do Conselheiro Tributário…</p></div>
+
     <div class="card cp" style="padding:17px 19px;margin-bottom:16px">
       <div class="slb" style="margin-bottom:8px">Faturamento dos últimos 12 meses (RBT12)</div>
       <p style="font-size:.84rem;color:var(--mut);margin-bottom:10px">A faixa do Simples vem do faturamento <b>real</b> dos últimos 12 meses, somando todos os clientes. Deixe em 0 para o painel estimar pelo volume simulado (mês × 12).</p>
@@ -1372,6 +1410,7 @@ body:not(.foco) .somenteFoco{display:none!important}
     <h2 class="sh">Conselheiro — Análises Automáticas</h2>
     <p class="ss">Todo dia às 7h e às 17h o Claude lê os números <b>salvos</b> no painel, pesquisa bacalhau, câmbio, Habib's, impostos e energia, e deixa aqui as dicas de decisão.</p>
     <div id="conselheiro" class="cons"><p class="cons-vaz">Carregando…</p></div>
+    <div id="cons-trib" class="cons" style="border-top-color:var(--gn)" hidden></div>
     <div id="cons-extra"></div>
     <div id="radar-card" class="card radar" style="margin-bottom:16px" hidden>
       <div class="sec-ttl">🧺 Radar de insumos <span style="font-weight:400;font-size:.8rem;color:var(--mut)">· preço do app × mercado, impacto na linha <span class="refnm" data-fmt="L"></span></span></div>
@@ -1639,9 +1678,13 @@ function aliq(recAno, real, vol){
   const recMes = recAno/12;                              // o mês de verdade (adicional e INSS dependem dele)
   if(real && A.rbt12>0) recAno = A.rbt12;                // a faixa do Simples vem do RBT12 informado
   if(!(recAno>0)) return AN2[0][1];
-  const icms = Math.max(0, ICMS_SP - (A.credICMS||0));
-  if (recAno <= SUBLIM){ for (const [lim,al,ded] of AN2) if (recAno <= lim) return (recAno*al - ded)/recAno; }
-  if (recAno <= TETO) return (recAno*0.30 - 720000)/recAno + icms;      // 6ª faixa não tem ICMS na guia
+  return cargaZona(recAno<=SUBLIM?1:(recAno<=TETO?2:3), recAno, recMes, vol);
+}
+// carga de uma zona escolhida (o Raio-X usa para comparar "e se eu mudasse de regime?")
+function cargaZona(z, recAno, recMes, vol, cred){
+  const icms = Math.max(0, ICMS_SP - (cred ?? A.credICMS ?? 0));
+  if (z===1){ for (const [lim,al,ded] of AN2) if (recAno <= lim) return (recAno*al - ded)/recAno; return (recAno*.147-85500)/recAno; }
+  if (z===2) return (recAno*0.30 - 720000)/recAno + icms;               // 6ª faixa não tem ICMS na guia
   let extra = 0;
   if (recMes > 0){
     const adic = Math.max(0, 0.08*recMes - 20000)*0.10;                 // adicional de IRPJ
@@ -1709,6 +1752,13 @@ function resultadoAtual(){                 // números já calculados, para o co
         batches_dia:+(A.vol/(1-A.per)/F[k].u/INS.dias).toFixed(2), capital_giro:Math.round(wc),
         volume_cruza_sublimite:Math.round(SUBLIM/12/F[k].pv)};
     }
+    try{ const M=manobrasTrib(), b=M.base;
+      out.tributario={linha:REF.k, volume:A.vol, preco:F[REF.k].pv, zona:b.z,
+        zona_nome:['','Simples · ICMS na guia','Simples · ICMS por fora','Lucro Presumido'][b.z],
+        carga:+b.al.toFixed(4), imposto_mes:Math.round(b.imp), lucro_mes:Math.round(b.liq), faturamento_ano:Math.round(b.ra),
+        credito_icms:A.credICMS, limite_un_faixa_barata:Math.floor(SUBLIM/12/F[REF.k].pv),
+        manobras:M.lista.map(m=>({id:m.id, titulo:m.titulo, ganho_mes:Math.round(m.ganho), estimativa:!!m.est, prazo:m.prazo, esforco:m.esforco}))};
+    }catch(_){}
     return out;
   }catch(e){ return null; }
 }
@@ -1932,12 +1982,41 @@ function contagem(lista){
   const c={}; (Array.isArray(lista)?lista:[]).forEach(d=>{const t=TIPC[d.tipo]?d.tipo:'info'; c[t]=(c[t]||0)+1;});
   return ['alerta','atencao','oportunidade','info'].filter(t=>c[t]).map(t=>TIPC[t]+' '+c[t]).join(' ');
 }
+let TRIB=[];
+function parecerHTML(u, curto){
+  if(!u) return `<div class="cons-hd"><h3>⚖️ Conselheiro Tributário</h3></div><p class="cons-vaz">O primeiro parecer chega na próxima rodada (todo dia às 7h). Ele lê os números <b>salvos</b> no painel, confere as leis e manda as sugestões para pagar menos imposto.</p>`;
+  const x=(u.extras&&typeof u.extras.tributario==='object'&&u.extras.tributario)||{};
+  const V={verde:['🟢','Situação boa'],amarelo:['🟡','Atenção'],vermelho:['🔴','Precisa agir']}[x.veredito]||['⚖️','Parecer'];
+  const rec=x.recomendacao?`<div class="rx-rec"><b>👉 Recomendação do dia</b>${esc(x.recomendacao)}</div>`:'';
+  const mud=x.mudou?`<p class="cons-res" style="font-size:.85rem">🔄 <b>O que mudou:</b> ${esc(x.mudou)}</p>`:'';
+  const hd=`<div class="cons-hd"><h3>⚖️ Conselheiro Tributário · ${V[0]} ${V[1]}</h3><span>${quandoBR(u.criado_em)} · próximo amanhã às 7h</span></div>`;
+  if(curto) return hd+`<p class="cons-res">${esc(u.resumo)}</p>${rec}<button class="vsb" onclick="abrirAba('tax')">Ver o parecer completo na aba Impostos →</button>`;
+  const lis=(arr,f)=>(Array.isArray(arr)?arr:[]).filter(Boolean).slice(0,6).map(f).join('');
+  const nov=lis(x.novidades,n=>n.titulo?`<li><b>${esc(n.titulo)}</b>${n.data?` · ${esc(n.data)}`:''}${n.impacto?` — ${esc(n.impacto)}`:''}${urlOk(n.url)?` <a href="${esc(n.url)}" target="_blank" rel="noopener noreferrer">fonte</a>`:''}</li>`:'');
+  const pz=lis(x.prazos,q=>q.titulo?`<li><b>${esc(q.data||'')}</b> · ${esc(q.titulo)}${q.acao?` — ${esc(q.acao)}`:''}</li>`:'');
+  const pq=lis(x.perguntas_contador,q=>`<li>${esc(typeof q==='string'?q:(q&&q.pergunta)||'')}</li>`);
+  const f=fontesHTML(u.fontes);
+  return hd+`<p class="cons-res">${esc(u.resumo)}</p>${mud}${rec}<ul class="cons-li">${dicasHTML(u.dicas)}</ul>
+    ${nov?`<div class="rx-sec"><h5>📰 Novidades na lei</h5><ul>${nov}</ul></div>`:''}
+    ${pz?`<div class="rx-sec"><h5>📅 Prazos</h5><ul>${pz}</ul></div>`:''}
+    ${pq?`<div class="rx-sec"><h5>❓ Perguntas para levar ao contador</h5><ul>${pq}</ul></div>`:''}
+    ${f?`<div class="cons-ft">Fontes: ${f}</div>`:''}
+    ${TRIB.length>1?`<details class="cons-hi" style="margin-top:10px"><summary><b>Pareceres anteriores (${TRIB.length-1})</b></summary>${TRIB.slice(1,8).map(a=>`<p style="font-size:.82rem;margin:8px 0"><b>${quandoBR(a.criado_em)}</b> — ${esc(a.resumo)}</p>`).join('')}</details>`:''}`;
+}
+function rParecer(){
+  const a=document.getElementById('trib-parecer'), c=document.getElementById('cons-trib');
+  if(a) a.innerHTML=parecerHTML(TRIB[0],false);
+  if(c){ c.hidden=!TRIB[0]; if(TRIB[0]) c.innerHTML=parecerHTML(TRIB[0],true); }
+}
 async function carregarConselheiro(){
   if(!SB) return;
-  const {data,error}=await SB.from('fabrica_dicas').select('criado_em,resumo,dicas,fontes,extras').order('criado_em',{ascending:false}).limit(30);
+  const {data,error}=await SB.from('fabrica_dicas').select('criado_em,resumo,dicas,fontes,extras,tipo').order('criado_em',{ascending:false}).limit(40);
   const el=document.getElementById('conselheiro'), hist=document.getElementById('cons-hist'), mini=document.getElementById('cons-mini');
-  if(error){ if(el) el.innerHTML='<p class="cons-vaz">Não foi possível carregar as análises.</p>'; return; }
-  CONS=data||[];
+  if(error){ if(el) el.innerHTML='<p class="cons-vaz">Não foi possível carregar as análises.</p>';
+    const a=document.getElementById('trib-parecer'); if(a) a.innerHTML='<p class="cons-vaz">Não foi possível carregar o parecer tributário.</p>'; return; }
+  TRIB=(data||[]).filter(r=>r.tipo==='tributario');
+  CONS=(data||[]).filter(r=>r.tipo!=='tributario');
+  rParecer();
   if(!CONS.length){
     el.innerHTML='<div class="cons-hd"><h3>🧭 Última análise</h3></div><p class="cons-vaz">A primeira análise aparece aqui depois da próxima rodada (7h ou 17h).</p>';
     hist.innerHTML=''; mini.hidden=true; return;
@@ -2843,7 +2922,96 @@ function setFoco(k){
   renderAll();
   toast(A.foco ? `Painel focado na linha ${NM[A.foco]}` : 'Mostrando as três formulações');
 }
+// ===== RAIO-X DOS IMPOSTOS — recalcula a cada mudança no painel =====
+let RX_BASE=null;
+function cenTrib(pv, cv, vol, z, cred){
+  const rec=pv*vol, ra=rec*12, eb=rec-cv*vol-FXv(vol)-rec*A.com;
+  const zz = z || (ra<=SUBLIM?1:(ra<=TETO?2:3));
+  const al = rec>0 ? cargaZona(zz, ra, rec, vol, cred) : 0;
+  return {pv,cv,vol,rec,ra,z:zz,al,imp:rec*al,liq:eb-rec*al};
+}
+function manobrasTrib(){
+  const k=REF.k, pv=F[k].pv, cv=cvar(k), v=A.vol, b=cenTrib(pv,cv,v), L=[];
+  const itB=REC.find(i=>i.id==='bac'), bacUn=itB ? F[k].bac*itB.preco/F[k].u/(1-A.per) : 0;
+  if(bacUn>0 && pv-bacUn>0){                                   // 1. industrialização por encomenda
+    const e=cenTrib(pv-bacUn, cv-bacUn, v), g=e.liq-b.liq, cabe=Math.floor(SUBLIM/12/(pv-bacUn)/1000)*1000;
+    if(g>1000) L.push({id:'encomenda', ic:'🤝', titulo:"Habib's compra o bacalhau, nós só produzimos", ganho:g,
+      esforco:"Negociar com o Habib's", prazo:'Antes de assinar o contrato',
+      como:`O Habib's paga o bacalhau direto ao fornecedor e nós cobramos ${R(pv-bacUn)} por bolinho pela produção — para eles o total continua ${R(pv)}. Nossa nota cai de ${R(b.rec,0)} para ${R(e.rec,0)}/mês${e.z<b.z?' e a fábrica volta para uma faixa mais barata':''}.`,
+      extra:`cabe até ${N(cabe)} un/mês na faixa barata · deixamos de financiar ${R(bacUn*v,0)}/mês de bacalhau`});
+  }
+  if(b.z<3){                                                   // 2. sair do Simples
+    const q=cenTrib(pv,cv,v,3), g=q.liq-b.liq;
+    if(g>1000) L.push({id:'presumido', ic:'🏛️', titulo:'Sair do Simples e ir para o Lucro Presumido', ganho:g,
+      esforco:'Decidir com o contador', prazo:'Pedido em janeiro, vale o ano todo',
+      como:`Nesta faixa o Simples cobra ${P(b.al)} do faturamento; o Presumido sairia ${P(q.al)}, já contando o INSS da folha.`});
+  }
+  if(b.z>=2 && A.credICMS<0.15){                               // 3. mais crédito de ICMS
+    const c2=Math.min(0.18,A.credICMS+0.03), c=cenTrib(pv,cv,v,b.z,c2), g=c.liq-b.liq;
+    if(g>500) L.push({id:'credito', ic:'🧾', titulo:'Comprar de fornecedores que dão crédito de ICMS', ganho:g,
+      esforco:'Trocar fornecedores', prazo:'Na próxima cotação',
+      como:`Fornecedor do Simples não gera crédito. Levar o crédito de ${P(A.credICMS)} para ${P(c2)} da receita (bacalhau, embalagem e energia de empresas do regime normal) baixa o ICMS na mesma medida.`});
+  }
+  if(b.z>=2){                                                  // 4. ficar abaixo do degrau
+    const vm=Math.floor(SUBLIM/12/pv/1000)*1000;
+    if(vm>0 && vm<v){ const c=cenTrib(pv,cv,vm), g=c.liq-b.liq;
+      if(g>1000) L.push({id:'volume', ic:'📉', titulo:`Vender ${N(vm)} un em vez de ${N(v)}`, ganho:g,
+        esforco:'Rever o volume do contrato', prazo:'Na negociação',
+        como:'Abaixo de R$ 300 mil/mês de nota a fábrica volta para a faixa barata. Vendendo menos você lucra mais, porque o imposto da faixa de cima come o ganho de volume.'}); }
+  }
+  if(b.z<=2){                                                  // 5. regime híbrido IBS/CBS
+    const das=b.z===1?b.al:(b.ra*0.30-720000)/b.ra, g=b.rec*das*(b.z===1?0.14:0.255);
+    const aberto=Date.now()<new Date('2026-10-31T03:00:00Z').getTime();
+    if(g>1000) L.push({id:'hibrido', ic:'📅', titulo:'Regime híbrido do IBS/CBS (vale a partir de 2027)', ganho:g, est:true,
+      esforco:'Opção no Portal do Simples', prazo: aberto?'Até 30/10/2026 · dá para cancelar até 20/12':'Na próxima janela de opção',
+      como:"O PIS/COFINS sai da guia e a CBS vai destacada na nota, então o Habib's aproveita o crédito inteiro. É estimativa: depende de como o Habib's credita no regime de restaurantes."});
+  }
+  L.sort((x,y)=>y.ganho-x.ganho);
+  return {base:b, lista:L};
+}
+function rRaioX(){
+  const el=document.getElementById('raiox'); if(!el) return;
+  const M=manobrasTrib(), b=M.base, k=REF.k;
+  const nome={1:'Faixa barata do Simples', 2:'Degrau mais caro: Simples com ICMS por fora', 3:'Lucro Presumido (fora do Simples)'}[b.z];
+  const frase={1:'O ICMS está dentro da guia única. É aqui que a margem boa existe.',
+               2:'O ICMS saiu da guia e é pago à parte. Esta faixa sai mais cara até que o Presumido — vale agir.',
+               3:'Acima de R$ 4,8 mi/ano a empresa sai do Simples e passa a pagar cada imposto separado, inclusive o INSS da folha.'}[b.z];
+  let folga='';
+  if(b.z===1){ const vmax=Math.floor((SUBLIM/12/F[k].pv-A.vol)/1000)*1000; folga = vmax>0 ? `Ainda cabem <b>+${N(vmax)} un/mês</b> neste preço antes do degrau.` : 'Você está bem no limite do degrau.'; }
+  else if(b.z===2) folga=`Você passou <b>${R(b.rec-SUBLIM/12,0)}/mês</b> do limite de R$ 300 mil de nota.`;
+  const max=Math.max(6e6,b.ra*1.15), pos=Math.min(98.5,b.ra/max*100), p1=SUBLIM/max*100, p2=TETO/max*100;
+  const lado = pos<15?'left:0':(pos>80?'right:0':'left:50%;transform:translateX(-50%)');
+  if(!sujo || !RX_BASE) RX_BASE={imp:b.imp, liq:b.liq, z:b.z};
+  let mud='';
+  if(sujo && RX_BASE && (Math.abs(b.imp-RX_BASE.imp)>=1 || Math.abs(b.liq-RX_BASE.liq)>=1)){
+    const di=b.imp-RX_BASE.imp, dl=b.liq-RX_BASE.liq, sg=v=>(v>=0?'+':'−')+R(Math.abs(v),0).replace('− ','');
+    mud=`<div class="rx-mud">🔄 <b>Com as mudanças que você fez agora</b> (ainda não salvas): imposto ${R(RX_BASE.imp,0)} → <b>${R(b.imp,0)}</b>/mês (${sg(di)}) · lucro ${R(RX_BASE.liq,0)} → <b>${R(b.liq,0)}</b>/mês (${sg(dl)})${b.z!==RX_BASE.z?` · <b>mudou de faixa: ${['','faixa barata','ICMS por fora','Presumido'][RX_BASE.z]} → ${['','faixa barata','ICMS por fora','Presumido'][b.z]}</b>`:''}.</div>`;
+  }
+  const lista=M.lista.map((m,i)=>`<div class="rx-m${i===0?' top':''}"><span class="ic">${m.ic}</span>
+      <b class="t">${i===0?'⭐ ':''}${esc(m.titulo)}</b>
+      <span class="g">+${R(m.ganho,0).replace('R$ ','R$ ')}<small>por mês${m.est?' · estimativa':''}</small></span>
+      <p>${m.como}</p>
+      <div class="tg">${esc(m.esforco)} · ${esc(m.prazo)}${m.extra?' · '+esc(m.extra):''}</div></div>`).join('');
+  el.innerHTML=`<div class="rx-hd"><h3>🔎 Raio-X dos impostos</h3><span>Linha ${NM[k]} · ${N(A.vol)} un/mês a ${R(F[k].pv)} · recalcula sozinho a cada mudança</span></div>
+    <div class="rx-st z${b.z}"><b class="t">${b.z===1?'🟢':(b.z===2?'🔴':'🟠')} ${nome}</b>${frase} ${folga}</div>
+    <div class="m4" style="margin-bottom:6px">
+      <div class="bm"><div class="bml">De cada R$ 100 vendidos</div><div class="bmv">R$ ${(b.al*100).toFixed(2).replace('.',',')}</div><div class="bms">vão para impostos</div></div>
+      <div class="bm"><div class="bml">Imposto por mês</div><div class="bmv" style="font-size:1.15rem">${R(b.imp,0)}</div><div class="bms">${R(b.imp/A.vol)} por bolinho</div></div>
+      <div class="bm"><div class="bml">Lucro depois do imposto</div><div class="bmv" style="font-size:1.15rem;color:${b.liq<0?'var(--rd)':'var(--gn)'}">${R(b.liq,0)}</div><div class="bms">por mês</div></div>
+      <div class="bm"><div class="bml">Faturamento no ano</div><div class="bmv" style="font-size:1.15rem">R$ ${(b.ra/1e6).toFixed(2).replace('.',',')} mi</div><div class="bms">nota de ${R(b.rec,0)}/mês</div></div>
+    </div>
+    <div class="rx-rw" aria-label="Régua de faturamento anual com os degraus do imposto">
+      <div class="rx-reg"><i style="width:${p1}%;background:var(--gn)"></i><i style="width:${p2-p1}%;background:var(--rd)"></i><i style="flex:1;background:var(--ac)"></i></div>
+      <div class="rx-pin" style="left:${pos}%"><span style="${lado}">Você: R$ ${(b.ra/1e6).toFixed(2).replace('.',',')} mi/ano</span></div>
+      <div class="rx-lb"><span style="left:${p1}%">R$ 3,6 mi</span><span style="left:${p2}%">R$ 4,8 mi</span></div>
+    </div>
+    ${mud}
+    <h4 class="rx-h4">${M.lista.length?'💡 O que dá para fazer — do maior ganho para o menor':'💡 O que dá para fazer'}</h4>
+    ${M.lista.length?`<div class="rx-mn">${lista}</div>`:`<p style="font-size:.86rem">✅ Nenhuma manobra necessária agora: neste volume e preço você já está na forma mais barata de pagar imposto.</p>`}
+    <p class="rx-nt">As saídas não se somam — escolha uma ou combine com o contador. Ganhos comparados com a situação de hoje, usando o crédito de ICMS de ${P(A.credICMS)} informado abaixo${A.rbt12>0?' e o faturamento do mês × 12 (o Diagnóstico usa o RBT12 informado)':''}. São estimativas para decidir e negociar, não substituem o contador.</p>`;
+}
 function rTax(){
+  rRaioX();
   const rt=document.getElementById('regtb'); if(!rt) return;
   let h='';
   for (const v of [100000,150000,200000]){
