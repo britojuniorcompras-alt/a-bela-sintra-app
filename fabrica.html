@@ -396,6 +396,20 @@ body.com-rasc .shtoast{bottom:104px}
 .pp-seg button{font:inherit;font-size:.8rem;font-weight:700;padding:7px 14px;border:0;background:transparent;color:var(--mut);cursor:pointer}
 .pp-seg button.on{background:var(--ac);color:#fff}
 .pp-tag{font-size:.76rem;color:var(--mut)}
+.neg-g{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 12px}
+@media(max-width:700px){.neg-g{grid-template-columns:1fr}}
+.neg-b{border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;background:var(--surf2)}
+.neg-b.eu{border-style:dashed;border-color:var(--ac);background:var(--acl)}
+.neg-b h5{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.neg-b .big{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:700;color:var(--ac);line-height:1.1}
+.neg-b .lin{display:flex;justify-content:space-between;gap:10px;font-size:.84rem;padding:4px 0;border-top:1px solid var(--bdr)}
+.neg-b .lin:first-of-type{border-top:none}
+.neg-b .lin b{font-variant-numeric:tabular-nums}
+.negtb .eu-col{background:var(--acl)}
+.negtb tr.esc td{font-weight:700;background:var(--gnl)}
+.neg-tg{display:inline-block;font-size:.7rem;font-weight:700;border-radius:20px;padding:1px 8px;margin-left:6px;white-space:nowrap}
+.neg-tg.ab{background:var(--bll);color:var(--bl)} .neg-tg.al{background:var(--gnl);color:var(--gn)}
+.neg-tg.li{background:var(--acl);color:var(--ac)} .neg-tg.no{background:var(--surf2);color:var(--rd);border:1px solid var(--rd)}
 .pptb input.pp-pin{font:inherit;font-size:.86rem;font-weight:700;width:76px;text-align:right;padding:5px 8px;border:1px solid var(--bdr);border-radius:8px;background:var(--surf2);color:var(--txt)}
 .pptb input.pp-pin.bad{border-color:var(--rd);color:var(--rd)}
 .pptb .melhor{background:var(--gnl)}
@@ -1389,6 +1403,26 @@ body:not(.foco) .somenteFoco{display:none!important}
       <div id="pp-rec"></div>
     </div>
 
+    <div class="card" id="neg-card" style="margin-bottom:16px">
+      <div class="sec-ttl">🤝 Simulador de negociação · parceria em que o Habib's compra o bacalhau</div>
+      <div style="padding:13px 19px">
+        <p style="font-size:.84rem;color:var(--mut);margin:0 0 10px">O Habib's paga o bacalhau direto ao fornecedor e a fábrica cobra só a produção. Mude a taxa e veja na hora quanto ele economiza e quanto a fábrica ganha. Os números da parte tracejada são <b>só para você</b> — não mostre ao cliente.</p>
+        <div class="pp-ctrl">
+          <span class="pp-tag">Volume</span>
+          <select id="neg-v" class="pin" style="width:auto" aria-label="Volume mensal da simulação" onchange="setNeg('v',this.value)">
+            <option value="100000">100.000 un/mês</option><option value="150000">150.000 un/mês</option><option value="200000">200.000 un/mês</option><option value="250000">250.000 un/mês</option><option value="300000">300.000 un/mês</option>
+          </select>
+          <span class="pp-tag">Taxa de produção</span>
+          <span class="pinw"><span class="cur">R$</span><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="neg-taxa" aria-label="Taxa de produção por bolinho" style="width:72px" oninput="setNeg('taxa',this.value)" onblur="rNegCampos(true)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">/un</span></span>
+          <span class="pp-tag">Bacalhau que o Habib's consegue</span>
+          <span class="pinw"><span class="cur">R$</span><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="neg-bac" aria-label="Preço do bacalhau que o Habib's consegue, por kg" style="width:78px" oninput="setNeg('bac',this.value)" onblur="rNegCampos(true)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">/kg</span></span>
+          <span class="pp-tag">Seu limite</span>
+          <span class="pinw"><span class="cur">R$</span><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="neg-lim" aria-label="Seu limite de taxa por bolinho" style="width:72px" oninput="setNeg('lim',this.value)" onblur="rNegCampos(true)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">/un</span></span>
+        </div>
+        <div id="neg-out"></div>
+      </div>
+    </div>
+
     <div class="card" style="margin-bottom:16px">
       <div class="sec-ttl">📄 Tabela para o cliente <span style="font-weight:400;font-size:.8rem;color:var(--mut)">· sem custos e sem margens</span></div>
       <div style="padding:13px 19px">
@@ -1736,7 +1770,7 @@ const instantaneo = () => ({
   canais:{...sim.pr},
   producao:{mx25:prj.mx25,mx35:prj.mx35},
   ref:REF.k,
-  proposta:{fid:PROP.fid,modo:PROP.modo,margem:PROP.margem,precos:PROP.precos,prazo:PROP.prazo},
+  proposta:{fid:PROP.fid,modo:PROP.modo,margem:PROP.margem,precos:PROP.precos,prazo:PROP.prazo,neg:{v:NEG.v,taxa:NEG.taxa,bac:NEG.bac,lim:NEG.lim}},
   resultado:resultadoAtual(),
 });
 function resultadoAtual(){                 // números já calculados, para o conselheiro agendado ler
@@ -1790,6 +1824,8 @@ function aplicar(d){
     if(pp.modo==='margem'||pp.modo==='preco') PROP.modo=pp.modo;
     if(isFinite(pp.margem)) PROP.margem=Math.min(0.9,Math.max(0,pp.margem));
     if(isFinite(pp.prazo)) PROP.prazo=Math.max(0,Math.round(pp.prazo));
+    { const g=pp.neg||{}; NEG.v=VOLP.includes(g.v)?g.v:150000; NEG.taxa=(isFinite(g.taxa)&&g.taxa>0&&g.taxa<20)?g.taxa:null;
+      NEG.bac=(isFinite(g.bac)&&g.bac>0&&g.bac<2000)?g.bac:null; NEG.lim=(isFinite(g.lim)&&g.lim>0&&g.lim<20)?g.lim:1.35; }
     if(pp.precos&&typeof pp.precos==='object'){ PROP.precos={}; VOLP.forEach(v=>{ if(isFinite(pp.precos[v])&&pp.precos[v]>0) PROP.precos[v]=+pp.precos[v]; }); }
     recalcFix(); recalcF();
     return true;
@@ -2991,7 +3027,7 @@ function rRaioX(){
       <b class="t">${i===0?'⭐ ':''}${esc(m.titulo)}</b>
       <span class="g">+${R(m.ganho,0).replace('R$ ','R$ ')}<small>por mês${m.est?' · estimativa':''}</small></span>
       <p>${m.como}</p>
-      <div class="tg">${esc(m.esforco)} · ${esc(m.prazo)}${m.extra?' · '+esc(m.extra):''}</div></div>`).join('');
+      <div class="tg">${esc(m.esforco)} · ${esc(m.prazo)}${m.extra?' · '+esc(m.extra):''}${m.id==='encomenda'?' <button class="vsb" style="margin-left:6px;padding:2px 10px;font-size:.74rem" onclick="irNeg()">Simular a negociação →</button>':''}</div></div>`).join('');
   el.innerHTML=`<div class="rx-hd"><h3>🔎 Raio-X dos impostos</h3><span>Linha ${NM[k]} · ${N(A.vol)} un/mês a ${R(F[k].pv)} · recalcula sozinho a cada mudança</span></div>
     <div class="rx-st z${b.z}"><b class="t">${b.z===1?'🟢':(b.z===2?'🔴':'🟠')} ${nome}</b>${frase} ${folga}</div>
     <div class="m4" style="margin-bottom:6px">
@@ -3129,7 +3165,84 @@ function ppAdotar(v,p){
   toast(`Painel agora mostra ${N(v)} un/mês · linha ${nm} a ${R(p)}`);
   abrirAba('diag');
 }
+// ===== SIMULADOR DE NEGOCIAÇÃO — parceria (cliente compra o bacalhau, a fábrica cobra a produção) =====
+const NEG={v:150000, taxa:null, bac:null, lim:1.35};
+const r2=x=>Math.round(x*100)/100;
+const fmt2=x=>isFinite(x)?x.toFixed(2).replace('.',','):'';
+function negBase(){
+  const k=PROP.fid, f=F[k], v=NEG.v, itB=REC.find(i=>i.id==='bac'), bacApp=itB?itB.preco:0;
+  const bacKg=(NEG.bac>0?NEG.bac:bacApp);
+  const porUn=pr=>f.bac*pr/f.u/(1-A.per);                      // bacalhau por bolinho vendido (com quebra)
+  const bacNosso=porUn(bacApp), bacDeles=porUn(bacKg);
+  const precoCompleto=ppPrecoDe(v), comp=ppCalc(v,precoCompleto);
+  const cvSem=cvar(k)-bacNosso;                                // nosso custo sem o bacalhau
+  const neutra=precoCompleto-bacDeles;                         // taxa em que o Habib's paga o mesmo de hoje
+  const cen=t=>cenTrib(t,cvSem,v);
+  const piso=menorPreco(Math.max(0.01,cvSem),Math.max(neutra,cvSem)+2,t=>cen(t).liq>=comp.liq,v);
+  return {k,v,bacKg,bacApp,bacNosso,bacDeles,precoCompleto,comp,cvSem,neutra,cen,piso};
+}
+function setNeg(k,val){
+  if(k==='v'){ const n=+val; if(VOLP.includes(n)) NEG.v=n; renderAll(); return; }
+  const n=parseNum(val), el=document.getElementById('neg-'+k);
+  if(n===null||n<=0||n>(k==='bac'?2000:20)){ if(el) el.classList.add('bad'); return; }
+  if(el) el.classList.remove('bad');
+  NEG[k]=n; renderAll();
+}
+function rNegCampos(forca){
+  const B=negBase(), ae=document.activeElement;
+  const put=(id,v)=>{ const el=document.getElementById(id); if(el&&(forca||el!==ae)&&el!==ae) el.value=v; };
+  put('neg-taxa',fmt2(NEG.taxa ?? r2(B.neutra-0.08)));
+  put('neg-bac',fmt2(B.bacKg)); put('neg-lim',fmt2(NEG.lim));
+  const sv2=document.getElementById('neg-v'); if(sv2) sv2.value=String(NEG.v);
+}
+function irNeg(){ const v=VOLP.reduce((a,b)=>Math.abs(b-A.vol)<Math.abs(a-A.vol)?b:a,VOLP[0]); NEG.v=v; if(F[REF.k]) PROP.fid=REF.k;
+  abrirAba('prop'); setTimeout(()=>{ const c=document.getElementById('neg-card'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); },80); }
+function rNeg(){
+  const out=document.getElementById('neg-out'); if(!out) return;
+  const B=negBase(), taxa=NEG.taxa ?? r2(B.neutra-0.08), c=B.cen(taxa);
+  const totalDeles=taxa+B.bacDeles, econUn=B.precoCompleto-totalDeles, econMes=econUn*B.v;
+  const ganho=c.liq-B.comp.liq, giro=B.bacNosso*B.v*A.pz/30;
+  const zn=['','Simples · ICMS na guia','Simples · ICMS por fora','Lucro Presumido'];
+  // escada de taxas: neutra, abertura, alvo, degraus de R$ 0,05 até o limite, o limite, a taxa escolhida
+  const NT=r2(B.neutra), set=new Set([NT, r2(NT-0.04), r2(NT-0.08), NEG.lim, r2(taxa)]);
+  for(let t=r2(NT-0.13); t>NEG.lim-0.001 && set.size<9; t=r2(t-0.05)) set.add(t);
+  const lista=[...set].filter(t=>t>0).sort((a,b)=>b-a).slice(0,9);
+  const tag=t=>{ const a=[];
+    if(Math.abs(t-NT)<0.005) a.push('<span class="neg-tg" style="background:var(--surf2);color:var(--mut)">mesmo custo de hoje para ele</span>');
+    if(Math.abs(t-r2(NT-0.04))<0.005) a.push('<span class="neg-tg ab">abertura</span>');
+    if(Math.abs(t-r2(NT-0.08))<0.005) a.push('<span class="neg-tg al">alvo</span>');
+    if(Math.abs(t-NEG.lim)<0.005) a.push('<span class="neg-tg li">seu limite</span>');
+    if(t<NEG.lim-0.0001) a.push('<span class="neg-tg no">abaixo do seu limite</span>');
+    if(B.piso && t<B.piso) a.push('<span class="neg-tg no">pior que o modelo completo</span>');
+    return a.join(''); };
+  const linhas=lista.map(t=>{ const x=B.cen(t), tot=t+B.bacDeles, e=(B.precoCompleto-tot)*B.v;
+    return `<tr class="${Math.abs(t-taxa)<0.005?'esc':''}"><td>R$ ${fmt2(t)}${tag(t)}</td><td class="tr fn">R$ ${fmt2(tot)} <span style="color:var(--mut);font-weight:400">(${tot<=B.precoCompleto?'−':'+'}${Math.abs((tot/B.precoCompleto-1)*100).toFixed(1).replace('.',',')}%)</span></td>
+      <td class="tr fn">${e>=0?R(e,0):'− '+R(-e,0)}</td><td class="tr fn eu-col" style="color:${x.liq<B.comp.liq?'var(--rd)':'var(--gn)'}">${R(x.liq,0)}</td></tr>`; }).join('');
+  const aviso = taxa<NEG.lim-0.0001 ? `<div class="dalert" style="margin:0 0 10px"><strong>⚠️ Essa taxa está abaixo do seu limite de R$ ${fmt2(NEG.lim)}</strong>Só aceite com uma contrapartida grande: contrato longo com volume garantido.</div>`
+            : (B.piso && taxa<B.piso ? `<div class="dalert" style="margin:0 0 10px"><strong>⚠️ Nessa taxa a parceria rende menos que o modelo completo</strong>Abaixo de R$ ${fmt2(B.piso)} é melhor vender do jeito tradicional.</div>` : '');
+  out.innerHTML=`${aviso}<div class="neg-g">
+    <div class="neg-b"><h5>Para o Habib's</h5>
+      <div class="big">R$ ${fmt2(totalDeles)} <span style="font-size:.8rem;font-family:inherit;color:var(--mut);font-weight:400">por bolinho</span></div>
+      <div class="lin"><span>Taxa de produção</span><b>R$ ${fmt2(taxa)}</b></div>
+      <div class="lin"><span>Bacalhau (a R$ ${fmt2(B.bacKg)}/kg)</span><b>R$ ${fmt2(B.bacDeles)}</b></div>
+      <div class="lin"><span>Modelo completo hoje</span><b>R$ ${fmt2(B.precoCompleto)}</b></div>
+      <div class="lin"><span>Economia para ele</span><b style="color:${econMes>=0?'var(--gn)':'var(--rd)'}">${econMes>=0?R(econMes,0)+'/mês':'paga '+R(-econMes,0)+'/mês a mais'} (${(econUn/B.precoCompleto*100).toFixed(1).replace('.',',')}%)</b></div>
+      <div class="lin"><span>Bacalhau que ele compra</span><b>${N(Math.round(B.v/(1-A.per)/F[B.k].u*F[B.k].bac))} kg/mês</b></div>
+    </div>
+    <div class="neg-b eu"><h5>🔒 Só para você</h5>
+      <div class="big" style="color:${c.liq>=B.comp.liq?'var(--gn)':'var(--rd)'}">${R(c.liq,0)} <span style="font-size:.8rem;font-family:inherit;color:var(--mut);font-weight:400">de lucro por mês</span></div>
+      <div class="lin"><span>Modelo completo no mesmo volume</span><b>${R(B.comp.liq,0)}</b></div>
+      <div class="lin"><span>Diferença</span><b style="color:${ganho>=0?'var(--gn)':'var(--rd)'}">${ganho>=0?'+':'−'}${R(Math.abs(ganho),0)}/mês</b></div>
+      <div class="lin"><span>Imposto</span><b>${P(c.al)} · ${zn[c.z]}</b></div>
+      <div class="lin"><span>Bacalhau que você deixa de financiar</span><b>${R(giro,0)}</b></div>
+      <div class="lin"><span>Piso técnico (abaixo disso não compensa)</span><b>${B.piso?'R$ '+fmt2(B.piso):'—'}</b></div>
+    </div></div>
+    <div class="tw"><table class="dtbl negtb"><thead><tr><th>Taxa de produção</th><th class="tr">Custo total para o Habib's</th><th class="tr">Economia dele/mês</th><th class="tr eu-col">🔒 Seu lucro/mês</th></tr></thead><tbody>${linhas}</tbody></table></div>
+    <p style="font-size:.77rem;color:var(--mut);margin-top:8px">Linha ${NM[B.k]} · ${N(B.v)} un/mês · comparação com o preço da tabela do cliente nesta faixa (${R(B.precoCompleto)}). Desça devagar e sempre com troca: abertura → alvo → seu limite. Estimativa para negociar — confirme notas de remessa/retorno com o contador e o contrato com o advogado.</p>`;
+  rNegCampos(false);
+}
 function rProp(){
+  rNeg();
   const tb=document.getElementById('pptb'); if(!tb) return;
   // quem está sendo digitado agora: devolve o foco e o cursor depois de redesenhar
   const ae=document.activeElement, focoId=(ae&&ae.id&&ae.id.indexOf('pp-p-')===0)?ae.id:null;
