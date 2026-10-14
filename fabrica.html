@@ -3027,15 +3027,22 @@ async function gerarPDFCliente(){
       Contato: (11) 3086-2510 · @restauranteabelasintra
     </div>`;
   document.body.appendChild(fora);
+  const rolou=window.pageYOffset||document.documentElement.scrollTop||0;
+  window.scrollTo(0,0);
   const nome=`Tabela-Preco-Bolinho-Bacalhau-L${PROP.fid.slice(1)}-${new Date().toISOString().slice(0,10)}.pdf`;
   try{
     const h2p=await carregarH2P();
     const opt={margin:[12,12,14,12],filename:nome,image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0,
+                   windowWidth:Math.max(760,document.documentElement.clientWidth),
+                   windowHeight:Math.max(900,palco.scrollHeight+80)},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr']}};
+    if(!palco.innerText.trim()) throw new Error('vazio');
     const blob=await h2p().set(opt).from(palco).outputPdf('blob');
+    if(!blob || blob.size<1200) throw new Error('vazio');
     return {blob,nome};
   } finally {
+    window.scrollTo(0,rolou);
     fora.remove();
     if(temaAntes===null) html.removeAttribute('data-theme'); else html.setAttribute('data-theme',temaAntes);
   }
@@ -3050,7 +3057,9 @@ async function ppPDF(btn){
       catch(e){ if(e.name!=='AbortError') throw e; }
     } else { baixarBlob(blob,nome); toast('PDF da tabela baixado ✅'); }
   }catch(e){
-    toast('Gerador de PDF indisponível — tente novamente com internet');
+    toast(e && e.message==='lib'
+      ? 'Gerador de PDF indisponível — precisa de internet para carregar'
+      : 'Não consegui gerar o PDF ('+((e&&e.message)||'erro')+') — use "Copiar tabela" enquanto isso');
   }finally{ ocupado(btn,false); }
 }
 async function ppCopiar(){
@@ -3307,15 +3316,22 @@ async function gerarPDF(t){                 // devolve {blob,nome}
   clone.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));
   clone.querySelectorAll('input:not([type=range])').forEach(i=>{ const s=document.createElement('strong'); s.textContent=i.value; i.replaceWith(s); });
   palco.appendChild(clone); document.body.appendChild(fora);
+  const rolou=window.pageYOffset||document.documentElement.scrollTop||0;
+  window.scrollTo(0,0);
   const nome=`Fabrica-${ABAS[t].normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-')}-${new Date().toISOString().slice(0,10)}.pdf`;
   try{
     const h2p=await carregarH2P();
     const opt={margin:[10,10,12,10],filename:nome,image:{type:'jpeg',quality:0.92},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0,
+                   windowWidth:Math.max(760,document.documentElement.clientWidth),
+                   windowHeight:Math.max(900,palco.scrollHeight+80)},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['tr','.card','.dalert','.info','.bm']}};
+    if(!palco.innerText.trim()) throw new Error('vazio');
     const blob=await h2p().set(opt).from(palco).outputPdf('blob');
+    if(!blob || blob.size<1200) throw new Error('vazio');
     return {blob,nome};
   }finally{
+    window.scrollTo(0,rolou);
     fora.remove();
     if(temaAntes===null) html.removeAttribute('data-theme'); else html.setAttribute('data-theme',temaAntes);
   }
