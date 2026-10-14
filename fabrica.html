@@ -793,11 +793,7 @@ body:not(.foco) .somenteFoco{display:none!important}
             <small>mão de obra, água e gás da dessalga</small></label>
         </div>
         <div id="bac-out"></div>
-        <label class="opt" for="ck-bacusar" style="margin-top:6px">
-          <input type="checkbox" id="ck-bacusar" onchange="setBacUsar(this.checked)">
-          <span>Usar o bacalhau comprado sujo no custo do painel
-            <small>Ligado, o custo do bacalhau em todas as abas passa a ser o custo do kg limpo calculado acima, e a lista de compras mostra o bacalhau sujo. Desligado, volta ao preço do bacalhau já limpo.</small></span>
-        </label>
+        <div id="bac-status"></div>
       </div>
     </div>
 
@@ -1853,7 +1849,7 @@ function aplicar(d){
     if(isFinite(d.dias)) INS.dias=d.dias;
     { const b=d.bacalhau||{}, ok=x=>isFinite(x)&&x>0;
       BAC.sujo=ok(b.sujo)?+b.sujo:null; BAC.ps=ok(b.ps)?+b.ps:null; BAC.pl=ok(b.pl)?+b.pl:null;
-      BAC.cl=(isFinite(b.cl)&&b.cl>=0)?+b.cl:0; BAC.proc=ok(b.proc)?+b.proc:null; BAC.usar=!!b.usar&&!!bacTeste();
+      BAC.cl=(isFinite(b.cl)&&b.cl>=0)?+b.cl:0; BAC.proc=ok(b.proc)?+b.proc:null; BAC.usar=!!b.usar&&!!bacTeste(); BAC.desligou=!!b.desligou;
       if(BAC.usar) REC.find(x=>x.id==='bac').preco=+bacTeste().custo.toFixed(4); }
     for(const k in (d.canais||{})) if(k in sim.pr && isFinite(d.canais[k])) sim.pr[k]=d.canais[k];
     const p=d.producao||{}; ['mx25','mx35'].forEach(k=>{ if(isFinite(p[k])) prj[k]=p[k]; });
@@ -2621,7 +2617,7 @@ function fmtPin(id){
   if(el&&it){ el.value=fmtNum(it.preco); el.classList.remove('bad'); }
 }
 // ===== BACALHAU: teste de rendimento (sujo → limpo) =====
-const BAC={sujo:null, ps:null, pl:null, cl:0, usar:false, proc:null};
+const BAC={sujo:null, ps:null, pl:null, cl:0, usar:false, proc:null, desligou:false};
 function bacTeste(){                         // null enquanto o teste estiver incompleto
   if(!(BAC.sujo>0 && BAC.ps>0 && BAC.pl>0)) return null;
   const rend=BAC.pl/BAC.ps;
@@ -2638,26 +2634,31 @@ function setBac(k,v){
   if(vazio){ BAC[k]=(k==='cl'?0:null); if(el) el.classList.remove('bad'); }
   else if(n===null||n<0||(k!=='cl'&&n===0)||n>(k==='sujo'||k==='cl'?5000:100000)){ if(el) el.classList.add('bad'); return; }
   else { if(el) el.classList.remove('bad'); BAC[k]=n; }
-  if(BAC.usar && !bacTeste()) setBacUsar(false);
+  if(BAC.usar && !bacTeste()) { setBacUsar(false,true); return; }
+  // teste completo pela primeira vez: já passa a valer em todas as abas (a menos que você tenha voltado ao já limpo)
+  if(!BAC.usar && bacTeste() && !BAC.desligou){ setBacUsar(true,true); toast('Bacalhau sujo aplicado em todas as abas ✅'); return; }
   aplicaBac(); recalcF(); renderAll(); rFCards(); rSim(); rProj();
 }
-function setBacUsar(on){
+function setBacUsar(on, auto){
   const it=REC.find(x=>x.id==='bac');
-  if(on){ if(!bacTeste()){ toast('Preencha o preço sujo e os dois pesos do teste primeiro'); const ck=document.getElementById('ck-bacusar'); if(ck) ck.checked=false; return; }
-    if(!BAC.usar) BAC.proc=it.preco; BAC.usar=true; aplicaBac(); }
-  else { if(BAC.usar && BAC.proc>0) it.preco=BAC.proc; BAC.usar=false; }
+  if(on){ if(!bacTeste()){ toast('Preencha o preço sujo e os dois pesos do teste primeiro'); return; }
+    if(!BAC.usar) BAC.proc=it.preco; BAC.usar=true; BAC.desligou=false; aplicaBac(); }
+  else { if(BAC.usar && BAC.proc>0) it.preco=BAC.proc; BAC.usar=false; if(!auto) BAC.desligou=true; }
   recalcF(); renderAll(); rFCards(); rSim(); rProj();
 }
 function rBacCampos(forca){
   const ae=document.activeElement, f2=x=>x>0?x.toFixed(2).replace('.',','):'';
   [['sujo',BAC.sujo],['ps',BAC.ps],['pl',BAC.pl],['cl',BAC.cl]].forEach(([k,v])=>{ const el=document.getElementById('bac-'+k); if(el&&el!==ae) el.value=f2(v); });
-  const ck=document.getElementById('ck-bacusar'); if(ck) ck.checked=BAC.usar;
 }
 function rBac(){
   const out=document.getElementById('bac-out'); if(!out) return;
   const proc=bacProc(), t=bacTeste(), RK=REF.k, q=1/(1-A.per);
   const pe=document.getElementById('bac-proc'); if(pe) pe.textContent=R(proc);
   rBacCampos(false);
+  const stEl=document.getElementById('bac-status');
+  if(stEl) stEl.innerHTML = !t ? '' : (BAC.usar
+    ? `<div class="bac-vd bom" style="display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;margin:10px 0 0"><span>✅ <b>Em uso em todas as abas:</b> bacalhau a ${R(t.custo)}/kg limpo (comprado sujo a ${R(BAC.sujo)}/kg). A Lista de Compras já mostra o bacalhau sujo.</span><button class="vsb" onclick="setBacUsar(false)">Voltar ao bacalhau já limpo (${R(proc)})</button></div>`
+    : `<div class="bac-vd" style="display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;margin:10px 0 0;border-left-color:var(--ac);background:var(--acl)"><span>O painel está usando o bacalhau <b>já limpo</b> (${R(proc)}/kg). O teste acima ainda não entra nas contas.</span><button class="vsb" style="background:var(--ac);color:#fff;border-color:var(--ac)" onclick="setBacUsar(true)">Usar o bacalhau sujo no painel</button></div>`);
   if(!t){ out.innerHTML=`<p class="cons-vaz" style="margin:0 0 6px">Preencha os passos 1, 2 e 3 para ver o rendimento e a quantidade a comprar.</p>`; return; }
   const limpoMes=A.vol*q/F[RK].u*F[RK].bac, sujoMes=limpoMes/t.rend;
   const dif=t.custo-proc, difMes=dif*limpoMes;
