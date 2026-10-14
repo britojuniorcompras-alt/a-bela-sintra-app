@@ -968,16 +968,24 @@ body:not(.foco) .somenteFoco{display:none!important}
             onblur="document.getElementById('pin-rbt').value=N(Math.round(A.rbt12))"
             onkeydown="if(event.key==='Enter')this.blur()"></span></div>
       </div>
+      <div class="cg" style="margin-top:10px">
+        <div class="cl"><span>Crédito de ICMS das compras <small style="color:var(--mut);font-weight:400">(% da receita · confirme com o contador)</small></span>
+          <span class="pinw"><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="pin-cred"
+            aria-label="Crédito de ICMS das compras, em porcentagem da receita" value="4,0" style="width:64px" oninput="setCred(this.value)"
+            onblur="this.value=(A.credICMS*100).toFixed(1).replace('.',',')"
+            onkeydown="if(event.key==='Enter')this.blur()"><span class="cur" style="margin-left:4px">%</span></span></div>
+      </div>
+      <p style="font-size:.77rem;color:var(--mut);margin:6px 0 0">Só conta acima de R$ 3,6 mi/ano. Fornecedor do Simples não gera crédito; se todas as compras vierem de empresas do Simples, use 0.</p>
       <div class="mr" style="margin-top:8px"><span class="ml">Base usada agora</span><span class="mv" id="rbt-base">—</span></div>
       <div class="mr" style="border:none"><span class="ml">Alíquota da linha de referência</span><span class="mv" id="rbt-al">—</span></div>
     </div>
 
     <div class="dalert">
-      <strong>🚨 O imposto tem três degraus — e o painel só conhece dois</strong>
-      <strong>Zona 1, até R$ 3,6 mi/ano (R$ 300 mil/mês):</strong> Simples cheio, ICMS dentro da guia, carga de 11,7% a 12,3%. É aqui que a margem de ~22% existe.
-      <strong>Zona 2, de R$ 3,6 a 4,8 mi:</strong> continua no Simples, mas o <b>ICMS sai da guia</b> e vai para o regime normal de SP (18% menos créditos). Carga real de <b>21% a 24%</b> — o degrau mais caro e o menos conhecido.
-      <strong>Zona 3, acima de R$ 4,8 mi:</strong> fora do Simples, Lucro Presumido, carga de ~20,4% <b>mais o INSS patronal</b> sobre a folha, que no Simples estava embutido.
-      Com os preços atuais a Zona 2 começa em <span id="tx-subl"></span>. <b>Atenção: o cálculo do painel ainda usa 15,5% acima do sublimite</b>, o que é otimista em cerca de 8 pontos — qualquer proposta acima de R$ 300 mil/mês de faturamento precisa de conta à parte antes de ir ao cliente. Veja o estudo tributário completo e as perguntas para o contador.
+      <strong>🚨 O imposto tem três degraus</strong>
+      <strong>Zona 1, até R$ 3,6 mi/ano (R$ 300 mil/mês):</strong> Simples cheio, ICMS dentro da guia, carga de até 12,3%. É aqui que a margem boa existe.
+      <strong>Zona 2, de R$ 3,6 a 4,8 mi:</strong> continua no Simples, mas o <b>ICMS sai da guia</b> e vai para o regime normal de SP (18% menos créditos). Carga real de <b><span id="tx-z2">—</span></b> — o degrau mais caro e o menos conhecido, pior até que o Presumido.
+      <strong>Zona 3, acima de R$ 4,8 mi:</strong> fora do Simples, Lucro Presumido, carga de <b><span id="tx-z3">—</span></b> a 200 mil un/mês, já contando o <b>INSS patronal</b> sobre a folha, que no Simples estava embutido.
+      Com os preços atuais a Zona 2 começa em <span id="tx-subl"></span>. Todas as contas do painel já usam essas três zonas, com o crédito de ICMS informado acima. Os números são estimativas para negociação — confirme com o contador antes de assinar contrato. Se o volume planejado cair na Zona 2, pergunte ao contador sobre sair do Simples por opção em janeiro: o Presumido sai mais barato.
       Regra dos 20%: excesso de até 20% muda o regime em 1º de janeiro seguinte; acima de 20%, já no mês seguinte. Desenquadramento no meio do ano gera passivo retroativo — decida com o contador <b>antes</b>.
     </div>
 
@@ -1017,9 +1025,9 @@ body:not(.foco) .somenteFoco{display:none!important}
               <tr><td>COFINS cumulativo</td><td class="tr fn">3,00%</td><td class="tr fn">3,00%</td></tr>
               <tr><td>IPI</td><td class="tr fn">alimento isento</td><td class="tr fn" style="color:var(--gn)">0,00%</td></tr>
               <tr style="background:var(--surf2)"><td><strong>Subtotal Federal</strong></td><td class="tr fn">—</td><td class="tr fn"><strong>6,23%</strong></td></tr>
-              <tr><td>ICMS SP (líq. créditos)</td><td class="tr fn">18% − crédito ~4%</td><td class="tr fn">~14,0%</td></tr>
-              <tr><td>INSS patronal</td><td class="tr fn">~26,8% da folha</td><td class="tr fn">~1,0 a 1,4%</td></tr>
-              <tr style="background:var(--surf2)"><td><strong>CARGA TOTAL</strong></td><td class="tr fn">—</td><td class="tr fn" style="color:var(--ac);font-weight:700"><strong>~20,4%</strong></td></tr>
+              <tr><td>ICMS SP (líq. créditos)</td><td class="tr fn">18% − crédito <span id="tx-cred">4%</span></td><td class="tr fn" id="tx-icmsliq">~14,0%</td></tr>
+              <tr><td>INSS patronal</td><td class="tr fn">26,8% da folha</td><td class="tr fn" id="tx-inss">—</td></tr>
+              <tr style="background:var(--surf2)"><td><strong>CARGA TOTAL</strong></td><td class="tr fn">a 200 mil un/mês</td><td class="tr fn" style="color:var(--ac);font-weight:700"><strong id="tx-lptot">—</strong></td></tr>
             </tbody>
           </table>
           <p style="font-size:.77rem;color:var(--mut);padding:11px 0 5px">
@@ -1245,7 +1253,7 @@ body:not(.foco) .somenteFoco{display:none!important}
           <div class="pp ph2">Fase 2<br>6–18m</div>
           <div>
             <strong>Ampliação e Transição Fiscal · 100k → 200k un/mês</strong><br>
-            <span style="font-size:.84rem;color:var(--mut)">Aqui acontecem duas coisas ao mesmo tempo, e ambas custam dinheiro: você <strong>passa do sublimite de R$ 3,6 mi do Simples</strong> (o ICMS sai da guia única e a carga real sobe de ~12% para a casa dos 21% a 24%) e precisa <strong>dobrar a equipe e o espaço</strong> (custo fixo de <span id="tx-fix2"></span> para ~<span id="tx-f200b"></span>). Planeje o caixa para absorver as duas coisas juntas.</span>
+            <span style="font-size:.84rem;color:var(--mut)">Aqui acontecem duas coisas ao mesmo tempo, e ambas custam dinheiro: você <strong>passa do sublimite de R$ 3,6 mi do Simples</strong> (o ICMS sai da guia única e a carga real sobe de ~12% para <span id="tx-z2b">—</span>) e precisa <strong>dobrar a equipe e o espaço</strong> (custo fixo de <span id="tx-fix2"></span> para ~<span id="tx-f200b"></span>). Planeje o caixa para absorver as duas coisas juntas.</span>
           </div>
         </div>
         <div class="prow">
@@ -1473,7 +1481,7 @@ function sfml(fid,btn){
   document.querySelectorAll('.ftog button').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on'); renderAll();
 }
-function svol(v){ A.vol=+v; renderAll(); }
+function svol(v){ A.vol=Math.max(1000,Math.round(+v||1000)); renderAll(); }
 function spr(ch,v){ sim.pr[ch]=+v/100; renderAll(); }
 function adotarPreco(ch){                       // canal vira o preco base da linha selecionada
   F[sim.fid].pv = sim.pr[ch];
@@ -1488,7 +1496,7 @@ function setPV(k,v){
 
 function rSim(){
   const f=F[sim.fid],vol=A.vol;
-  const cvS=cvar(sim.fid), contrib=p=>p*(1-aliq(p*vol*12, true)-A.com)-cvS;   // por unidade, após imposto e comissão
+  const cvS=cvar(sim.fid), contrib=p=>p*(1-aliq(p*vol*12, true, vol)-A.com)-cvS;   // por unidade, após imposto e comissão
   const maxL=Math.max(...CH.map(c=>contrib(sim.pr[c.id])));
   const ss=`<div class="ss2">
     <div class="bm"><div class="bml">Custo Variável/un</div><div class="bmv">${R(cvar(sim.fid))}</div><div class="bms">${f.lbl} · c/ embalagem e quebra</div></div>
@@ -1536,7 +1544,7 @@ function rProj(){
   const cogs=u25*cvar('f25')+u35*cvar('f35')+u50*cvar('f50');        // com embalagem e quebra
   const rev=u25*F.f25.pv+u35*F.f35.pv+u50*F.f50.pv;                  // preco real de cada linha
   const com=rev*A.com, gp=rev-cogs-com, ebt=gp-FX();
-  const al=aliq(rev*12, true), imp=rev*al, liq=ebt-imp;
+  const al=aliq(rev*12, true, tu), imp=rev*al, liq=ebt-imp;
   const ec=liq>=0?'var(--gn)':'var(--rd)';
   window.__proj={tu,rev,cogs,liq,al,bd};
   st('pb-v', bd.toFixed(1).replace('.',',')+(bd>A.cap?' ⚠️ acima da capacidade ('+A.cap+')':''));
@@ -1571,7 +1579,7 @@ function rProj(){
 
 
 /* ===== PREMISSAS — fonte única de verdade do painel ===== */
-const A = { emb:0.05, com:0, per:0.03, fix:40637, pz:45, vol:100000, inv:290200, depMeses:60, peso:30, cap:3, rbt12:0, escFix:0, obra:0, obraMeses:36, foco:'' }   // foco: '' = todas as linhas;  // cap = batches/dia que a estrutura comporta
+const A = { emb:0.05, com:0, per:0.03, fix:40637, pz:45, vol:100000, inv:290200, depMeses:60, peso:30, cap:3, rbt12:0, escFix:0, obra:0, obraMeses:36, foco:'', credICMS:0.04 }   // foco: '' = todas as linhas;  // cap = batches/dia que a estrutura comporta
 
 
 // quebra: perde-se a MASSA, nao a embalagem -> divide o ingrediente por (1-quebra)
@@ -1597,7 +1605,7 @@ function calc(k, vol, fixo){
   const pv=F[k].pv, cv=cvar(k), rec=pv*vol;
   const cvt=cv*vol, com=rec*A.com;
   const eb=rec-cvt-fixo-com;
-  const al=aliq(rec*12, atual), imp=rec*al, liq=eb-imp;
+  const al=aliq(rec*12, atual, vol), imp=rec*al, liq=eb-imp;
   return {pv,cv,cvt,rec,com,fixo,eb,al,imp,liq,mg:rec>0?liq/rec:0};
 }
 
@@ -1607,26 +1615,64 @@ function breakEven(k){
   if(pv<=cv) return null;
   const cfDe = q => A.escFix ? A.fix*fatorEsc(q) : FX();
   // sobra(q) > 0 = o volume q já paga tudo. Busca por bisseção: nunca diverge.
-  const sobra = q => { const al=aliq(pv*q*12, true); return q*(pv*(1-al-A.com)-cv) - cfDe(q); };
+  const sobra = q => { const al=aliq(pv*q*12, true, q); return q*(pv*(1-al-A.com)-cv) - cfDe(q); };
   const MAX=5e6;                                  // acima disso não é mais mini fábrica
   if(!(sobra(MAX)>0)) return null;                // não fecha em nenhum volume razoável
   if(sobra(1)>0) return 1;
-  let lo=1, hi=MAX;
-  for(let i=0;i<200;i++){ const m=(lo+hi)/2; if(sobra(m)>0) hi=m; else lo=m; }
-  return hi;
+  // o imposto tem degraus: procura o PRIMEIRO volume que fecha a conta, olhando os dois lados de cada degrau
+  const quebras = DEGRAUS.map(L=>L/12/pv);
+  for(let q=500;q<=MAX;q=q<200000?q+500:q*1.02) quebras.push(q);
+  return primeiroOk(1, MAX, q=>sobra(q)>0, quebras);
 }
 const TETO = 4800000;
 const SUBLIM = 3600000;   // acima disso o ICMS sai do Simples e é pago por fora
 const AN2 = [[180000,.045,0],[360000,.078,5940],[720000,.10,13860],
              [1800000,.112,22500],[3600000,.147,85500],[4800000,.30,720000]];
-function aliq(recAno, real){
-  // real=true → usa o faturamento dos últimos 12 meses informado (regra do Simples), quando houver
-  if(real && A.rbt12>0) recAno = A.rbt12;
-  // acima do sublimite o Simples fica ~10–14% + ICMS por fora (~9%) → Lucro Presumido (15,5%) passa a ser o regime mais barato
-  if (recAno > SUBLIM) return 0.155;                     // Lucro Presumido estimado
-  for (const [lim,al,ded] of AN2) if (recAno <= lim) return (recAno*al - ded)/recAno;
-  return 0.155;
+const ICMS_SP = 0.18;      // alíquota interna de SP sobre o bolinho
+const INSS_PAT = 0.268;    // INSS patronal + RAT + terceiros, sobre a folha (só fora do Simples)
+// Imposto em três zonas (veja o estudo tributário):
+//  Zona 1 · até R$ 3,6 mi/ano — Simples Anexo II, ICMS dentro do DAS
+//  Zona 2 · R$ 3,6 a 4,8 mi   — Simples 6ª faixa (sem ICMS na guia) + ICMS normal de SP (18% − crédito)
+//  Zona 3 · acima de R$ 4,8 mi — Lucro Presumido: PIS/COFINS 3,65% + IRPJ 1,2% (+adicional) + CSLL 1,08% + ICMS + INSS patronal
+function zonaImp(recAno, real){ if(real && A.rbt12>0) recAno=A.rbt12; return recAno<=SUBLIM?1:(recAno<=TETO?2:3); }
+function aliq(recAno, real, vol){
+  const recMes = recAno/12;                              // o mês de verdade (adicional e INSS dependem dele)
+  if(real && A.rbt12>0) recAno = A.rbt12;                // a faixa do Simples vem do RBT12 informado
+  if(!(recAno>0)) return AN2[0][1];
+  const icms = Math.max(0, ICMS_SP - (A.credICMS||0));
+  if (recAno <= SUBLIM){ for (const [lim,al,ded] of AN2) if (recAno <= lim) return (recAno*al - ded)/recAno; }
+  if (recAno <= TETO) return (recAno*0.30 - 720000)/recAno + icms;      // 6ª faixa não tem ICMS na guia
+  let extra = 0;
+  if (recMes > 0){
+    const adic = Math.max(0, 0.08*recMes - 20000)*0.10;                 // adicional de IRPJ
+    const pvRef = (F[REF.k]||{}).pv || 1;
+    const sal = (FIX.find(x=>x.id==='sal')||{valor:0}).valor;
+    const folha = sal * (A.escFix ? fatorEsc(vol ?? recMes/pvRef) : 1);   // folha cresce com a estrutura
+    extra = (adic + INSS_PAT*folha)/recMes;
+  }
+  return 0.0365 + 0.012 + 0.0108 + icms + extra;
 }
+const NOMEZONA = {1:'Simples · ICMS na guia', 2:'Simples · ICMS por fora', 3:'Lucro Presumido'};
+// Limites de faturamento anual onde o imposto muda de regra (faixas do Simples, sublimite e teto)
+const DEGRAUS = [...AN2.map(r=>r[0])];
+// Menor x em [lo,hi] que satisfaz ok(x). O imposto tem degraus, então o lucro não sobe sempre
+// junto: testa uma grade + os dois lados de cada degrau (pontos de virada) e refina por bisseção.
+// quebras = valores de x onde o faturamento cruza um degrau.
+function primeiroOk(lo, hi, ok, quebras){
+  if(!(hi>lo)) return null;
+  if(ok(lo)) return lo;
+  const pts=[];
+  for(let i=1;i<=600;i++) pts.push(lo+(hi-lo)*i/600);
+  for(const b of (quebras||[])) if(b>lo && b<hi){ const e=Math.max(1e-7,b*1e-9); pts.push(b-e, b, b+e); }
+  pts.sort((x,y)=>x-y);
+  let a=lo, b=null;
+  for(const x of pts){ if(ok(x)){ b=x; break; } a=x; }
+  if(b===null) return null;
+  for(let i=0;i<80;i++){ const m=(a+b)/2; if(ok(m)) b=m; else a=m; }
+  return b;
+}
+const quebrasPreco = v => DEGRAUS.map(L=>L/12/v);
+function menorPreco(lo, hi, ok, v){ return ok(hi) ? primeiroOk(lo, hi, ok, v?quebrasPreco(v):[]) : null; }
 function setA(k,v){ A[k]=v; renderAll(); }
 
 
@@ -1673,6 +1719,7 @@ function aplicar(d){
     (d.fixos||[]).forEach(x=>{const it=FIX.find(y=>y.id===x.id); if(it&&isFinite(x.valor)) it.valor=x.valor;});
     for(const k in (d.precos||{})) if(F[k]&&isFinite(d.precos[k])) F[k].pv=d.precos[k];
     A.peso=30;   // versoes salvas antes do campo de peso eram todas de 30 g
+    A.credICMS=0.04; // versoes salvas antes do campo de credito de ICMS
     REF.k = F[d.ref] ? d.ref : 'f35';
     for(const k in (d.A||{})) if(isFinite(d.A[k])) A[k]=d.A[k];
     // trava de segurança: um dado estranho no banco não pode quebrar as contas
@@ -1680,6 +1727,7 @@ function aplicar(d){
     A.per=Math.min(0.9,Math.max(0,A.per||0)); A.cap=Math.min(200,Math.max(0.5,A.cap||3));
     A.depMeses=Math.max(1,Math.round(A.depMeses||60)); A.com=Math.min(0.9,Math.max(0,A.com||0));
     A.rbt12=Math.max(0,A.rbt12||0); A.escFix=A.escFix?1:0;
+    A.credICMS=Math.min(0.18,Math.max(0,isFinite(A.credICMS)?A.credICMS:0.04));
     A.emb=Math.max(0,A.emb||0); A.inv=Math.max(0,A.inv||0); A.pz=Math.max(0,A.pz||0);
     A.obra=Math.max(0,A.obra||0); A.obraMeses=Math.max(1,Math.round(A.obraMeses||36));
     A.foco = F[A.foco] ? A.foco : '';
@@ -1946,7 +1994,7 @@ function liqSim(k,o){
   o=o||{}; const pb=o.bac??REC.find(i=>i.id==='bac').preco, vol=o.vol??A.vol, pv=o.pv??F[k].pv;
   const ing=REC.reduce((t,it)=>t+qtdDe(it,k)*(it.id==='bac'?pb:it.preco),0)/F[k].u;
   const cv=ing/(1-A.per)+A.emb, rec=pv*vol, eb=rec-cv*vol-FXv(vol)-rec*A.com;
-  return eb-rec*aliq(rec*12, vol===A.vol);   // no volume de hoje usa a mesma base do Diagnóstico (RBT12, se informado)
+  return eb-rec*aliq(rec*12, vol===A.vol, vol);   // no volume de hoje usa a mesma base do Diagnóstico (RBT12, se informado)
 }
 function rSensi(){
   const el=document.getElementById('sensitb'); if(!el) return;
@@ -2132,13 +2180,20 @@ function verificar(){
   // 5. no break-even o resultado tem de ser zero
   for (const k in F){
     const be=breakEven(k);
-    if(be){ const al=aliq(F[k].pv*be*12,true), cfbe=A.escFix?A.fix*fatorEsc(be):FX();
-      testar(`Break-even zera · ${NM[k]}`, be*(F[k].pv*(1-al-A.com)-cvar(k))-cfbe, 0, 2); }
+    if(be){ const sob=q=>{ const al=aliq(F[k].pv*q*12,true,q), cf=A.escFix?A.fix*fatorEsc(q):FX(); return q*(F[k].pv*(1-al-A.com)-cvar(k))-cf; };
+      // no break-even a conta fecha: ou zera, ou (num degrau de imposto) passa de negativa para positiva
+      const ok = sob(be)>=-2 && (be<=1 || sob(be-1)<2);
+      VERIF.push({nome:`Break-even fecha a conta · ${NM[k]}`, a:sob(be), b:0, ok, dif:0}); }
   }
   // 6. imposto nunca cai quando o faturamento sobe (pega degrau errado de faixa/sublimite)
   { let ant=0, ok=true, onde='';
-    for(let ra=60000; ra<=8000000; ra+=20000){ const a=aliq(ra); if(a<ant-1e-9){ ok=false; onde=ra; break; } ant=a; }
-    VERIF.push({nome:'Alíquota nunca cai com mais faturamento', a:onde||0, b:0, ok, dif:0}); }
+    for(let ra=60000; ra<=TETO; ra+=20000){ const a=aliq(ra); if(a<ant-1e-9){ ok=false; onde=ra; break; } ant=a; }
+    VERIF.push({nome:'Alíquota do Simples nunca cai com mais faturamento', a:onde||0, b:0, ok, dif:0}); }
+  // 6b. cada zona usa a regra certa
+  { const ok = Math.abs(aliq(3000000)-(3000000*.147-85500)/3000000)<1e-9
+            && Math.abs(aliq(4200000)-((4200000*.30-720000)/4200000+Math.max(0,ICMS_SP-A.credICMS)))<1e-9
+            && aliq(6000000)>0.0365+0.012+0.0108;
+    VERIF.push({nome:'Imposto nas três zonas', a:ok?1:0, b:1, ok, dif:0}); }
 
   // 7. lucro por unidade (Diagnóstico) × volume = lucro líquido do mês
   for (const k in F){
@@ -2159,8 +2214,8 @@ function verificar(){
   }
   // 9. alíquota dentro da faixa plausível
   for (const k in F){
-    const al=calc(k).al;
-    VERIF.push({nome:`Alíquota plausível · ${NM[k]}`, a:al*100, b:0, ok:al>=0.04&&al<=0.32, dif:0});
+    const cc=calc(k), al=cc.al;
+    VERIF.push({nome:`Alíquota plausível · ${NM[k]}`, a:al*100, b:0, ok:al>=0.04&&(al<=0.34||zonaImp(cc.rec*12,true)===3), dif:0});   // na zona 3 o INSS da folha pesa mais em mês fraco
   }
   // 10. nenhum número inválido
   let ruins=0;
@@ -2194,7 +2249,7 @@ function rPesoCmp(){
   const pesos=[25,30], K=LK();
   const linhaDe=(k,g)=>{
     const u=F[k].kg*1000/g, ing=batchCusto(k)/u, cv=ing/(1-A.per)+A.emb;
-    const rec=F[k].pv*A.vol, eb=rec-cv*A.vol-FX()-rec*A.com, liq=eb-rec*aliq(rec*12,true);
+    const rec=F[k].pv*A.vol, eb=rec-cv*A.vol-FX()-rec*A.com, liq=eb-rec*aliq(rec*12,true,A.vol);
     const bd=A.vol/(1-A.per)/u/INS.dias;
     return {u,cv,liq,mg:rec>0?liq/rec:0,bd};
   };
@@ -2437,12 +2492,11 @@ function setPeso(v){
   A.peso=Math.round(n*10)/10; recalcF(); renderAll();
 }
 function precoEquilibrio(k){           // preço que zera o lucro líquido no volume atual
-  const cv=cvar(k), v=A.vol, liqEm=p=>{const rec=p*v; return rec-cv*v-FX()-rec*A.com-rec*aliq(rec*12, true);};
-  let lo=cv, hi=cv*6+FX()/v*3; if(liqEm(hi)<=0) return null;
-  for(let i=0;i<80;i++){ const m=(lo+hi)/2; if(liqEm(m)>0) hi=m; else lo=m; }
-  return hi;
+  const cv=cvar(k), v=A.vol, liqEm=p=>{const rec=p*v; return rec-cv*v-FX()-rec*A.com-rec*aliq(rec*12, true, v);};
+  return menorPreco(cv, cv*6+FX()/v*3, p=>liqEm(p)>0, v);
 }
 function rTextos(){
+  const pctx1=v=>(v*100).toFixed(1).replace('.',',')+'%';
   const pct=v=>(v*100).toFixed(0)+'%', faixa=(a,b)=>{const x=Math.min(a,b),y=Math.max(a,b);return Math.round(x*100)===Math.round(y*100)?pct(x):pct(x)+' a '+pct(y);};
   const K=LK(), sh=id=>K.map(k=>{const it=REC.find(x=>x.id===id);return qtdDe(it,k)*it.preco/batchCusto(k);});
   const bac=sh('bac'), bat=sh('bat'), aze=sh('aze');
@@ -2470,6 +2524,11 @@ function rTextos(){
     sublb:K.map(k=>{const v=SUBLIM/12/F[k].pv; return N(Math.round(v/500)*500)+' un/mês ('+NM[k]+')';}).join(' · '),
     pvlinhas:K.map(k=>'a linha '+NM[k]+' a '+R(F[k].pv)).join(' e '), pvplural:K.length>1?'m':'',
     stpv:F[RK].pv.toFixed(2).replace('.',','),
+    z2:(()=>{const ic=Math.max(0,ICMS_SP-A.credICMS); return pctx1(0.10+ic)+' a '+pctx1(0.15+ic);})(),
+    z2b:(()=>{const ic=Math.max(0,ICMS_SP-A.credICMS); return pctx1(0.10+ic)+' a '+pctx1(0.15+ic);})(),
+    z3:pctx1(aliq(F[RK].pv*200000*12,false,200000)), lptot:pctx1(aliq(F[RK].pv*200000*12,false,200000)),
+    cred:pctx1(A.credICMS), icmsliq:pctx1(Math.max(0,ICMS_SP-A.credICMS)),
+    inss:(()=>{const r=F[RK].pv*200000, sal=(FIX.find(x=>x.id==='sal')||{valor:0}).valor, fo=sal*(A.escFix?fatorEsc(200000):1); return pctx1(INSS_PAT*fo/r);})(),
     stun:(F[RK].pv*0.5081*0.18).toFixed(4).replace('.',',')+' a '+(F[RK].pv*0.6023*0.18).toFixed(4).replace('.',','),
     stpc:'9,1% a 10,8%',
     stmes:R(F[RK].pv*0.5081*0.18*A.vol,0)+' a '+R(F[RK].pv*0.6023*0.18*A.vol,0),
@@ -2504,6 +2563,12 @@ function setRbt(v){
   A.rbt12=n; renderAll();
 }
 function setEscFix(on){ A.escFix=on?1:0; renderAll(); }
+function setCred(v){
+  const n=parseNum(v), el=document.getElementById('pin-cred');
+  if(n===null||n<0||n>18){ if(el) el.classList.add('bad'); return; }
+  if(el) el.classList.remove('bad');
+  A.credICMS=n/100; renderAll();
+}
 function setDias(v){
   const n=parseNum(v); const el=document.getElementById('pin-dias');
   if(n===null||n<1||n>31){ if(el) el.classList.add('bad'); return; }
@@ -2517,7 +2582,7 @@ function rResist(){
   const liqCom=(k,pb,pv)=>{
     const cv=custoCom(k,pb)/(1-A.per)+A.emb, p=pv??F[k].pv, rec=p*A.vol;
     const eb=rec-cv*A.vol-FX()-rec*A.com;
-    return eb-rec*aliq(rec*12);
+    return eb-rec*aliq(rec*12, true, A.vol);   // mesma base do Diagnóstico
   };
   el.innerHTML=LK().map(k=>{
     const hoje=liqCom(k,base);
@@ -2750,7 +2815,7 @@ function rCompras(){
     const custos=LK().map(k=>custoCom(k,pr));
     const cref=custoCom(REF.k,pr), delta=(cref-ref.custo)/(1-A.per)*A.vol;
     const rec=ref.pv*A.vol, eb=rec-(cref/(1-A.per)+A.emb)*A.vol-FX()-rec*A.com;
-    const mg=(eb-rec*aliq(rec*12))/rec;
+    const mg=(eb-rec*aliq(rec*12, true, A.vol))/rec;   // mesma base do Diagnóstico
     return `<tr${aqui?' style="background:var(--surf2)"':''}>
       <td>${aqui?'<strong>'+R(pr)+'/kg ← hoje</strong>':(d>0?'+':'')+d+'% · '+R(pr)+'/kg'}</td>
       ${custos.map(c=>`<td class="tr fn">${R(c)}</td>`).join('')}
@@ -2783,9 +2848,9 @@ function rTax(){
   let h='';
   for (const v of [100000,150000,200000]){
     for (const k of LK()){
-      const f=F[k], rec=f.pv*v, ra=rec*12, al=aliq(ra), dentro=ra<=SUBLIM;
+      const f=F[k], rec=f.pv*v, ra=rec*12, al=aliq(ra,false,v), dentro=ra<=SUBLIM;
       const nf=AN2.findIndex(([lim])=>ra<=lim)+1;
-      const faixa = dentro ? `Simples · ${nf}ª faixa` : (ra<=TETO?'Acima do sublimite → Presumido':'Lucro Presumido');
+      const faixa = dentro ? `Simples · ${nf}ª faixa` : (ra<=TETO?'Simples 6ª faixa · ICMS por fora':'Lucro Presumido');
       h+=`<tr${v===100000?' style="background:var(--surf2)"':''}>
         <td>${NM[k]} · ${v/1000}k un</td>
         <td class="tr fn">${R(rec,0)}</td><td class="tr fn">R$ ${(ra/1e6).toFixed(2)} mi</td>
@@ -2846,21 +2911,17 @@ let PPTXT={};   // texto cru do campo que está sendo digitado (deixa digitar ce
 const ppPrecoDe = v => isFinite(PROP.precos[v]) ? PROP.precos[v] : F[PROP.fid].pv;
 function ppCalc(v,p){
   const k=PROP.fid, cv=cvar(k), fixo=FXv(v), rec=p*v;
-  const eb=rec-cv*v-fixo-rec*A.com, al=aliq(rec*12), imp=rec*al, liq=eb-imp;
+  const eb=rec-cv*v-fixo-rec*A.com, al=aliq(rec*12,false,v), imp=rec*al, liq=eb-imp;
   const bd=v/(1-A.per)/F[k].u/INS.dias;
   return {p,v,cv,fixo,rec,eb,al,imp,liq,mg:rec>0?liq/rec:0,liqUn:liq/v,bd,cabe:bd<=A.cap};
 }
 function ppPrecoParaMargem(v,m){                 // preço que entrega a margem líquida pedida
-  const k=PROP.fid; let lo=cvar(k), hi=cvar(k)*10+FXv(v)/v*5;
-  if(ppCalc(v,hi).mg<m) return null;
-  for(let i=0;i<80;i++){ const mid=(lo+hi)/2; if(ppCalc(v,mid).mg>=m) hi=mid; else lo=mid; }
-  return hi;
+  const k=PROP.fid;
+  return menorPreco(cvar(k), cvar(k)*10+FXv(v)/v*5, p=>ppCalc(v,p).mg>=m, v);
 }
 function ppPrecoIndiferenca(v,lucroAlvo){        // preço que empata o lucro total com a faixa base
-  const k=PROP.fid; let lo=cvar(k), hi=cvar(k)*10+FXv(v)/v*5;
-  if(ppCalc(v,hi).liq<lucroAlvo) return null;
-  for(let i=0;i<80;i++){ const mid=(lo+hi)/2; if(ppCalc(v,mid).liq>=lucroAlvo) hi=mid; else lo=mid; }
-  return hi;
+  const k=PROP.fid;
+  return menorPreco(cvar(k), cvar(k)*10+FXv(v)/v*5, p=>ppCalc(v,p).liq>=lucroAlvo, v);
 }
 function ppLinha(fid){ PROP.fid=fid; PROP.precos={}; ppLimpaTxt(); renderAll(); }
 function ppModo(m){ PROP.modo=m; renderAll(); }
@@ -2877,10 +2938,17 @@ function ppSetPreco(v,val){
 }
 function ppBlur(v){ delete PPTXT[v]; renderAll(); }               // ao sair do campo, formata bonito
 function ppLimpaTxt(){ PPTXT={}; }
-function ppSugerir(){                            // desconto progressivo a partir do preço base
+function ppSugerir(){                            // desconto progressivo, mas nunca abaixo do preço mínimo da faixa
   const base=F[PROP.fid].pv, d=[0,0.02,0.04,0.06,0.08];
-  PROP.precos={}; ppLimpaTxt(); VOLP.forEach((v,i)=>PROP.precos[v]=+(base*(1-d[i])).toFixed(2));
-  PROP.modo='preco'; renderAll(); toast('Tabela preenchida com desconto de até 8%');
+  PROP.precos={}; ppLimpaTxt(); PROP.modo='preco';
+  const alvo=ppCalc(VOLP[0],base).liq; let travou=0;
+  VOLP.forEach((v,i)=>{
+    let p=+(base*(1-d[i])).toFixed(2);
+    if(i>0 && alvo>0){ const m=ppPrecoIndiferenca(v,alvo); if(m && p<m){ p=Math.ceil(m*100)/100; travou++; } }
+    PROP.precos[v]=p;
+  });
+  renderAll();
+  toast(travou ? `Tabela sugerida — ${travou} faixa(s) ficaram no preço mínimo para não perder lucro` : 'Tabela preenchida com desconto de até 8%');
 }
 function ppReset(){ PROP.precos={}; ppLimpaTxt(); PROP.modo='preco'; renderAll(); toast('Voltou ao preço base da linha'); }
 
@@ -2925,7 +2993,7 @@ function rProp(){
         <td class="tr">${campo}</td>
         <td class="tr fn">${l.desc>0.0001?'−'+(l.desc*100).toFixed(1).replace('.',',')+'%':'—'}</td>
         <td class="tr fn">${R(l.cv)}<span style="display:block;font-size:.72rem;color:var(--mut)">+ ${R(l.fixo/l.v)} fixo</span></td>
-        <td class="tr fn">${P(l.al)}</td>
+        <td class="tr fn">${P(l.al)}<span style="display:block;font-size:.7rem;color:${zonaImp(l.rec*12)===2?'var(--rd)':'var(--mut)'}">${['','Simples','ICMS por fora','Presumido'][zonaImp(l.rec*12)]}</span></td>
         <td class="tr fn ${l.liqUn<0?'ruim':''}">${R(l.liqUn)}</td>
         <td class="tr fn ${l.liq<0?'ruim':''}" style="font-weight:700">${R(l.liq,0)}</td>
         <td class="tr fn ${l.mg<0?'ruim':''}">${P(l.mg)}</td>
@@ -2952,7 +3020,7 @@ function rProp(){
     rec.innerHTML=avisoRbt+aviso+`<div class="pp-rec">
       ${base100.liq>0
         ? `<b>Até onde dá para descontar</b> — mantendo o lucro de ${R(base100.liq,0)}/mês que você tem a 100 mil un:
-           ${pi.map(x=>`<br>• <b>${N(x.v)} un/mês</b>: preço mínimo ${R(x.q)} (desconto de até ${(x.d*100).toFixed(1).replace('.',',')}%)`).join('')}`
+           ${pi.map(x=>`<br>• <b>${N(x.v)} un/mês</b>: preço mínimo ${R(x.q)} ${x.d>=0.0005?`(desconto de até ${(x.d*100).toFixed(1).replace('.',',')}%)`:(x.d<=-0.0005?`<span style="color:var(--rd)">(precisa <b>subir</b> ${(-x.d*100).toFixed(1).replace('.',',')}% — o imposto desta faixa come o ganho de volume)</span>`:'(sem espaço para desconto)')}`).join('')}`
         : `<b>⚠️ A faixa de 100 mil un já fecha no vermelho</b> (${R(base100.liq,0)}/mês) com o preço da tabela. Não dá para falar em desconto antes de acertar preço ou custo. O piso de cada faixa, que é o preço em que o lucro zera: ${VOLP.map(v=>{const z=piso(v); return `${N(v)} un ${z?R(z):'—'}`;}).join(' · ')}.`}
       <br><br>Com os preços da tabela acima, a faixa que mais rende é <b>${N(melhor.v)} un/mês</b>, com ${R(melhor.liq,0)}/mês
       ${melhor.v!==100000?`(${R(melhor.liq-base100.liq,0)} a mais que a faixa de 100 mil)`:''}.
@@ -3159,7 +3227,8 @@ function syncControls(){
   st('escfix-v', A.escFix ? 'Ligado: no volume atual o custo fixo é '+R(FX(),0)+'/mês (estrutura base '+R(A.fix,0)+').' : 'Desligado: usa sempre '+R(A.fix,0)+'/mês.');
   const rr=calc(REF.k);
   st('rbt-base', A.rbt12>0 ? R(A.rbt12,0)+' (informado)' : R(rr.rec*12,0)+' (estimado: mês × 12)');
-  st('rbt-al', P(rr.al)+' · '+((A.rbt12>0?A.rbt12:rr.rec*12)>SUBLIM?'acima do sublimite':'Simples Anexo II'));
+  st('rbt-al', P(rr.al)+' · '+NOMEZONA[zonaImp(rr.rec*12,true)]);
+  sv('pin-cred', (A.credICMS*100).toFixed(1).replace('.',','));
   // precos de canal do simulador
   CH.forEach(c=>{ st('sp-'+c.id,R(sim.pr[c.id])); sv('spr-'+c.id,Math.round(sim.pr[c.id]*100)); });
   // projecao
@@ -3212,7 +3281,7 @@ function resumoAba(t){
       L.push(`• ${linha(k)} — ${N(Math.round(b))} batches/mês (${(b/INS.dias).toFixed(1).replace('.',',')}/dia) · bacalhau ${N(Math.round(b*qtdDe(bac,k)))} kg · batata ${N(Math.round(b*F[k].bat))} kg · gasto insumos ${R(b*batchCusto(k),0)}/mês`); }
   } else if(t==='sim'){
     const k=sim.fid, cv=cvar(k); L.push(`Formulação simulada: ${linha(k)} · custo variável ${R(cv)}/un`);
-    for(const ch of CH){ const p=sim.pr[ch.id], c=p*(1-aliq(p*A.vol*12, true)-A.com)-cv;
+    for(const ch of CH){ const p=sim.pr[ch.id], c=p*(1-aliq(p*A.vol*12, true, A.vol)-A.com)-cv;
       L.push(`• ${ch.nom} — ${R(p)}/un · contribuição após imposto ${R(c)}/un · ${R(c*A.vol,0)}/mês`); }
   } else if(t==='proj'){
     const p=window.__proj||{}; const mx=mixAtual();
@@ -3228,7 +3297,7 @@ function resumoAba(t){
     L.push(`• Payback total: ${r.liq+dep>0?((wc+INVT())/(r.liq+dep)).toFixed(1).replace('.',',')+' meses':'—'}`);
     for(const k2 of K){ const r2=calc(k2), g=r2.liq+dep; L.push(`• ${linha(k2)} — lucro ${R(r2.liq,0)}/mês · payback da planta ${g>0?(INVT()/g).toFixed(1).replace('.',',')+' meses':'—'}`); }
   } else if(t==='tax'){
-    for(const k of K){ const r=calc(k), ra=r.rec*12; const reg= ra<=SUBLIM?'Simples Nacional':(ra<=TETO?'Acima do sublimite → Presumido':'Lucro Presumido');
+    for(const k of K){ const r=calc(k), ra=r.rec*12; const reg= NOMEZONA[zonaImp(ra)];
       L.push(`• ${linha(k)} — faturamento ${R(ra/1e6,2).replace('R$ ','R$ ')} mi/ano · ${reg} · ${pctx(r.al)} · imposto ${R(r.imp,0)}/mês`); }
     L.push(`Sublimite do Simples (R$ 3,6 mi/ano) com os preços atuais: `+K.map(k=>`${linha(k)} ${N(Math.round(SUBLIM/12/F[k].pv/500)*500)} un/mês`).join(' · '));
   } else if(t==='risco'){
