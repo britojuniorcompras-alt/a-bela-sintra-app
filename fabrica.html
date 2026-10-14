@@ -50,6 +50,7 @@ body{font-family:'Source Sans 3',sans-serif;background:var(--bg);color:var(--txt
 .hd h1{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--ac);line-height:1.2}
 .hd p{font-size:.76rem;color:var(--mut)}
 
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}   /* tabela larga rola dentro do cartão, não empurra a página */
 nav{background:var(--surf);border-bottom:1px solid var(--bdr);padding:0 16px;display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
 nav::-webkit-scrollbar{display:none}
 nav button{flex-shrink:0;background:none;border:none;border-bottom:2px solid transparent;padding:11px 15px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:.84rem;font-weight:600;color:var(--mut);transition:all .15s;white-space:nowrap}
@@ -136,7 +137,7 @@ hr.sp{border:none;border-top:1px solid var(--bdr);margin:14px 0}
 /* PROJ */
 .pg{display:grid;grid-template-columns:295px 1fr;gap:18px}
 @media(max-width:680px){.pg{grid-template-columns:1fr}}
-.m4{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:14px}
+.m4{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:14px}
 @media(max-width:680px){.m4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:380px){.m4{grid-template-columns:1fr}}
 
@@ -212,7 +213,7 @@ table.dre{width:100%;border-collapse:collapse;font-size:.86rem}
 :root[data-theme="dark"] .badge-wn{background:#2B1D05;color:#FBBF24}
 
 .d2col{display:grid;grid-template-columns:300px 1fr;gap:16px;margin-bottom:16px}
-@media(max-width:700px){.d2col{grid-template-columns:1fr}}
+@media(max-width:860px){.d2col{grid-template-columns:1fr}}   /* em tablet as duas colunas empilham, senão a página rolava de lado */
 .sec-ttl{font-weight:700;font-size:.94rem;padding:13px 19px;border-bottom:1px solid var(--bdr)}
 .scl-ok{color:var(--gn);font-weight:700}
 .scl-bd{color:var(--rd);font-weight:700}
@@ -347,7 +348,7 @@ body.com-rasc{padding-bottom:92px}
 body.com-rasc .shtoast{bottom:104px}
 @media(max-width:520px){.rasc-txt span{display:none}.rasc-b{padding:9px 12px}}
 @media print{.rasc{display:none!important}}
-@media(min-width:701px){.d2col.d2ins{grid-template-columns:340px 1fr}}
+@media(min-width:861px){.d2col.d2ins{grid-template-columns:340px 1fr}}
 /* ---- conselheiro agendado ---- */
 .cons{background:var(--surf);border:1px solid var(--bdr);border-top:4px solid var(--bl);border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;margin-bottom:16px}
 .cons-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
@@ -414,6 +415,20 @@ body.com-rasc .shtoast{bottom:104px}
 .pp-cli th,.pp-cli td{padding:7px 6px;border-bottom:1px solid var(--bdr);text-align:right}
 .pp-cli th:first-child,.pp-cli td:first-child{text-align:left}
 .pp-cli th{font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);font-weight:700}
+.fseg{display:inline-flex;border:1px solid var(--bdr);border-radius:20px;overflow:hidden;background:var(--surf2);margin-right:6px}
+.fseg button{font:inherit;font-size:.72rem;font-weight:700;padding:5px 10px;border:0;background:transparent;color:var(--mut);cursor:pointer}
+.fseg button.on{background:var(--ac);color:#fff}
+@media(max-width:900px){
+  .fseg button{padding:5px 9px;font-size:.7rem}
+  @media(max-width:359px){.fseg button{padding:4px 7px;font-size:.66rem}}
+  .hd{flex-wrap:wrap}
+  .hd .hdr{flex-wrap:wrap;justify-content:flex-end}
+  .fseg{order:9;flex:1 1 100%;margin:7px 0 0;justify-content:center;flex-wrap:wrap}
+}
+.focoaviso{font-size:.78rem;color:var(--mut);margin:-6px 0 12px}
+.focoaviso b{color:var(--ac)}
+body.foco .sofull{display:none!important}
+body:not(.foco) .somenteFoco{display:none!important}
 .selo-ler{display:inline-block;margin-right:6px;padding:3px 9px;border-radius:14px;background:var(--bll);color:var(--bl);font-size:.7rem;font-weight:700;white-space:nowrap}
 .selo-ler[hidden]{display:none}
 .cnovo{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:10px;background:var(--rd);color:#fff;font-size:.62rem;font-weight:700;vertical-align:middle}
@@ -496,6 +511,7 @@ body.com-rasc .shtoast{bottom:104px}
     <p>Mini Fábrica · B2B Congelado · Escala 100k–300k un/mês · A Bela Sintra · São Paulo</p>
   </div>
   <div class="hdr">
+    <span class="fseg" id="fsel" aria-label="Formulação em foco"></span>
     <span id="selo-ler" class="selo-ler" hidden title="Você pode simular à vontade; as alterações ficam só no seu aparelho">👁 Somente leitura</span>
     <span id="usr" class="usr"></span>
     <button class="hbtn" onclick="abrirVersoes()">💾 Versões</button>
@@ -626,7 +642,7 @@ body.com-rasc .shtoast{bottom:104px}
     <div class="info">
       <strong>📌 Referência de Mercado:</strong>
       Bom Porto Gourmet 360 g (12 un) → R$ 41,90 no Empório Quatro Estrelas SP = <strong>R$ 3,49/un no varejo especial</strong>.
-      Com os preços atuais, a linha 25% a <span id="tx-pv25"></span> e a 35% a <span id="tx-pv35"></span> ficam bem abaixo dessa referência — competitivas no preço, mas veja na aba Impostos o que sobra depois de todos os custos.
+      Com os preços atuais, <span id="tx-pvlinhas"></span> fica<span id="tx-pvplural"></span> bem abaixo dessa referência — competitivas no preço, mas veja na aba Impostos o que sobra depois de todos os custos.
     </div>
   </div>
 
@@ -825,15 +841,16 @@ body.com-rasc .shtoast{bottom:104px}
           <div class="cl"><span>Dias úteis/mês</span><span class="cv" id="pd-v">22</span></div>
           <input type="range" min="18" max="26" step="1" value="22" oninput="pu('dias',this.value)">
         </div>
-        <div class="cg">
+        <div class="cg sofull">
           <div class="cl"><span>Mix — Formulação 25%</span><span class="cv" id="pm25-v">60%</span></div>
           <input type="range" min="0" max="100" step="10" value="60" oninput="pu('mix25',this.value)">
         </div>
-        <div class="cg">
+        <div class="cg sofull">
           <div class="cl"><span>Mix — Formulação 35%</span><span class="cv" id="pm35-v">30%</span></div>
           <input type="range" min="0" max="100" step="10" value="30" oninput="pu('mix35',this.value)">
         </div>
-        <div class="mr"><span class="ml">Mix — Formulação 50% (restante)</span><span class="mv" id="pm50-v">10%</span></div>
+        <div class="mr sofull"><span class="ml">Mix — Formulação 50% (restante)</span><span class="mv" id="pm50-v">10%</span></div>
+        <div class="mr somenteFoco" hidden><span class="ml">Mix</span><span class="mv" id="pmfoco-v"></span></div>
         <hr class="sp">
         
         <div class="cg">
@@ -968,7 +985,7 @@ body.com-rasc .shtoast{bottom:104px}
     <div class="dalert">
       <strong>🚨 Alerta estratégico: o Simples deixa de compensar acima de R$ 3,6 milhões/ano</strong>
       Acima de R$ 3,6 mi/ano (sublimite) o ICMS sai do Simples e passa a ser pago por fora — a carga total passa do Lucro Presumido, então o painel usa ~15,5% a partir daí. O teto absoluto do Simples é R$ 4,8 mi/ano.
-      Com os preços atuais isso acontece a partir de <span id="tx-sl25"></span> (linha 25%), <span id="tx-sl35"></span> (35%) e <span id="tx-sl50"></span> (50%). <strong>O lucro cai um degrau ao cruzar essa linha</strong> — como o regime vale para o ano inteiro, planeje o volume do Habib's para ficar claramente abaixo ou claramente acima dela.
+      Com os preços atuais isso acontece a partir de <span id="tx-subl"></span>. <strong>O lucro cai um degrau ao cruzar essa linha</strong> — como o regime vale para o ano inteiro, planeje o volume do Habib's para ficar claramente abaixo ou claramente acima dela.
       Não é um problema — é uma decisão que precisa estar planejada com o contador <strong>antes</strong> de acontecer, porque o desenquadramento no meio do ano gera passivo retroativo.
     </div>
 
@@ -1208,7 +1225,7 @@ body.com-rasc .shtoast{bottom:104px}
         </table>
         <p style="font-size:.77rem;color:var(--mut);margin-top:9px">
           Cenário realista estimado: 200k com 8 funcionários e galpão maior (≈<span id="tx-f200"></span>/mês); 300k com 12 funcionários e planta industrial (≈<span id="tx-f300"></span>/mês).
-          <strong>A leitura correta é esta:</strong> a margem não dispara com a escala — com a estrutura crescendo, nos 300k ela fica em torno de <span id="tx-mg300"></span> (linhas 25%, 35% e 50%).
+          <strong>A leitura correta é esta:</strong> a margem não dispara com a escala — com a estrutura crescendo, nos 300k ela fica em torno de <span id="tx-mg300"></span> (<span id="tx-mglinhas"></span>).
           O que cresce é o lucro em reais, e isso já é uma ótima notícia. Prometer margem crescente é o tipo de número que um cliente experiente derruba na primeira pergunta.
         </p>
       </div>
@@ -1241,7 +1258,7 @@ body.com-rasc .shtoast{bottom:104px}
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:16px">
+    <div class="card sofull" style="margin-bottom:16px">
       <div class="sec-ttl">🎯 Qual Formulação para Qual Canal</div>
       <div style="padding:13px 19px 6px;overflow-x:auto">
         <table class="dtbl">
@@ -1288,7 +1305,7 @@ body.com-rasc .shtoast{bottom:104px}
       <div class="sec-ttl">⚠️ Os Quatro Pontos de Decisão Críticos</div>
       <div style="padding:13px 19px">
         <div class="pc"><span class="ic">1️⃣</span><span><strong>Capacidade real antes de vender.</strong> 100k un/mês exigem ~<span id="tx-bd100"></span> batches/dia; 300k exigem ~<span id="tx-bd300"></span>. A casa em adequação comporta <span class="capv">3</span> batches/dia no ajuste atual (campo em Ficha de Custo). Não feche contrato de volume sem a planta dimensionada — inadimplência de entrega em B2B queima a relação de uma vez.</span></div>
-        <div class="pc"><span class="ic">2️⃣</span><span><strong>Sublimite do Simples em R$ 3,6 mi/ano.</strong> Com os preços atuais: <span id="tx-sl25b"></span> (25%), <span id="tx-sl35b"></span> (35%) e <span id="tx-sl50b"></span> (50%). Desenquadramento no meio do ano gera passivo retroativo — o contador precisa saber disso com antecedência.</span></div>
+        <div class="pc"><span class="ic">2️⃣</span><span><strong>Sublimite do Simples em R$ 3,6 mi/ano.</strong> Com os preços atuais: <span id="tx-sublb"></span>. Desenquadramento no meio do ano gera passivo retroativo — o contador precisa saber disso com antecedência.</span></div>
         <div class="pc"><span class="ic">3️⃣</span><span><strong>SIF/MAPA é pré-requisito, não etapa.</strong> Produto à base de pescado exige registro federal. O prazo costuma ser longo e trava a venda interestadual. Comece por aí.</span></div>
         <div class="pc"><span class="ic">4️⃣</span><span><strong>Custos que ainda não estão nas margens.</strong> Embalagem, quebra de produção e comissão já entram no cálculo, e o frete é por conta do cliente. Ficam de fora o estoque de bacalhau parado, o custo financeiro do prazo de recebimento e os encargos de folha no Lucro Presumido — confira a aba Caixa e feche esses valores com o contador.</span></div>
       </div>
@@ -1427,7 +1444,7 @@ document.getElementById('nav').addEventListener('click',e=>{
 
 // Formula cards
 function rFCards(){
-  document.getElementById('fcards').innerHTML=Object.entries(F).map(([k2,f])=>{
+  document.getElementById('fcards').innerHTML=LK().map(k2=>{ const f=F[k2];
     const bp=(f.bat/f.kg*100).toFixed(0),bcp=(f.bac/f.kg*100).toFixed(0);
     const cv=cvar(k2),liq=calc(k2),mk=(f.pv-cv)/cv,mp=(f.pv-cv)/f.pv,luc=f.pv*(1-liq.al-A.com)-cv;
     return`<div class="card fc">
@@ -1510,9 +1527,7 @@ function pu(k,v){
 
 function rProj(){
   const p=prj;
-  const m25=Math.min(p.mx25,100)/100;
-  const m35=Math.min(p.mx35,100-p.mx25)/100;
-  const m50=Math.max(0,1-m25-m35);
+  const {m25,m35,m50}=mixAtual();
   const vd=1-A.per;                                   // quebra: produz-se volume/(1−quebra) para vender o volume
   const u25=A.vol*m25,u35=A.vol*m35,u50=A.vol*m50;     // unidades VENDIDAS de cada linha (mesmo volume do painel)
   const tu=u25+u35+u50, tprod=tu/vd;
@@ -1555,7 +1570,7 @@ function rProj(){
 
 
 /* ===== PREMISSAS — fonte única de verdade do painel ===== */
-const A = { emb:0.05, com:0, per:0.03, fix:40637, pz:45, vol:100000, inv:290200, depMeses:60, peso:30, cap:3, rbt12:0, escFix:0, obra:0, obraMeses:36 };  // cap = batches/dia que a estrutura comporta
+const A = { emb:0.05, com:0, per:0.03, fix:40637, pz:45, vol:100000, inv:290200, depMeses:60, peso:30, cap:3, rbt12:0, escFix:0, obra:0, obraMeses:36, foco:'' }   // foco: '' = todas as linhas;  // cap = batches/dia que a estrutura comporta
 
 
 // quebra: perde-se a MASSA, nao a embalagem -> divide o ingrediente por (1-quebra)
@@ -1626,7 +1641,7 @@ const instantaneo = () => ({
   insumos:REC.map(i=>({id:i.id,preco:i.preco})),
   fixos:FIX.map(i=>({id:i.id,valor:i.valor})),
   precos:Object.fromEntries(Object.keys(F).map(k=>[k,F[k].pv])),
-  A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses,peso:A.peso,cap:A.cap,rbt12:A.rbt12,escFix:A.escFix,obra:A.obra,obraMeses:A.obraMeses},
+  A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses,peso:A.peso,cap:A.cap,rbt12:A.rbt12,escFix:A.escFix,obra:A.obra,obraMeses:A.obraMeses,foco:A.foco},
   dias:INS.dias,
   canais:{...sim.pr},
   producao:{mx25:prj.mx25,mx35:prj.mx35},
@@ -1666,6 +1681,8 @@ function aplicar(d){
     A.rbt12=Math.max(0,A.rbt12||0); A.escFix=A.escFix?1:0;
     A.emb=Math.max(0,A.emb||0); A.inv=Math.max(0,A.inv||0); A.pz=Math.max(0,A.pz||0);
     A.obra=Math.max(0,A.obra||0); A.obraMeses=Math.max(1,Math.round(A.obraMeses||36));
+    A.foco = F[A.foco] ? A.foco : '';
+    if(A.foco){ REF.k=A.foco; sim.fid=A.foco; PROP.fid=A.foco; }
     if(isFinite(d.dias)) INS.dias=d.dias;
     for(const k in (d.canais||{})) if(k in sim.pr && isFinite(d.canais[k])) sim.pr[k]=d.canais[k];
     const p=d.producao||{}; ['mx25','mx35'].forEach(k=>{ if(isFinite(p[k])) prj[k]=p[k]; });
@@ -1932,7 +1949,7 @@ function liqSim(k,o){
 }
 function rSensi(){
   const el=document.getElementById('sensitb'); if(!el) return;
-  const K=Object.keys(F), bac=REC.find(i=>i.id==='bac').preco;
+  const K=LK(), bac=REC.find(i=>i.id==='bac').preco;
   const cen=[
     ['Hoje',{}],
     ['Bacalhau +10%',{bac:bac*1.10}],
@@ -2129,7 +2146,7 @@ function verificar(){
     testar(`Lucro/un × volume · ${NM[k]}`, porUn*A.vol, r.liq, 0.5);
   }
   // 7b. projeção usa o mesmo volume e o mesmo preço de cada linha
-  if(window.__proj){ const m25=Math.min(prj.mx25,100)/100, m35=Math.min(prj.mx35,100-prj.mx25)/100, m50=Math.max(0,1-m25-m35);
+  if(window.__proj){ const {m25,m35,m50}=mixAtual();
     testar('Projeção = volume do painel', __proj.tu, A.vol, 0.5);
     testar('Projeção: receita = volume × mix × preço', __proj.rev, A.vol*(m25*F.f25.pv+m35*F.f35.pv+m50*F.f50.pv), 0.5); }
   // 8. lista de compras (caminho dos batches) = custo variável sem embalagem (caminho do cvar)
@@ -2173,7 +2190,7 @@ function rVerif(){
 // mesma receita em dois pesos — sem mexer em nada do painel
 function rPesoCmp(){
   const el=document.getElementById('pesotb'); if(!el) return;
-  const pesos=[25,30], K=Object.keys(F);
+  const pesos=[25,30], K=LK();
   const linhaDe=(k,g)=>{
     const u=F[k].kg*1000/g, ing=batchCusto(k)/u, cv=ing/(1-A.per)+A.emb;
     const rec=F[k].pv*A.vol, eb=rec-cv*A.vol-FX()-rec*A.com, liq=eb-rec*aliq(rec*12,true);
@@ -2192,7 +2209,7 @@ function rPesoCmp(){
 function rVCards(){
   const el=document.getElementById('vcards'); if(!el) return;
   const rot={f25:['Formulação 25% — Entrada'],f35:['Formulação 35% — Premium'],f50:['Formulação 50% — Gourmet']};
-  el.innerHTML = Object.keys(F).map(k=>{
+  el.innerHTML = LK().map(k=>{
     const f=F[k], r=calc(k), cv=r.cv, fxu=FX()/A.vol, tot=cv+fxu+(A.com*f.pv);
     const rec=r.rec, eb=r.eb, al=r.al, imp=r.imp, liq=r.liq, mg=r.mg;
     const qbu=cv-f.custo-A.emb, impu=imp/A.vol, luc=liq/A.vol;
@@ -2223,7 +2240,7 @@ function rVCards(){
 function rBE(){
   const el=document.getElementById('betb'); if(!el) return;
   const nm={f25:'25% Bacalhau',f35:'35% Bacalhau',f50:'50% Bacalhau'};
-  el.innerHTML=Object.keys(F).map(k=>{
+  el.innerHTML=LK().map(k=>{
     const f=F[k], cm=f.pv-cvar(k), be=breakEven(k), fo=be?A.vol/be:0;
     return `<tr><td>${nm[k]}</td>
       <td class="tr fn">${R(f.pv)}</td><td class="tr fn">${R(cm)}</td>
@@ -2240,7 +2257,7 @@ function rScl(){
     const fxu=A.fix/v, dest=(v===100000||v===300000);
     let c=`<td>${dest?'<strong>'+N(v)+' un</strong>':N(v)+' un'}${v===100000?' ← início':(v===300000?' ← meta':'')}</td>
            <td class="tr fn">${dest?'<strong>'+R(fxu)+'</strong>':R(fxu)}</td>`;
-    for (const k of ['f25','f35','f50']){
+    for (const k of LK()){
       const tot=cvar(k)+fxu, mg=calc(k,v,A.fix).mg;
       c+=`<td class="tr fn">${R(tot)}</td><td class="tr"><span class="badge-${mg>0?'gn':'rd'}">${dest?'<strong>'+P(mg)+'</strong>':P(mg)}</span></td>`;
     }
@@ -2253,7 +2270,7 @@ function rProjTb(){
   const el=document.getElementById('projtb'); if(!el) return;
   const nm={f25:'25% Bacalhau',f35:'35% Bacalhau',f50:'50% Bacalhau'};
   let h='';
-  for (const k of ['f25','f35','f50']){
+  for (const k of LK()){
     const f=F[k], cv=cvar(k);
     [100000,200000,300000].forEach((v,i)=>{
       const fx=fixoEsc(v), r=calc(k,v,fx), cg=r.cvt, rec=r.rec, eb=r.eb;
@@ -2281,14 +2298,14 @@ function rCash(){
     <div class="bm"><div class="bml">Payback Total</div><div class="bmv" style="font-size:1.1rem">${gc>0?((wc+INVT())/gc).toFixed(1)+' m':'—'}</div><div class="bms">incluindo o giro · pela geração de caixa</div></div>`;
 
   const nm={f25:'25%',f35:'35%',f50:'50%'};
-  document.getElementById('wctb').innerHTML=Object.keys(F).map(k=>{
+  document.getElementById('wctb').innerHTML=LK().map(k=>{
     const d=cvar(k)*A.vol+FX()-depMensal(), w=d*A.pz/30, r=INVT()>0?w/INVT():0;
     return `<tr><td><strong>${nm[k]}</strong></td><td class="tr fn">${R(d,0)}</td>
       <td class="tr fn" style="color:var(--ac);font-weight:700">${R(w,0)}</td>
       <td class="tr"><span class="badge-${r>1?'rd':(r>0.6?'wn':'gn')}">${r.toFixed(1)}× o investimento</span></td></tr>`;
   }).join('');
 
-  document.getElementById('fulltb').innerHTML=Object.keys(F).map(k=>{
+  document.getElementById('fulltb').innerHTML=LK().map(k=>{
     const r=calc(k), rec=r.rec, cvt=r.cvt, eb=r.eb, imp=r.imp, liq=r.liq;
     const gck=liq+depMensal(), pb=gck>0?(INVT()/gck).toFixed(1)+' meses':'—';
     return `<tr><td><strong>${nm[k]}</strong></td>
@@ -2424,7 +2441,7 @@ function precoEquilibrio(k){           // preço que zera o lucro líquido no vo
 }
 function rTextos(){
   const pct=v=>(v*100).toFixed(0)+'%', faixa=(a,b)=>{const x=Math.min(a,b),y=Math.max(a,b);return Math.round(x*100)===Math.round(y*100)?pct(x):pct(x)+' a '+pct(y);};
-  const K=Object.keys(F), sh=id=>K.map(k=>{const it=REC.find(x=>x.id===id);return qtdDe(it,k)*it.preco/batchCusto(k);});
+  const K=LK(), sh=id=>K.map(k=>{const it=REC.find(x=>x.id===id);return qtdDe(it,k)*it.preco/batchCusto(k);});
   const bac=sh('bac'), bat=sh('bat'), aze=sh('aze');
   const RK=REF.k, q=1/(1-A.per), b35=A.vol*q/F[RK].u, itB=REC.find(x=>x.id==='bac');
   const tempero=['sls','ceb','alh'].reduce((t,id)=>{const it=REC.find(x=>x.id===id);return t+b35*qtdDe(it,RK)*it.preco;},0);
@@ -2442,9 +2459,13 @@ function rTextos(){
     fix:R(FX(),0), fix2:R(FX(),0), ton:(ton).toFixed(1).replace('.',',')+' toneladas', kgpp:N(Math.round(ton*1000/4/INS.dias))+' kg',
     f200:R(fixoEsc(200000),0), f300:R(fixoEsc(300000),0), f200b:R(fixoEsc(200000),0), f200c:R(fixoEsc(200000),0), f300c:R(fixoEsc(300000),0),
     mg300:K.map(k=>{const r=calc(k,300000,fixoEsc(300000));return pct(r.eb/r.rec);}).join(', '),
+    mglinhas:K.length>1?('linhas '+K.map(k=>NM[k]).join(', ')):('linha '+NM[K[0]]),
     pe25:pe?R(pe)+' (equilíbrio da F25)':'—', bd100:bd(100000), bd300:bd(300000),
     pv25:R(F.f25.pv), pv35:R(F.f35.pv), bacsh2:faixa(Math.min(...bac),Math.max(...bac)), pz:A.pz,
     wcx:(()=>{const w=(cvar(RK)*A.vol+FX()-depMensal())*A.pz/30/Math.max(1,INVT()); return w.toFixed(1).replace('.',',')+'×';})(),
+    subl:K.map(k=>{const v=SUBLIM/12/F[k].pv; return N(Math.round(v/500)*500)+' un/mês (linha '+NM[k]+')';}).join(' · '),
+    sublb:K.map(k=>{const v=SUBLIM/12/F[k].pv; return N(Math.round(v/500)*500)+' un/mês ('+NM[k]+')';}).join(' · '),
+    pvlinhas:K.map(k=>'a linha '+NM[k]+' a '+R(F[k].pv)).join(' e '), pvplural:K.length>1?'m':'',
     ...Object.fromEntries(K.flatMap(k=>{const v=SUBLIM/12/F[k].pv, t=N(Math.round(v/500)*500)+' un/mês'; return [['sl'+k.slice(1),t],['sl'+k.slice(1)+'b',t]];})),
   };
   for(const [id,v] of Object.entries(T)) st('tx-'+id, v);
@@ -2455,9 +2476,9 @@ function rPeso(){
   const nota=document.getElementById('peso-nota');
   if(nota) nota.innerHTML = A.peso===30
     ? 'Padrão da ficha: 30 g. Mude aqui e todas as abas recalculam — rendimento, custo, lista de compras, batches e impostos.'
-    : `<strong>Simulando ${fmtPeso(A.peso)} g</strong> (ficha original: 30 g). Rendimento por batch: ${Object.keys(F).map(k=>N(Math.round(F[k].u))+' un').join(' · ')}. Custo/un: ${Object.keys(F).map(k=>R(F[k].custo)).join(' · ')}. <a href="#" onclick="setPeso(30);return false">voltar a 30 g</a>`;
+    : `<strong>Simulando ${fmtPeso(A.peso)} g</strong> (ficha original: 30 g). Rendimento por batch: ${LK().map(k=>N(Math.round(F[k].u))+' un').join(' · ')}. Custo/un: ${LK().map(k=>R(F[k].custo)).join(' · ')}. <a href="#" onclick="setPeso(30);return false">voltar a 30 g</a>`;
   const fr=document.getElementById('ficha-ref');
-  if(fr) fr.textContent = `Com os preços atuais e ${fmtPeso(A.peso)} g por bolinho, o custo de ingrediente por unidade é: ${Object.keys(F).map(k=>R(F[k].custo)).join(' · ')}.`;
+  if(fr) fr.textContent = `Com os preços atuais e ${fmtPeso(A.peso)} g por bolinho, o custo de ingrediente por unidade é: ${LK().map(k=>R(F[k].custo)).join(' · ')}.`;
   const cr=document.getElementById('cap-ref');
   if(cr){ const u=F.f25.u, q=1/(1-A.per), bd=v=>Math.round(v*q/u/INS.dias);
     cr.innerHTML=`cada batch da F25 rende ${N(Math.round(u))} un de ${fmtPeso(A.peso)} g (${F.f25.kg.toString().replace('.',',')} kg). Para <strong>100k un/mês</strong> são necessários ~${bd(100000)} batches/dia; para <strong>300k un/mês</strong>, ~${bd(300000)} batches/dia.`; }
@@ -2491,7 +2512,7 @@ function rResist(){
     const eb=rec-cv*A.vol-FX()-rec*A.com;
     return eb-rec*aliq(rec*12);
   };
-  el.innerHTML=Object.keys(F).map(k=>{
+  el.innerHTML=LK().map(k=>{
     const hoje=liqCom(k,base);
     // preco maximo de bacalhau que ainda deixa a linha no positivo
     let pmax=null;
@@ -2524,6 +2545,7 @@ function setRef(k){ if(!F[k]) return; REF.k=k; renderAll(); }
 function rRef(){
   const n=REF.k.slice(1), fm={L:'L'+n, F:'F'+n, Linha:'Linha '+n, linha:'linha '+n+'%', pct:n+'%'};
   document.querySelectorAll('.reftog button').forEach(b=>b.classList.toggle('on', b.dataset.ref===REF.k));
+  document.querySelectorAll('.refbox,.ftog').forEach(e=>{ e.style.display = A.foco ? 'none' : ''; });
   document.querySelectorAll('.refnm').forEach(e=>{ e.textContent=fm[e.dataset.fmt]||''; });
 }
 function setRPz(v){
@@ -2639,7 +2661,7 @@ function rFichas(){
   const nm={f25:'Linha 25',f35:'Linha 35',f50:'Linha 50'};
   const cor={f25:'#2E7BE8',f35:'#1A5E3B',f50:'#B5781A'};
   const bdg={f25:'b-bl',f35:'b-gn',f50:'b-ac'};
-  el.innerHTML=Object.keys(F).map(k=>{
+  el.innerHTML=LK().map(k=>{
     const f=F[k], cb=batchCusto(k);
     const itens=REC.map(it=>{const q=qtdDe(it,k);return{...it,q,v:q*it.preco};}).sort((a,b)=>b.v-a.v);
     const vb=f.bac*REC.find(x=>x.id==='bac').preco;
@@ -2683,20 +2705,20 @@ function rCompras(){
     <div class="bm"><div class="bml">Batches/dia</div><div class="bmv" style="font-size:1.1rem;color:${bt35/INS.dias>A.cap?'var(--rd)':'var(--gn)'}">${(bt35/INS.dias).toFixed(1)}</div><div class="bms">capacidade atual: ${A.cap}</div></div>`;
 
   document.getElementById('comprastb').innerHTML=REC.map(it=>{
-    const cel=['f25','f35','f50'].map(k=>{
+    const cel=LK().map(k=>{
       const b=A.vol*q/F[k].u;
       return `<td class="tr fn">${N(Math.round(b*qtdDe(it,k)))} ${it.un}</td>`;
     }).join('');
     const custo35=(A.vol*q/F[REF.k].u)*qtdDe(it,REF.k)*it.preco;
     return `<tr><td><strong>${it.nome}</strong></td>${cel}<td class="tr fn"${it.id==='bac'?' style="color:var(--ac);font-weight:700"':''}>${R(custo35,0)}</td></tr>`;
   }).join('') + (()=>{
-    const tot=['f25','f35','f50'].map(k=>(A.vol*q/F[k].u)*batchCusto(k));
+    const tot=LK().map(k=>(A.vol*q/F[k].u)*batchCusto(k));
     return `<tr style="background:var(--surf2)"><td><strong>TOTAL</strong></td>
       <td class="tr fn">${R(tot[0],0)}</td><td class="tr fn">${R(tot[1],0)}</td><td class="tr fn">${R(tot[2],0)}</td>
-      <td class="tr fn" style="font-weight:700">${R(tot[['f25','f35','f50'].indexOf(REF.k)],0)}</td></tr>`;
+      <td class="tr fn" style="font-weight:700">${R(tot[LK().indexOf(REF.k)],0)}</td></tr>`;
   })();
 
-  document.getElementById('prodtb').innerHTML=Object.keys(F).map(k=>{
+  document.getElementById('prodtb').innerHTML=LK().map(k=>{
     const f=F[k], b=A.vol*q/f.u, bd=b/INS.dias, ok=bd<=A.cap;
     return `<tr><td><strong>${nm[k]}</strong></td><td class="tr fn">${N(Math.round(f.u))}</td>
       <td class="tr fn">${N(Math.round(b))}</td>
@@ -2727,11 +2749,24 @@ function rCompras(){
 
 /* ===== IMPOSTOS — regime aplicavel e impacto no lucro ===== */
 const NM={f25:'25%',f35:'35%',f50:'50%'};
+// LK() = linhas que aparecem na tela. Os cálculos continuam valendo para as três.
+const LK = () => (A.foco && F[A.foco]) ? [A.foco] : Object.keys(F);
+function mixAtual(){                                   // com foco, 100% da linha escolhida
+  if(A.foco) return {m25:A.foco==='f25'?1:0, m35:A.foco==='f35'?1:0, m50:A.foco==='f50'?1:0};
+  const m25=Math.min(prj.mx25,100)/100, m35=Math.min(prj.mx35,100-prj.mx25)/100;
+  return {m25,m35,m50:Math.max(0,1-m25-m35)};
+}
+function setFoco(k){
+  A.foco = (k && F[k]) ? k : '';
+  if(A.foco){ REF.k=A.foco; sim.fid=A.foco; PROP.fid=A.foco; PROP.precos={}; if(typeof PPTXT==='object') PPTXT={}; }
+  renderAll();
+  toast(A.foco ? `Painel focado na linha ${NM[A.foco]}` : 'Mostrando as três formulações');
+}
 function rTax(){
   const rt=document.getElementById('regtb'); if(!rt) return;
   let h='';
   for (const v of [100000,150000,200000]){
-    for (const k of ['f25','f35','f50']){
+    for (const k of LK()){
       const f=F[k], rec=f.pv*v, ra=rec*12, al=aliq(ra), dentro=ra<=SUBLIM;
       const nf=AN2.findIndex(([lim])=>ra<=lim)+1;
       const faixa = dentro ? `Simples · ${nf}ª faixa` : (ra<=TETO?'Acima do sublimite → Presumido':'Lucro Presumido');
@@ -2746,7 +2781,7 @@ function rTax(){
 
   const it=document.getElementById('imptb'); if(!it) return;
   h='';
-  for (const k of ['f25','f35','f50']){
+  for (const k of LK()){
     const f=F[k], cv=cvar(k);
     [100000,200000,300000].forEach((v,i)=>{
       const fx=fixoEsc(v), r=calc(k,v,fx), rec=r.rec, eb=r.eb, imp=r.imp, liq=r.liq;
@@ -2767,7 +2802,7 @@ function rTax(){
 function rReal(){
   const el=document.getElementById('realtb'); if(!el) return;
   let h='';
-  for (const k of ['f25','f35','f50']){
+  for (const k of LK()){
     const f=F[k], cv=cvar(k);
     [100000,200000,300000].forEach((v,i)=>{
       const rec=f.pv*v, ea=calc(k,v,A.fix).eb, eb=calc(k,v,fixoEsc(v)).eb, d=eb-ea;
@@ -2849,7 +2884,7 @@ function rProp(){
   const cur=focoId?ae.selectionStart:null;
   // seletor de linha
   const seg=document.getElementById('pp-linha');
-  if(seg) seg.innerHTML=Object.keys(F).map(k=>`<button class="${k===PROP.fid?'on':''}" onclick="ppLinha('${k}')">${NM[k]}</button>`).join('');
+  if(seg) seg.innerHTML=LK().map(k=>`<button class="${k===PROP.fid?'on':''}" onclick="ppLinha('${k}')">${NM[k]}</button>`).join('');
   document.querySelectorAll('#pp-modo button').forEach(b=>b.classList.toggle('on',b.dataset.modo===PROP.modo));
   const mb=document.getElementById('pp-margem-box'); if(mb) mb.hidden=PROP.modo!=='margem';
   sv('pp-margem',(PROP.margem*100).toFixed(0)); sv('pp-prazo',PROP.prazo);
@@ -2944,6 +2979,22 @@ function ppWhats(){
   const t=document.getElementById('pp-cliente').dataset.txt||'';
   window.open((ehCelular()?'https://wa.me/?text=':'https://web.whatsapp.com/send?text=')+encodeURIComponent(t),'_blank');
 }
+function rFoco(){
+  document.body.classList.toggle('foco',!!A.foco);
+  const mf=document.getElementById('pmfoco-v'); if(mf&&A.foco) mf.textContent='100% da linha '+NM[A.foco];
+  const el=document.getElementById('fsel');
+  if(el) el.innerHTML=Object.keys(F).map(k=>`<button class="${A.foco===k?'on':''}" onclick="setFoco('${k}')" title="Mostrar só a linha ${NM[k]}">${NM[k]}</button>`).join('')
+    +`<button class="${A.foco?'':'on'}" onclick="setFoco('')" title="Mostrar as três formulações">todas</button>`;
+  document.querySelectorAll('.focoaviso').forEach(e=>e.remove());
+  if(!A.foco) return;
+  ['form','fcust','cash','tax','risco','strat','prop','diag','sim','proj'].forEach(t=>{
+    const pane=document.getElementById('tab-'+t), ref=pane&&(pane.querySelector('.shbar')||pane.querySelector('.ss'));
+    if(!ref) return;
+    const d=document.createElement('div'); d.className='focoaviso';
+    d.innerHTML=`🎯 Painel focado na linha <b>${NM[A.foco]}</b> — as outras formulações estão ocultas. Para comparar, clique em “todas” no topo.`;
+    ref.after(d);
+  });
+}
 function rCap(){
   const el=document.getElementById('capbox'); if(!el) return;
   const k=REF.k, prod=A.vol/(1-A.per), bd=prod/F[k].u/INS.dias, capUn=Math.round(A.cap*INS.dias*F[k].u*(1-A.per));
@@ -2963,7 +3014,7 @@ function rCap(){
 }
 function rAlert(){
   const el=document.getElementById('diagalert'); if(!el) return;
-  const res=Object.keys(F).map(k=>{
+  const res=LK().map(k=>{
     const r=calc(k), rec=r.rec, eb=r.eb, liq=r.liq;
     return {k, nome:NM[k], liq, mg:liq/rec};
   });
@@ -3032,7 +3083,7 @@ function renderAll(){
     syncControls(); rPeso(); rRef(); rTextos();
     rAlert(); rVCards(); rBE(); rScl(); rProjTb();
     rCash(); rFichas(); rCompras(); rInsumos(); rTax(); rReal(); rFixBox(); rResist(); rRisco();
-    rFCards(); rSim(); rProj(); rSensi(); rRadar(); rCap(); rPesoCmp(); rProp(); rVerif(); rotularControles();
+    rFCards(); rSim(); rProj(); rSensi(); rRadar(); rCap(); rPesoCmp(); rProp(); rFoco(); rVerif(); rotularControles();
   } finally { _renderizando=false; }
 }
 
@@ -3053,7 +3104,7 @@ function premissasTxt(){
   return `Volume: ${N(A.vol)} un/mês · Peso: ${fmtPeso(A.peso)} g · Bacalhau: ${R(bac.preco)}/kg\nPreços: 25% ${R(F.f25.pv)} · 35% ${R(F.f35.pv)} · 50% ${R(F.f50.pv)}\nCusto fixo: ${R(A.fix,0)}/mês · Quebra ${pctx(A.per)} · Embalagem ${R(A.emb)}/un · Prazo ${A.pz} dias`;
 }
 function resumoAba(t){
-  const K=Object.keys(F), L=[];
+  const K=LK(), L=[];
   const linha=k=>'Linha '+k.slice(1)+'%';
   if(t==='diag'){
     for(const k of K){ const r=calc(k), be=breakEven(k), pe=precoEquilibrio(k);
@@ -3071,8 +3122,8 @@ function resumoAba(t){
     for(const ch of CH){ const p=sim.pr[ch.id], c=p*(1-aliq(p*A.vol*12, true)-A.com)-cv;
       L.push(`• ${ch.nom} — ${R(p)}/un · contribuição após imposto ${R(c)}/un · ${R(c*A.vol,0)}/mês`); }
   } else if(t==='proj'){
-    const p=window.__proj||{}; const m25=Math.min(prj.mx25,100), m35=Math.min(prj.mx35,100-prj.mx25);
-    L.push(`Mix: 25% ${m25}% · 35% ${m35}% · 50% ${Math.max(0,100-m25-m35)}%`);
+    const p=window.__proj||{}; const mx=mixAtual();
+    L.push(A.foco?`Linha única em foco: ${NM[A.foco]} (100% do volume)`:`Mix: 25% ${Math.round(mx.m25*100)}% · 35% ${Math.round(mx.m35*100)}% · 50% ${Math.round(mx.m50*100)}%`);
     L.push(`• Unidades vendidas: ${N(Math.round(p.tu||0))} (produz ${N(Math.round((p.tu||0)/(1-A.per)))}) · ${(p.bd||0).toFixed(1).replace('.',',')} batches/dia`);
     L.push(`• Receita bruta: ${R(p.rev||0)}`); L.push(`• Custo variável: ${R(p.cogs||0)}`); L.push(`• Custo fixo: ${R(FX())}`);
     L.push(`• Imposto (${pctx(p.al||0)}): ${R((p.rev||0)*(p.al||0))}`); L.push(`• LUCRO LÍQUIDO: ${R(p.liq||0)}`);
