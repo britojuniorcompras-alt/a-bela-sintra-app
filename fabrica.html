@@ -590,13 +590,7 @@ body:not(.foco) .somenteFoco{display:none!important}
       <div class="sec-ttl">📊 Evolução da Margem conforme Crescimento · 50k → 300k</div>
       <div style="padding:13px 19px 6px;overflow-x:auto">
         <table class="dtbl">
-          <thead><tr>
-            <th>Volume/mês</th>
-            <th class="tr">Fixo/un</th>
-            <th class="tr">Custo F25</th><th class="tr">Margem</th>
-            <th class="tr">Custo F35</th><th class="tr">Margem</th>
-            <th class="tr">Custo F50</th><th class="tr">Margem</th>
-          </tr></thead>
+          <thead id="sclth"></thead>
           <tbody id="scltb"></tbody>
         </table>
         <p style="font-size:.77rem;color:var(--mut);margin-top:9px"><b>Margem líquida</b>, já com embalagem, quebra e imposto. Esta tabela mantém o custo fixo <b>congelado</b> no valor atual para mostrar puramente o efeito da diluição — na prática a estrutura cresce com o volume, e a aba Estratégia mostra esse cenário.</p>
@@ -715,7 +709,7 @@ body:not(.foco) .somenteFoco{display:none!important}
         <div class="card">
           <div class="sec-ttl">🛒 Lista de Compras Mensal — por Ingrediente</div>
           <div class="tw" style="padding:0"><table class="dtbl">
-            <thead><tr><th>Ingrediente</th><th class="tr">Linha 25</th><th class="tr">Linha 35</th><th class="tr">Linha 50</th><th class="tr">Gasto (<span class="refnm" data-fmt="L"></span>)</th></tr></thead>
+            <thead id="comprasth"></thead>
             <tbody id="comprastb"></tbody>
           </table></div>
           <p style="font-size:.77rem;color:var(--mut);padding:11px 19px">
@@ -730,11 +724,7 @@ body:not(.foco) .somenteFoco{display:none!important}
     <div class="card" style="margin-bottom:16px">
       <div class="sec-ttl">📉 Sensibilidade ao Preço do Bacalhau — Sua Alavanca de Negociação</div>
       <div class="tw"><table class="dtbl">
-        <thead><tr>
-          <th>Preço do bacalhau</th>
-          <th class="tr">Custo/un F25</th><th class="tr">Custo/un F35</th><th class="tr">Custo/un F50</th>
-          <th class="tr">Impacto mensal</th><th class="tr">Margem líq. <span class="refnm" data-fmt="F"></span></th>
-        </tr></thead>
+        <thead id="sensth"></thead>
         <tbody id="senstb"></tbody>
       </table></div>
       <p style="font-size:.77rem;color:var(--mut);padding:11px 19px">
@@ -2253,6 +2243,8 @@ function rBE(){
 /* ===== DIAGNÓSTICO — escala ===== */
 function rScl(){
   const el=document.getElementById('scltb'); if(!el) return;
+  const th=document.getElementById('sclth');
+  if(th) th.innerHTML=`<tr><th>Volume/mês</th><th class="tr">Fixo/un</th>${LK().map(k=>`<th class="tr">Custo ${k.toUpperCase()}</th><th class="tr">Margem</th>`).join('')}</tr>`;
   el.innerHTML=[50000,100000,150000,200000,300000].map(v=>{
     const fxu=A.fix/v, dest=(v===100000||v===300000);
     let c=`<td>${dest?'<strong>'+N(v)+' un</strong>':N(v)+' un'}${v===100000?' ← início':(v===300000?' ← meta':'')}</td>
@@ -2648,7 +2640,11 @@ function rInsumos(){
   if(el.contains(document.activeElement)) return;   // nao redesenha enquanto o usuario digita
   el.innerHTML=`<thead><tr><th>Ingrediente</th><th class="tr">Qtd/batch</th><th class="tr">Preço</th></tr></thead><tbody>`
     + REC.map(it=>`<tr><td style="padding-left:19px">${it.nome}</td>
-        <td class="tr fn" style="color:var(--mut)">${it.id==='bac'?'varia':it.qtd.toString().replace('.',',')+' '+it.un}</td>
+        <td class="tr fn" style="color:var(--mut)">${it.id==='bac'
+             ? (LK().length===1
+                 ? fmtNum(qtdDe(it,LK()[0]),2)+' kg'
+                 : LK().map(k=>fmtNum(F[k].bac,2)).join(' · ')+' kg<span style="display:block;font-size:.7rem">'+LK().map(k=>NM[k]).join(' · ')+'</span>')
+             : it.qtd.toString().replace('.',',')+' '+it.un}</td>
         <td class="tr" style="padding-right:19px"><span class="pinw"><span class="cur">R$</span><input class="pin" type="text"
              inputmode="decimal" autocomplete="off" id="pin-${it.id}" aria-label="Preço de ${it.nome}"
              value="${fmtNum(it.preco)}" oninput="setPreco('${it.id}',this.value)" onblur="fmtPin('${it.id}')"
@@ -2704,6 +2700,8 @@ function rCompras(){
     <div class="bm"><div class="bml">Gasto Insumos</div><div class="bmv" style="font-size:1.1rem">${R(bt35*batchCusto(RK),0)}</div><div class="bms">por mês · ${LN}</div></div>
     <div class="bm"><div class="bml">Batches/dia</div><div class="bmv" style="font-size:1.1rem;color:${bt35/INS.dias>A.cap?'var(--rd)':'var(--gn)'}">${(bt35/INS.dias).toFixed(1)}</div><div class="bms">capacidade atual: ${A.cap}</div></div>`;
 
+  const th=document.getElementById('comprasth');
+  if(th) th.innerHTML=`<tr><th>Ingrediente</th>${LK().map(k=>`<th class="tr">Linha ${k.slice(1)}</th>`).join('')}<th class="tr">Gasto (L${REF.k.slice(1)})</th></tr>`;
   document.getElementById('comprastb').innerHTML=REC.map(it=>{
     const cel=LK().map(k=>{
       const b=A.vol*q/F[k].u;
@@ -2712,10 +2710,11 @@ function rCompras(){
     const custo35=(A.vol*q/F[REF.k].u)*qtdDe(it,REF.k)*it.preco;
     return `<tr><td><strong>${it.nome}</strong></td>${cel}<td class="tr fn"${it.id==='bac'?' style="color:var(--ac);font-weight:700"':''}>${R(custo35,0)}</td></tr>`;
   }).join('') + (()=>{
-    const tot=LK().map(k=>(A.vol*q/F[k].u)*batchCusto(k));
+    const ks=LK(), tot=ks.map(k=>(A.vol*q/F[k].u)*batchCusto(k));
+    const iref=Math.max(0,ks.indexOf(REF.k));
     return `<tr style="background:var(--surf2)"><td><strong>TOTAL</strong></td>
-      <td class="tr fn">${R(tot[0],0)}</td><td class="tr fn">${R(tot[1],0)}</td><td class="tr fn">${R(tot[2],0)}</td>
-      <td class="tr fn" style="font-weight:700">${R(tot[LK().indexOf(REF.k)],0)}</td></tr>`;
+      ${tot.map(t=>`<td class="tr fn">${R(t,0)}</td>`).join('')}
+      <td class="tr fn" style="font-weight:700">${R(tot[iref],0)}</td></tr>`;
   })();
 
   document.getElementById('prodtb').innerHTML=LK().map(k=>{
@@ -2729,15 +2728,17 @@ function rCompras(){
 
   const itBac=REC.find(x=>x.id==='bac'), base=itBac.preco, ref=F[REF.k];
   const custoCom=(k,precoBac)=>REC.reduce((t,it)=>t+qtdDe(it,k)*(it.id==='bac'?precoBac:it.preco),0)/F[k].u;
+  const sth=document.getElementById('sensth');
+  if(sth) sth.innerHTML=`<tr><th>Preço do bacalhau</th>${LK().map(k=>`<th class="tr">Custo/un ${k.toUpperCase()}</th>`).join('')}<th class="tr">Impacto mensal</th><th class="tr">Margem líq. ${NM[REF.k]}</th></tr>`;
   document.getElementById('senstb').innerHTML=[-20,-10,-5,0,5,10,20].map(d=>{
     const pr=base*(1+d/100), aqui=(d===0);
-    const c25=custoCom('f25',pr), c35=custoCom('f35',pr), c50=custoCom('f50',pr);
+    const custos=LK().map(k=>custoCom(k,pr));
     const cref=custoCom(REF.k,pr), delta=(cref-ref.custo)/(1-A.per)*A.vol;
     const rec=ref.pv*A.vol, eb=rec-(cref/(1-A.per)+A.emb)*A.vol-FX()-rec*A.com;
     const mg=(eb-rec*aliq(rec*12))/rec;
     return `<tr${aqui?' style="background:var(--surf2)"':''}>
       <td>${aqui?'<strong>'+R(pr)+'/kg ← hoje</strong>':(d>0?'+':'')+d+'% · '+R(pr)+'/kg'}</td>
-      <td class="tr fn">${R(c25)}</td><td class="tr fn">${R(c35)}</td><td class="tr fn">${R(c50)}</td>
+      ${custos.map(c=>`<td class="tr fn">${R(c)}</td>`).join('')}
       <td class="tr fn" style="color:${delta<0?'var(--gn)':(delta>0?'var(--rd)':'var(--mut)')}">${Math.abs(delta)<1?'—':(delta>0?'+ ':'− ')+R(Math.abs(delta),0)}</td>
       <td class="tr"><span class="badge-${mg>=.15?'gn':(mg>0?'wn':'rd')}">${P(mg)}</span></td></tr>`;
   }).join('');
