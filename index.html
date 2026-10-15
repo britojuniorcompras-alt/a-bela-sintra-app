@@ -472,6 +472,37 @@
     .nf-dia-total { text-align: center; padding: 18px 0 6px 0; color: var(--text-dim); font-size: 14px; }
     .nf-dia-total b { color: var(--text); }
     .nf-controle-btn { background: rgba(107,163,232,0.2); color: #9CC3F2; }
+    /* ---- Confronto do mês: compra x venda ---- */
+    .cf-veredito { border-radius: 18px; padding: 14px 16px; margin: 12px 0 4px 0; font-size: 13.5px; line-height: 1.5; }
+    .cf-veredito b { font-family: 'Space Grotesk', sans-serif; font-size: 16px; }
+    .cf-ok   { background: rgba(127,214,166,0.14); border: 1px solid rgba(127,214,166,0.4); color: #BFEBD4; }
+    .cf-ruim { background: rgba(232,93,93,0.14);  border: 1px solid rgba(232,93,93,0.4);  color: #F3BEBE; }
+    .cf-regua { position: relative; height: 12px; background: rgba(255,255,255,0.07); border-radius: 6px; margin: 12px 0 6px 0; overflow: visible; }
+    .cf-regua-cheia { height: 100%; border-radius: 6px; }
+    .cf-regua-meta { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #FFF; opacity: .85; }
+    .cf-regua-legenda { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); }
+    .cf-linha { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 14px; padding: 8px 10px; margin-bottom: 8px; }
+    .cf-linha input { flex: 1; min-width: 0; background: var(--surface-2); border: none; border-radius: 10px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 13.5px; padding: 9px 10px; }
+    .cf-linha input.cf-val { flex: 0 0 118px; text-align: right; font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+    .cf-linha button { flex: 0 0 auto; background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; padding: 4px 6px; }
+    .cf-add { width: 100%; background: none; border: 1px dashed var(--line); border-radius: 14px; color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; padding: 11px; cursor: pointer; }
+    .cf-total { display: flex; justify-content: space-between; align-items: baseline; margin: 10px 2px 0 2px; font-size: 12.5px; color: var(--text-dim); }
+    .cf-total b { font-family: 'Space Grotesk', sans-serif; font-size: 17px; color: var(--text); }
+    .cf-grupo { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+    .cf-grupo.cf-fora { opacity: .45; }
+    .cf-grupo-chk { flex: 0 0 22px; width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #1B1420; }
+    .cf-grupo.cf-dentro .cf-grupo-chk { border-color: transparent; }
+    .cf-grupo-nome { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; }
+    .cf-grupo-val { text-align: right; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; }
+    .cf-grupo-val small { display: block; font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 500; color: var(--text-dim); }
+    .cf-ajustes { display: flex; gap: 10px; }
+    .cf-ajustes > div { flex: 1; min-width: 0; }
+    .cf-ajustes label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); margin-bottom: 5px; }
+    .cf-ajustes input { width: 100%; background: var(--surface); border: none; border-radius: 12px; color: var(--text); font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; padding: 11px; text-align: center; }
+    .cf-mini { display: flex; gap: 10px; margin-top: 10px; }
+    .cf-mini > div { flex: 1; background: var(--surface); border-radius: 16px; padding: 11px 12px; }
+    .cf-mini .cf-mini-lab { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-dim); line-height: 1.3; }
+    .cf-mini .cf-mini-num { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 700; margin-top: 3px; }
     .nf-mes-nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 10px 20px; }
     .nf-mes-nav span { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px; }
     .nf-mes-nav button { border: none; background: var(--surface); color: var(--text); border-radius: 14px; width: 44px; height: 40px; font-size: 16px; cursor: pointer; }
@@ -513,6 +544,7 @@
     .nf-lp-alerta { background: rgba(242,201,76,0.08); }
     .nf-lp-alerta .nf-lp-venc { color: #F2C94C; }
     .nf-gastos-btn { background: rgba(127,214,166,0.18); color: #7FD6A6; }
+    .nf-confronto-btn { background: rgba(232,196,93,0.18); color: #E8C45D; }
     .nf-hero { background: var(--surface); border-radius: 20px; padding: 18px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
     .nf-hero-num { font-family: 'Space Grotesk', sans-serif; font-size: 34px; font-weight: 700; color: var(--text); line-height: 1.15; margin-top: 2px; }
     .nf-hero-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 6px; }
@@ -1028,6 +1060,7 @@
         <button class="nf-protocolos-btn" onclick="nfAbrirProtocolos()">📅 Protocolos por dia · Planilha Excel</button>
         <button class="nf-protocolos-btn nf-controle-btn" onclick="nfAbrirControle()">📊 Controle mensal de compras</button>
         <button class="nf-protocolos-btn nf-gastos-btn" onclick="nfAbrirGastos()">📈 Painel de gastos</button>
+        <button class="nf-protocolos-btn nf-confronto-btn" onclick="cfAbrir()">⚖️ Confronto do mês · Compra × Venda</button>
         <button class="nf-protocolos-btn nf-import-btn" onclick="nfAbrirImportar()">📥 Importar planilhas antigas</button>
         <button class="nf-protocolos-btn nf-leitor-btn" id="nfBtnLeitorUSB" onclick="nfAlternarLeitorUSB()">🔫 Leitor de código de barras (pistola): ligado</button>
         <div id="nfAvisoLeitor" class="nf-status" style="display:none; margin:0;"></div>
@@ -1205,6 +1238,50 @@
         <div id="nfImportLista"></div>
         <button id="nfImportBtnGravar" class="nf-passo-btn" style="display:none; margin-top:14px;" onclick="nfGravarImportacao()">✅ Importar tudo para o app</button>
         <button class="nf-acao-btn nf-acao-excluir" style="width:100%; margin-top:18px;" onclick="nfApagarImportados()">🗑️ Apagar tudo que veio de planilha (para refazer a carga)</button>
+    </div>
+</div>
+
+<div id="confronto-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="abrirNotasDireto()">←</button>
+        <h2>Compra × Venda</h2>
+    </div>
+    <div class="nf-mes-nav">
+        <button onclick="cfMudarMes(-1)">◀</button>
+        <span id="cfTitulo"></span>
+        <button onclick="cfMudarMes(1)">▶</button>
+    </div>
+    <div style="padding: 0 20px 24px 20px;">
+        <div id="cfHero" class="nf-hero"></div>
+        <div id="cfVeredito"></div>
+        <div id="cfKpis" class="nf-resumo" style="padding: 12px 0 0 0;"></div>
+
+        <div class="nf-secao-titulo">Projeção até o fim do mês</div>
+        <div id="cfProjecao"></div>
+
+        <div class="nf-secao-titulo">Vendas do mês</div>
+        <div class="nf-dica" style="margin: -4px 2px 10px 2px;">iFood, casa, débito/cartão... Digite o que já faturou.</div>
+        <div id="cfVendas"></div>
+
+        <div class="nf-secao-titulo">Eventos e encomendas</div>
+        <div class="nf-dica" style="margin: -4px 2px 10px 2px;">Mercadoria usada em eventos, encomendas e vendas para outras casas. Sai da conta das compras.</div>
+        <div id="cfEventos"></div>
+
+        <div class="nf-secao-titulo">Compras por grupo</div>
+        <div class="nf-dica" style="margin: -4px 2px 10px 2px;">Vem das notas protocoladas no mês. Toque num grupo para tirar ou pôr na conta.</div>
+        <div id="cfGrupos"></div>
+
+        <div class="nf-secao-titulo">Meta e dias</div>
+        <div class="cf-ajustes">
+            <div><label for="cfMeta">Meta de CMV</label><input type="text" id="cfMeta" inputmode="decimal" onchange="cfMudarCampo('meta', this.value)"></div>
+            <div><label for="cfDiasMes">Dias do mês</label><input type="text" id="cfDiasMes" inputmode="numeric" onchange="cfMudarCampo('dias_mes', this.value)"></div>
+            <div><label for="cfDiasCorridos">Dias corridos</label><input type="text" id="cfDiasCorridos" inputmode="numeric" onchange="cfMudarCampo('dias_corridos', this.value)"></div>
+        </div>
+
+        <div class="nf-secao-titulo">CMV dos últimos 6 meses</div>
+        <div id="cfEvolucao"></div>
+
+        <button class="nf-protocolos-btn" style="margin-top: 18px;" onclick="cfCompartilharPdf()">📤 Compartilhar em PDF</button>
     </div>
 </div>
 
@@ -1592,7 +1669,7 @@ function processarFilaReenvio() {
     if (proximaTentativa.metodo === 'POST') {
         fetch(SUPABASE_URL + "/rest/v1/" + proximaTentativa.tabela, {
             method: "POST",
-            headers: supabaseHeaders({ "Prefer": "return=representation" }),
+            headers: supabaseHeaders({ "Prefer": proximaTentativa.prefer || "return=representation" }),
             body: JSON.stringify(proximaTentativa.registro)
         }).then(function(r) { if (!r.ok) throw new Error("status " + r.status); return r.json(); })
           .then(function() { aposEnvio(null); })
@@ -11954,6 +12031,416 @@ function nfAbrirGastos() {
 function nfMudarMesGastos(delta) {
     nfMesGastos = nfMesAnterior(nfMesGastos, -delta);
     nfRenderizarGastos();
+}
+
+// ================= Confronto do mês: COMPRA × VENDA =================
+// A conta é a mesma da planilha que o Brito usava:
+//   compra bruta (das notas)  −  eventos/encomendas  =  compra líquida
+//   compra líquida ÷ venda do mês  =  CMV do mês, que se compara com a meta.
+// O que o app já sabe (as notas) vem sozinho; o faturamento e os eventos são digitados.
+
+var CF_VENDAS_PADRAO = [
+    { nome: 'IFOOD A BELA', valor: 0 },
+    { nome: 'IFOOD DOÇARIA', valor: 0 },
+    { nome: 'CASA', valor: 0 },
+    { nome: 'DEB/CC', valor: 0 }
+];
+var CF_META_PADRAO = 33;                 // % de CMV que ele persegue
+var confrontoCache = cfLerLocal();
+var cfMes = null;
+var cfTimerSalvar = null;
+
+function cfLerLocal() {
+    try { var d = localStorage.getItem('confrontoABS'); return d ? JSON.parse(d) : {}; } catch (e) { return {}; }
+}
+function cfSalvarLocal() {
+    try { localStorage.setItem('confrontoABS', JSON.stringify(confrontoCache)); } catch (e) { }
+}
+function cfDiasNoMes(mes) { var p = mes.split('-'); return new Date(+p[0], +p[1], 0).getDate(); }
+
+// Registro do mês, criando os valores de partida na primeira vez
+function cfRegistro(mes) {
+    var r = confrontoCache[mes];
+    if (!r) {
+        var hoje = nfHojeIso();
+        var ehMesAtual = hoje.substr(0, 7) === mes;
+        r = confrontoCache[mes] = {
+            competencia: mes,
+            vendas: CF_VENDAS_PADRAO.map(function(v) { return { nome: v.nome, valor: 0 }; }),
+            eventos: [],
+            meta: CF_META_PADRAO,
+            dias_mes: cfDiasNoMes(mes),
+            dias_corridos: ehMesAtual ? +hoje.substr(8, 2) : cfDiasNoMes(mes),
+            grupos: {}
+        };
+    }
+    if (!Array.isArray(r.vendas)) r.vendas = [];
+    if (!Array.isArray(r.eventos)) r.eventos = [];
+    if (!r.grupos || typeof r.grupos !== 'object') r.grupos = {};
+    return r;
+}
+// Bonificada é brinde: nunca entra. Os demais entram, a não ser que ele desligue.
+function cfGrupoEntra(reg, id) {
+    if (reg.grupos && Object.prototype.hasOwnProperty.call(reg.grupos, id)) return !!reg.grupos[id];
+    return id !== 'bonificada';
+}
+
+// Compras do mês por grupo, com as parcelas de uma mesma nota somando uma vez só
+function cfComprasPorGrupo(mes) {
+    var doMes = notasCache.filter(function(n) {
+        var d = nfDiaProtocolo(n);
+        return d && d.substr(0, 7) === mes;
+    });
+    var porGrupo = {};
+    nfAgruparParcelas(doMes).forEach(function(g) {
+        var id = nfInfoSetor(g.nota.setor).id;
+        porGrupo[id] = (porGrupo[id] || 0) + (Number(g.valor) || 0);
+    });
+    var lista = NF_ABAS.map(function(a) {
+        return { id: a.id, nome: a.nome, icone: a.icone, cor: a.cor, valor: Math.round((porGrupo[a.id] || 0) * 100) / 100 };
+    });
+    // notas sem setor não somem da tela: viram uma linha própria
+    var semSetor = Math.round((porGrupo.semsetor || 0) * 100) / 100;
+    if (semSetor) lista.push({ id: 'semsetor', nome: 'Sem setor', icone: '❔', cor: '#A79FBE', valor: semSetor });
+    return lista.filter(function(x) { return x.valor > 0; }).sort(function(a, b) { return b.valor - a.valor; });
+}
+
+function cfSoma(lista) {
+    return Math.round((lista || []).reduce(function(s, x) { return s + (Number(x.valor) || 0); }, 0) * 100) / 100;
+}
+
+function cfCalcular(mes) {
+    var reg = cfRegistro(mes);
+    var grupos = cfComprasPorGrupo(mes);
+    var bruta = 0, fora = 0;
+    grupos.forEach(function(g) {
+        g.entra = cfGrupoEntra(reg, g.id);
+        if (g.entra) bruta += g.valor; else fora += g.valor;
+    });
+    bruta = Math.round(bruta * 100) / 100;
+    var eventos = cfSoma(reg.eventos);
+    var liquida = Math.round((bruta - eventos) * 100) / 100;
+    var venda = cfSoma(reg.vendas);
+    var meta = Number(reg.meta) || 0;
+    var diasMes = Number(reg.dias_mes) || cfDiasNoMes(mes);
+    var diasCorridos = Math.min(Number(reg.dias_corridos) || 0, diasMes);
+    var mediaDia = diasCorridos ? venda / diasCorridos : 0;
+    var previaVenda = Math.round(mediaDia * diasMes * 100) / 100;
+    var cmv = venda ? (liquida / venda) * 100 : 0;
+    var cmvBruto = venda ? (bruta / venda) * 100 : 0;
+    // o que a meta permitiria comprar com a venda já realizada, e o que sobra até o fim do mês
+    var permitidoHoje = Math.round((meta / 100) * venda * 100) / 100;
+    var permitidoMes = Math.round((meta / 100) * previaVenda * 100) / 100;
+    return {
+        mes: mes, reg: reg, grupos: grupos,
+        bruta: bruta, fora: Math.round(fora * 100) / 100, eventos: eventos, liquida: liquida,
+        venda: venda, meta: meta, cmv: cmv, cmvBruto: cmvBruto,
+        diasMes: diasMes, diasCorridos: diasCorridos, diasRestantes: Math.max(0, diasMes - diasCorridos),
+        mediaDia: Math.round(mediaDia * 100) / 100, previaVenda: previaVenda,
+        permitidoHoje: permitidoHoje, permitidoMes: permitidoMes,
+        excesso: Math.round((liquida - permitidoHoje) * 100) / 100,     // + = gastou a mais
+        saldoMes: Math.round((permitidoMes - liquida) * 100) / 100      // + = ainda pode comprar
+    };
+}
+
+// ---------- tela ----------
+function cfAbrir() {
+    if (!cfMes) cfMes = nfHojeIso().substr(0, 7);
+    cfRenderizar();
+    trocarTela('confronto-screen');
+    var re = function() { if (document.getElementById('confronto-screen').classList.contains('active')) cfRenderizar(); };
+    sincronizarNotasSupabase(re);
+    cfSincronizar(re);
+}
+function cfMudarMes(delta) {
+    cfMes = nfMesAnterior(cfMes, -delta);
+    cfRenderizar();
+}
+
+function cfCorDoCmv(c) {
+    var r = cfCalcular(cfMes);
+    if (!r.venda) return '#A79FBE';
+    if (c <= r.meta) return '#7FD6A6';
+    if (c <= r.meta + 2) return '#E8C45D';
+    return '#E85D5D';
+}
+
+function cfRenderizar() {
+    if (!document.getElementById('cfTitulo')) return;
+    var mes = cfMes, r = cfCalcular(mes);
+    document.getElementById('cfTitulo').innerText = nfNomeMes(mes);
+
+    // Destaque: o CMV do mês contra a meta
+    var cor = r.venda ? (r.cmv <= r.meta ? '#7FD6A6' : (r.cmv <= r.meta + 2 ? '#E8C45D' : '#E85D5D')) : '#A79FBE';
+    var pp = r.cmv - r.meta;
+    var larg = r.meta > 0 ? Math.min(100, (r.cmv / (r.meta * 1.8)) * 100) : 0;
+    var posMeta = r.meta > 0 ? Math.min(100, (r.meta / (r.meta * 1.8)) * 100) : 0;
+    document.getElementById('cfHero').innerHTML =
+        '<div class="nf-rc-label">CMV do mês — compra sobre venda</div>' +
+        '<div class="nf-hero-num" style="color:' + cor + ';">' + (r.venda ? cfPct(r.cmv) : '—') + '</div>' +
+        '<div class="nf-hero-sub">' + (r.venda
+            ? 'meta ' + cfPct(r.meta) + ' · ' + (Math.abs(pp) < 0.05 ? 'em cima da meta'
+                : cfNum(Math.abs(pp)) + ' p.p. ' + (pp > 0 ? 'acima' : 'abaixo'))
+            : 'preencha as vendas do mês abaixo') + '</div>' +
+        (r.venda ? '<div class="cf-regua"><div class="cf-regua-cheia" style="width:' + larg + '%;background:' + cor + ';"></div>' +
+            '<div class="cf-regua-meta" style="left:' + posMeta + '%;"></div></div>' +
+            '<div class="cf-regua-legenda"><span>0%</span><span>meta ' + cfPct(r.meta) + '</span><span>' + cfPct(r.meta * 1.8) + '</span></div>' : '');
+
+    // Veredito em uma frase
+    var vd = document.getElementById('cfVeredito');
+    if (!r.venda) {
+        vd.innerHTML = '';
+    } else if (r.excesso > 0) {
+        vd.innerHTML = '<div class="cf-veredito cf-ruim">⚠️ Comprou <b>' + nfMoeda(r.excesso) + '</b> a mais do que a meta de ' +
+            cfPct(r.meta) + ' permitia sobre os ' + nfMoeda(r.venda) + ' já vendidos.</div>';
+    } else {
+        vd.innerHTML = '<div class="cf-veredito cf-ok">✅ Dentro da meta — sobraram <b>' + nfMoeda(-r.excesso) + '</b> em relação ao que ' +
+            cfPct(r.meta) + ' sobre a venda permitia.</div>';
+    }
+
+    document.getElementById('cfKpis').innerHTML =
+        cfCard('Compra bruta', nfMoeda(r.bruta), r.fora ? nfMoeda(r.fora) + ' fora da conta' : 'notas do mês') +
+        cfCard('(−) Eventos e encomendas', nfMoeda(r.eventos), r.reg.eventos.length + (r.reg.eventos.length === 1 ? ' lançamento' : ' lançamentos')) +
+        cfCard('= Compra líquida', nfMoeda(r.liquida), 'é essa que vale', '#E8C45D') +
+        cfCard('Venda do mês', nfMoeda(r.venda), r.venda ? 'bruto ' + cfPct(r.cmvBruto) + ' sem abater eventos' : 'a preencher');
+
+    // Projeção
+    document.getElementById('cfProjecao').innerHTML =
+        '<div class="cf-mini">' +
+            '<div><div class="cf-mini-lab">Dias corridos</div><div class="cf-mini-num">' + r.diasCorridos + ' de ' + r.diasMes + '</div></div>' +
+            '<div><div class="cf-mini-lab">Venda média por dia</div><div class="cf-mini-num">' + nfMoeda(r.mediaDia) + '</div></div>' +
+        '</div>' +
+        '<div class="cf-mini">' +
+            '<div><div class="cf-mini-lab">Prévia de venda do mês</div><div class="cf-mini-num">' + nfMoeda(r.previaVenda) + '</div></div>' +
+            '<div><div class="cf-mini-lab">' + (r.saldoMes >= 0 ? 'Ainda pode comprar' : 'Já passou do limite em') + '</div>' +
+            '<div class="cf-mini-num" style="color:' + (r.saldoMes >= 0 ? '#7FD6A6' : '#E85D5D') + ';">' + nfMoeda(Math.abs(r.saldoMes)) + '</div></div>' +
+        '</div>' +
+        '<div class="nf-dica" style="margin:8px 2px 0 2px;">Na meta de ' + cfPct(r.meta) + ' sobre a prévia de ' + nfMoeda(r.previaVenda) +
+        ', a compra do mês inteiro caberia em ' + nfMoeda(r.permitidoMes) + '.' +
+        (r.diasRestantes ? ' Faltam ' + r.diasRestantes + (r.diasRestantes === 1 ? ' dia.' : ' dias.') : '') + '</div>';
+
+    document.getElementById('cfVendas').innerHTML =
+        cfLinhasHtml(r.reg.vendas, 'vendas', 'Canal (ex: IFOOD A BELA)') +
+        '<button class="cf-add" onclick="cfAdicionarLinha(\'vendas\')">+ Adicionar canal de venda</button>' +
+        '<div class="cf-total"><span>Total das vendas</span><b>' + nfMoeda(r.venda) + '</b></div>';
+
+    document.getElementById('cfEventos').innerHTML =
+        cfLinhasHtml(r.reg.eventos, 'eventos', 'Evento ou encomenda') +
+        '<button class="cf-add" onclick="cfAdicionarLinha(\'eventos\')">+ Adicionar evento ou encomenda</button>' +
+        '<div class="cf-total"><span>Total abatido das compras</span><b>' + nfMoeda(r.eventos) + '</b></div>';
+
+    document.getElementById('cfGrupos').innerHTML = r.grupos.length
+        ? r.grupos.map(function(g) {
+            var perc = r.venda ? (g.valor / r.venda) * 100 : 0;
+            return '<div class="cf-grupo ' + (g.entra ? 'cf-dentro' : 'cf-fora') + '" onclick="cfAlternarGrupo(\'' + g.id + '\')">' +
+                '<div class="cf-grupo-chk" style="' + (g.entra ? 'background:' + g.cor + ';' : '') + '">' + (g.entra ? '✓' : '') + '</div>' +
+                '<div class="cf-grupo-nome">' + g.icone + ' ' + nfEsc(g.nome) + '</div>' +
+                '<div class="cf-grupo-val">' + nfMoeda(g.valor) +
+                '<small>' + (g.entra ? (r.venda ? cfPct(perc) + ' da venda' : 'na conta') : 'fora da conta') + '</small></div></div>';
+        }).join('') + '<div class="cf-total"><span>Entra na conta</span><b>' + nfMoeda(r.bruta) + '</b></div>'
+        : '<div class="nf-dica" style="margin:0;">Nenhuma nota protocolada neste mês ainda.</div>';
+
+    document.getElementById('cfMeta').value = cfNum(r.meta);
+    document.getElementById('cfDiasMes').value = r.diasMes;
+    document.getElementById('cfDiasCorridos').value = r.diasCorridos;
+
+    // CMV dos últimos 6 meses — só aparece o mês que tem venda lançada
+    var serie = [];
+    for (var i = 5; i >= 0; i--) {
+        var m = nfMesAnterior(mes, i);
+        var c = cfCalcular(m);
+        serie.push({ mes: m, v: c.venda ? c.cmv : 0, meta: c.meta });
+    }
+    var topo = serie.reduce(function(t, s) { return Math.max(t, s.v); }, 0) || 1;
+    document.getElementById('cfEvolucao').innerHTML = serie.some(function(s) { return s.v > 0; })
+        ? '<div class="nf-colunas">' + serie.map(function(s) {
+            var alt = Math.max(2, (s.v / topo) * 100);
+            var c2 = !s.v ? '#4A4458' : (s.v <= s.meta ? '#7FD6A6' : (s.v <= s.meta + 2 ? '#E8C45D' : '#E85D5D'));
+            return '<div class="nf-coluna-item" onclick="cfMes=\'' + s.mes + '\';cfRenderizar();">' +
+                '<div class="nf-coluna-valor">' + (s.v ? cfNum(s.v) : '') + '</div>' +
+                '<div class="nf-coluna-trilho"><div class="nf-coluna' + (s.mes === mes ? ' nf-coluna-ativa' : '') +
+                '" style="height:' + alt + '%;background:' + c2 + ';"></div></div>' +
+                '<div class="nf-coluna-mes">' + nfNomeMes(s.mes).substr(0, 3) + '</div></div>';
+        }).join('') + '</div><div class="nf-dica" style="margin:6px 2px 0 2px;">CMV em %. Toque numa coluna para abrir o mês.</div>'
+        : '<div class="nf-dica" style="margin:0;">Ainda não há meses com venda lançada para comparar.</div>';
+}
+
+function cfCard(rotulo, num, sub, cor) {
+    return '<div class="nf-resumo-card" style="cursor:default;"><div class="nf-rc-label">' + rotulo + '</div>' +
+        '<div class="nf-rc-num" style="font-size:17px;line-height:1.5;' + (cor ? 'color:' + cor + ';' : '') + '">' + num + '</div>' +
+        '<div class="nf-rc-valor">' + sub + '</div></div>';
+}
+function cfLinhasHtml(lista, tipo, dica) {
+    if (!lista.length) return '';
+    return lista.map(function(x, i) {
+        return '<div class="cf-linha">' +
+            '<input type="text" value="' + nfEsc(x.nome || '') + '" placeholder="' + dica + '" onchange="cfMudarLinha(\'' + tipo + '\',' + i + ',\'nome\',this.value)">' +
+            '<input type="text" class="cf-val" inputmode="decimal" value="' + (Number(x.valor) ? nfValorParaCampo(x.valor) : '') + '" placeholder="0,00" onchange="cfMudarLinha(\'' + tipo + '\',' + i + ',\'valor\',this.value)">' +
+            '<button type="button" title="Remover" onclick="cfRemoverLinha(\'' + tipo + '\',' + i + ')">✕</button></div>';
+    }).join('');
+}
+function cfNum(v) { return (Math.round((Number(v) || 0) * 100) / 100).toFixed(2).replace('.', ',').replace(/,00$/, ''); }
+function cfPct(v) { return cfNum(v) + '%'; }
+
+function cfMudarLinha(tipo, i, campo, valor) {
+    var reg = cfRegistro(cfMes);
+    if (!reg[tipo] || !reg[tipo][i]) return;
+    reg[tipo][i][campo] = (campo === 'valor') ? (nfParseValor(valor) || 0) : valor;
+    cfGravar();
+}
+function cfAdicionarLinha(tipo) {
+    var reg = cfRegistro(cfMes);
+    reg[tipo].push({ nome: '', valor: 0 });
+    cfGravar();
+    setTimeout(function() {
+        var campos = document.querySelectorAll('#cf' + (tipo === 'vendas' ? 'Vendas' : 'Eventos') + ' .cf-linha input');
+        if (campos.length) campos[campos.length - 2].focus();
+    }, 60);
+}
+function cfRemoverLinha(tipo, i) {
+    var reg = cfRegistro(cfMes);
+    reg[tipo].splice(i, 1);
+    cfGravar();
+}
+function cfAlternarGrupo(id) {
+    var reg = cfRegistro(cfMes);
+    reg.grupos[id] = !cfGrupoEntra(reg, id);
+    cfGravar();
+}
+function cfMudarCampo(campo, valor) {
+    var reg = cfRegistro(cfMes);
+    if (campo === 'meta') reg.meta = nfParseValor(valor) || 0;
+    else reg[campo] = Math.max(0, parseInt(valor, 10) || 0);
+    cfGravar();
+}
+function cfGravar() {
+    cfSalvarLocal();
+    cfRenderizar();
+    // junta as mexidas seguidas numa gravação só, pra não bater no servidor a cada tecla
+    if (cfTimerSalvar) clearTimeout(cfTimerSalvar);
+    var mes = cfMes;
+    cfTimerSalvar = setTimeout(function() { cfEnviarServidor(mes); }, 1200);
+}
+
+// ---------- servidor ----------
+function cfEnviarServidor(mes) {
+    var r = confrontoCache[mes];
+    if (!r) return;
+    var corpo = {
+        competencia: mes, vendas: r.vendas, eventos: r.eventos,
+        meta: Number(r.meta) || 0, dias_mes: Number(r.dias_mes) || null,
+        dias_corridos: Number(r.dias_corridos) || 0, grupos: r.grupos || {},
+        atualizado_em: new Date().toISOString()
+    };
+    fetch(SUPABASE_URL + '/rest/v1/confronto_mes', {
+        method: 'POST',
+        headers: supabaseHeaders({ 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+        body: JSON.stringify(corpo)
+    }).then(function(resp) {
+        if (!resp.ok) throw new Error('status ' + resp.status);
+        supabaseOnline = true; atualizarAvisoOffline();
+    }).catch(function(err) {
+        supabaseOnline = false;
+        // sem internet fica guardado no aparelho e vai na próxima vez que abrir a tela
+        if (err && err.message && err.message.indexOf('status') !== 0) {
+            adicionarNaFilaReenvio({ metodo: 'POST', tabela: 'confronto_mes', registro: corpo, prefer: 'resolution=merge-duplicates,return=minimal' });
+        }
+    });
+}
+
+function cfSincronizar(cb) {
+    supabaseGet('confronto_mes', 'select=*', function(err, dados) {
+        if (err || !Array.isArray(dados)) { if (cb) cb(); return; }
+        dados.forEach(function(d) {
+            if (!d.competencia) return;
+            confrontoCache[d.competencia] = {
+                competencia: d.competencia,
+                vendas: Array.isArray(d.vendas) ? d.vendas : [],
+                eventos: Array.isArray(d.eventos) ? d.eventos : [],
+                meta: Number(d.meta) || CF_META_PADRAO,
+                dias_mes: Number(d.dias_mes) || cfDiasNoMes(d.competencia),
+                dias_corridos: Number(d.dias_corridos) || 0,
+                grupos: (d.grupos && typeof d.grupos === 'object') ? d.grupos : {}
+            };
+        });
+        cfSalvarLocal();
+        if (cb) cb();
+    });
+}
+
+// ---------- PDF ----------
+function cfGerarPdf(mes) {
+    var jsPDFRef = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
+    if (!jsPDFRef) return null;
+    var r = cfCalcular(mes);
+    var doc = new jsPDFRef({ unit: 'mm', format: 'a4' });
+    var y = 18;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+    doc.text('COMPRA x VENDA - ' + nfNomeMes(mes), 14, y); y += 7;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(110);
+    doc.text('a bela Sintra - gerado em ' + nfDataBR(nfHojeIso()), 14, y); y += 9;
+    doc.setTextColor(0);
+
+    function linha(rot, val, negrito) {
+        doc.setFont('helvetica', negrito ? 'bold' : 'normal'); doc.setFontSize(10);
+        doc.text(rot, 14, y);
+        doc.text(val, 196, y, { align: 'right' });
+        y += 6;
+    }
+    function titulo(t) {
+        y += 3; doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+        doc.text(t, 14, y); y += 2;
+        doc.setDrawColor(200); doc.line(14, y, 196, y); y += 5;
+    }
+
+    titulo('RESUMO');
+    linha('Compra bruta (notas do mes)', nfMoeda(r.bruta));
+    linha('(-) Eventos e encomendas', nfMoeda(r.eventos));
+    linha('= Compra liquida', nfMoeda(r.liquida), true);
+    linha('Venda do mes', nfMoeda(r.venda), true);
+    linha('CMV do mes', r.venda ? cfPct(r.cmv) : '-', true);
+    linha('Meta de CMV', cfPct(r.meta));
+    linha(r.excesso > 0 ? 'Comprou acima da meta' : 'Sobrou em relacao a meta', nfMoeda(Math.abs(r.excesso)), true);
+
+    titulo('PROJECAO');
+    linha('Dias corridos', r.diasCorridos + ' de ' + r.diasMes);
+    linha('Venda media por dia', nfMoeda(r.mediaDia));
+    linha('Previa de venda do mes', nfMoeda(r.previaVenda));
+    linha('Compra que caberia na meta', nfMoeda(r.permitidoMes));
+    linha(r.saldoMes >= 0 ? 'Ainda pode comprar' : 'Ja passou do limite em', nfMoeda(Math.abs(r.saldoMes)), true);
+
+    if (r.reg.vendas.filter(function(v) { return Number(v.valor); }).length) {
+        titulo('VENDAS');
+        r.reg.vendas.forEach(function(v) { if (Number(v.valor)) linha(String(v.nome || 'Canal'), nfMoeda(v.valor)); });
+        linha('Total', nfMoeda(r.venda), true);
+    }
+    if (r.reg.eventos.filter(function(v) { return Number(v.valor); }).length) {
+        if (y > 245) { doc.addPage(); y = 18; }
+        titulo('EVENTOS E ENCOMENDAS');
+        r.reg.eventos.forEach(function(v) { if (Number(v.valor)) linha(String(v.nome || 'Evento'), nfMoeda(v.valor)); });
+        linha('Total', nfMoeda(r.eventos), true);
+    }
+    if (r.grupos.length) {
+        if (y > 230) { doc.addPage(); y = 18; }
+        titulo('COMPRAS POR GRUPO');
+        r.grupos.forEach(function(g) { linha(g.nome + (g.entra ? '' : '  (fora da conta)'), nfMoeda(g.valor)); });
+        linha('Entra na conta', nfMoeda(r.bruta), true);
+    }
+    return doc;
+}
+
+function cfCompartilharPdf() {
+    var doc = cfGerarPdf(cfMes);
+    if (!doc) { alert('Não consegui preparar o PDF. Atualize a página e tente de novo.'); return; }
+    var nome = 'compra-x-venda-' + cfMes + '.pdf';
+    var arquivo;
+    try { arquivo = new File([doc.output('blob')], nome, { type: 'application/pdf' }); } catch (e) { arquivo = null; }
+    if (arquivo && navigator.share && navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+        navigator.share({ files: [arquivo], title: 'Compra x Venda', text: 'Confronto compra x venda — ' + nfNomeMes(cfMes) })
+            .catch(function() { });
+        return;
+    }
+    doc.save(nome);
 }
 
 function nfRenderizarGastos() {
