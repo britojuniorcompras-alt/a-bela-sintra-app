@@ -8907,6 +8907,16 @@ function nfRenderizarPassos() {
     } else if (p === 'manual') {
         var fm = nfForm.fornecedor || nfAcharFornecedor(nfLimpaCnpj(document.getElementById('nfCnpj').value), document.getElementById('nfRazao').value);
         var gm = nfGruposDoFornecedor(fm);
+        if (nfInfoSetor(nfForm.setor).id === 'bonificada') {
+            // bonificada no manual: salva por aqui mesmo, sem passar pela grade de setores
+            var vbm = nfValorBonificada();
+            el.innerHTML = '<div class="nf-passo-titulo">🎁 Nota bonificada</div>' +
+                '<div class="nf-passo-texto">Bonificada não tem boleto nem vencimento. Preencha o fornecedor e o <b>valor total da nota</b> abaixo.</div>' +
+                (vbm ? '<button class="nf-passo-btn" style="background:linear-gradient(160deg,#7FD6A6,#7FD6A699);color:#1B1420;" onclick="nfSalvarNoSetor(\'bonificada\')">✅ Salvar bonificada — ' + nfMoeda(vbm) + '</button>'
+                     : '<div class="nf-passo-texto">⚠️ Preencha o <b>valor total da nota bonificada</b> no campo abaixo para salvar.</div>') +
+                '<button class="nf-passo-link" onclick="nfAlternarBonificada()">Não é bonificada — voltar</button>';
+            return;
+        }
         corpo = '<div class="nf-passo-titulo">✍️ Lançamento manual</div>' +
             '<div class="nf-passo-texto">Preencha os dados logo abaixo (fornecedor, valor, vencimento ou cartão) e depois toque no setor lá embaixo para salvar.</div>' +
             (gm.length ? '<div class="nf-passo-texto" style="margin-bottom:8px;">⭐ ' + nfEsc(fm.razao_social || 'Fornecedor conhecido') + (gm.length > 1 ? ' — já entrou em mais de um grupo:' : ' — salvar em:') + '</div>' +
@@ -9002,8 +9012,15 @@ function nfContinuarSemBoleto() {
 
 function nfSalvarNoSetor(id) {
     if (!nfForm) return;
+    // sair de "bonificada" para outro grupo (ou o contrario) muda a secao de boletos:
+    // sem redesenhar, o campo continuava rotulado como bonificada e o valor nao era lido
+    var eraBonificada = nfInfoSetor(nfForm.setor).id === 'bonificada';
     nfForm.setor = id;
     if (id !== 'gerais') nfForm.subgrupo = null;
+    if (eraBonificada !== (nfInfoSetor(id).id === 'bonificada')) {
+        nfRenderizarBoletosForm();
+        nfRenderizarTipoDoc();
+    }
     nfSalvarNota();
 }
 
@@ -9430,9 +9447,19 @@ function nfSalvarNota() {
 
     if (!razao && !numero) { alert('Leia o código da nota ou preencha pelo menos a razão social e o número.'); return; }
     if (!nfForm.setor) { alert('Escolha o setor da nota.'); return; }
-    if (nfForm.manual && !nfForm.editandoId && !nfForm.boletos.some(function(b) { return b.valor; })) { alert('Informe o valor.'); return; }
-    var boletos = nfForm.boletos.slice();
     var ehBonificada = nfInfoSetor(nfForm.setor).id === 'bonificada';
+    // Bonificada guarda o valor em "Valor total da nota", nao nas parcelas — a conferencia
+    // de valor dela é logo abaixo. Nas demais, se so o total foi preenchido, ele vira a parcela.
+    if (!ehBonificada && nfForm.manual && !nfForm.editandoId && !nfForm.boletos.some(function(b) { return b.valor; })) {
+        var totalDigitado = nfParseValor(document.getElementById('nfValorNota').value);
+        if (totalDigitado) {
+            if (!nfForm.boletos.length) nfForm.boletos.push({ barras: null, linha: null, vencimento: null, valor: null });
+            nfForm.boletos[0].valor = totalDigitado;
+        } else {
+            alert('Informe o valor.'); return;
+        }
+    }
+    var boletos = nfForm.boletos.slice();
     if (ehBonificada) {
         // brinde do fornecedor: uma linha só, sem boleto e sem vencimento, com o valor da nota
         var vb = nfValorBonificada();
