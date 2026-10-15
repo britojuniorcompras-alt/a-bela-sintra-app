@@ -827,6 +827,18 @@ body:not(.foco) .somenteFoco{display:none!important}
       </div>
     </div>
 
+    <div class="card" id="dia-card" style="margin-bottom:16px">
+      <div class="sec-ttl">📅 Produção por dia <span style="font-weight:400;font-size:.8rem;color:var(--mut)">· quanto de massa e de bacalhau fazer em cada dia útil</span></div>
+      <div style="padding:13px 19px 4px">
+        <div class="m4" id="diakpi" style="margin-bottom:12px"></div>
+        <div class="tw" style="margin:0 -19px"><table class="dtbl">
+          <thead id="diath"></thead>
+          <tbody id="diatb"></tbody>
+        </table></div>
+        <p id="dia-nota" style="font-size:.77rem;color:var(--mut);padding:11px 0 6px"></p>
+      </div>
+    </div>
+
     <div class="card" style="margin-bottom:16px">
       <div class="sec-ttl">🏭 Plano de Produção</div>
       <div class="tw"><table class="dtbl">
@@ -2980,6 +2992,39 @@ function rFichas(){
   }).join('');
 }
 
+// ===== PRODUÇÃO POR DIA — massa e bacalhau de cada dia útil =====
+function rDia(){
+  const kp=document.getElementById('diakpi'); if(!kp) return;
+  const q=1/(1-A.per), RK=REF.k, f=F[RK], t=BAC.usar?bacTeste():null;
+  const porDia=k=>{                                   // tudo já com a quebra de produção
+    const b=A.vol*q/F[k].u/INS.dias;                  // batches por dia
+    return {b, un:A.vol*q/INS.dias, massa:b*F[k].kg, bac:b*F[k].bac, bacSujo:t?b*F[k].bac/t.rend:null, bat:b*F[k].bat};
+  };
+  const d=porDia(RK), cabe=d.b<=A.cap;
+  const kgd=x=>N(Math.round(x))+' kg', kg1=x=>(Math.round(x*10)/10).toLocaleString('pt-BR')+' kg';
+  kp.innerHTML=`
+    <div class="bm"><div class="bml">Massa por dia</div><div class="bmv" style="font-size:1.25rem">${kgd(d.massa)}</div><div class="bms">massa crua pronta · ${NM[RK]}</div></div>
+    <div class="bm"><div class="bml">Bacalhau por dia</div><div class="bmv" style="font-size:1.25rem;color:var(--ac)">${kg1(d.bac)}</div><div class="bms">${t?'limpo · comprar '+kg1(d.bacSujo)+' sujo':'já limpo e processado'}</div></div>
+    <div class="bm"><div class="bml">Batata por dia</div><div class="bmv" style="font-size:1.25rem">${kg1(d.bat)}</div><div class="bms">${NM[RK]}</div></div>
+    <div class="bm"><div class="bml">Batches por dia</div><div class="bmv" style="font-size:1.25rem;color:${cabe?'var(--gn)':'var(--rd)'}">${d.b.toFixed(1).replace('.',',')}</div><div class="bms">estrutura comporta ${fmtCap(A.cap)}</div></div>`;
+  const th=document.getElementById('diath');
+  if(th) th.innerHTML=`<tr><th>Formulação</th><th class="tr">Batches/dia</th><th class="tr">Massa/dia</th><th class="tr">Bacalhau/dia${t?' (limpo)':''}</th>${t?'<th class="tr">Bacalhau sujo/dia</th>':''}<th class="tr">Batata/dia</th><th class="tr">Bolinhos/dia</th></tr>`;
+  document.getElementById('diatb').innerHTML=LK().map(k=>{
+    const x=porDia(k);
+    return `<tr><td><strong>${NM[k]}</strong></td>
+      <td class="tr fn">${x.b.toFixed(1).replace('.',',')}</td>
+      <td class="tr fn" style="font-weight:700">${kgd(x.massa)}</td>
+      <td class="tr fn" style="color:var(--ac);font-weight:700">${kg1(x.bac)}</td>
+      ${t?`<td class="tr fn">${kg1(x.bacSujo)}</td>`:''}
+      <td class="tr fn">${kg1(x.bat)}</td>
+      <td class="tr fn">${N(Math.round(x.un))}</td></tr>`;
+  }).join('');
+  const nt=document.getElementById('dia-nota');
+  if(nt) nt.innerHTML=`Para <b>${N(A.vol)} un/mês</b> em <b>${INS.dias} dias úteis</b>, já somando a quebra de produção de ${P(A.per)} — produzir ${N(Math.round(A.vol*q))} un/mês para vender ${N(A.vol)}. Cada batch rende ${(F[RK].kg).toString().replace('.',',')} kg de massa e ${N(Math.round(F[RK].u))} bolinhos de ${fmtPeso(A.peso)} g na linha ${NM[RK]}.`
+    + (t?` O bacalhau sujo usa o rendimento de ${(t.rend*100).toFixed(1).replace('.',',')}% do seu teste.`:'')
+    + (cabe?'' : ` <b style="color:var(--rd)">Atenção: ${d.b.toFixed(1).replace('.',',')} batches/dia passa da capacidade de ${fmtCap(A.cap)} — precisa de turno extra ou mais equipamento.</b>`);
+}
+
 /* compras, kpis, sensibilidade e plano de producao */
 function rCompras(){
   const kp=document.getElementById('fckpi'); if(!kp) return;
@@ -3011,6 +3056,7 @@ function rCompras(){
       <td class="tr fn" style="font-weight:700">${R(tot[iref],0)}</td></tr>`;
   })();
 
+  rDia();
   document.getElementById('prodtb').innerHTML=LK().map(k=>{
     const f=F[k], b=A.vol*q/f.u, bd=b/INS.dias, ok=bd<=A.cap;
     return `<tr><td><strong>${nm[k]}</strong></td><td class="tr fn">${N(Math.round(f.u))}</td>
