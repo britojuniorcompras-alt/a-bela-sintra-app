@@ -1281,7 +1281,11 @@
         <div class="nf-secao-titulo">CMV dos últimos 6 meses</div>
         <div id="cfEvolucao"></div>
 
-        <button class="nf-protocolos-btn" style="margin-top: 18px;" onclick="cfCompartilharPdf()">📤 Compartilhar em PDF</button>
+        <div class="nf-secao-titulo">Levar para fora do app</div>
+        <button class="nf-protocolos-btn" onclick="cfCompartilharPdf()">📤 Compartilhar em PDF</button>
+        <button class="nf-protocolos-btn nf-confronto-btn" onclick="cfExcel('baixar')">📊 Baixar planilha Excel</button>
+        <button class="nf-protocolos-btn nf-gastos-btn" onclick="cfExcel('enviar')">📤 Enviar planilha Excel</button>
+        <div id="cfAvisoExcel" class="nf-status" style="display:none;"></div>
     </div>
 </div>
 
@@ -12365,6 +12369,211 @@ function cfSincronizar(cb) {
         });
         cfSalvarLocal();
         if (cb) cb();
+    });
+}
+
+// ---------- Planilha Excel do confronto ----------
+// Mesma conta da tela, só que em fórmulas: trocando a meta ou os dias no Excel,
+// tudo recalcula. As abas Vendas, Eventos e Compras alimentam a aba Confronto.
+var CF_X_MOEDA = '_-"R$"\\ * #,##0.00_-;\\-"R$"\\ * #,##0.00_-;_-"R$"\\ * "-"??_-;_-@_-';
+var CF_X_PCT = '0.00%';
+var CF_X_AZUL = 'FF0000FF', CF_X_VERDE = 'FF008000', CF_X_CINZA = 'FF595959';
+
+function cfXCab(ws, linha, titulos, larguras) {
+    var l = ws.getRow(linha);
+    titulos.forEach(function(t, i) {
+        var c = l.getCell(i + 1);
+        c.value = t;
+        c.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F5597' } };
+        if (larguras) ws.getColumn(i + 1).width = larguras[i];
+    });
+    l.commit && l.commit();
+}
+function cfXTitulo(ws, texto, sub, colunas) {
+    ws.mergeCells(1, 1, 1, colunas);
+    var c = ws.getCell('A1');
+    c.value = texto;
+    c.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3864' } };
+    c.alignment = { vertical: 'middle', indent: 1 };
+    ws.getRow(1).height = 24;
+    ws.mergeCells(2, 1, 2, colunas);
+    var s = ws.getCell('A2');
+    s.value = sub;
+    s.font = { name: 'Arial', size: 10, color: { argb: CF_X_CINZA } };
+}
+function cfXCelula(ws, lin, col, valor, formato, cor, negrito) {
+    var c = ws.getCell(lin, col);
+    c.value = valor;
+    if (formato) c.numFmt = formato;
+    c.font = { name: 'Arial', size: 10, bold: !!negrito, color: { argb: cor || 'FF000000' } };
+    if (cor === CF_X_AZUL) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } };
+    return c;
+}
+
+function cfMontarExcel(mes) {
+    var r = cfCalcular(mes);
+    var wb = new ExcelJS.Workbook();
+    wb.creator = 'A Bela Sintra';
+    wb.calcProperties = { fullCalcOnLoad: true };
+
+    // ---- aba Compras por grupo ----
+    var wg = wb.addWorksheet('Compras por grupo', { views: [{ showGridLines: false }] });
+    cfXTitulo(wg, 'COMPRAS POR GRUPO — ' + nfNomeMes(mes), 'Vem das notas protocoladas no mês. "Entra?" com SIM soma na compra bruta.', 4);
+    cfXCab(wg, 4, ['Grupo', 'Valor', 'Entra?', '% da venda'], [32, 18, 10, 14]);
+    var lg = 5;
+    r.grupos.forEach(function(g) {
+        cfXCelula(wg, lg, 1, g.nome);
+        cfXCelula(wg, lg, 2, g.valor, CF_X_MOEDA);
+        cfXCelula(wg, lg, 3, g.entra ? 'SIM' : 'NÃO', null, CF_X_AZUL);
+        cfXCelula(wg, lg, 4, { formula: 'IFERROR(B' + lg + "/Confronto!$B$8,0)" }, CF_X_PCT);
+        lg++;
+    });
+    if (lg === 5) { cfXCelula(wg, lg, 1, 'Nenhuma nota protocolada neste mês'); cfXCelula(wg, lg, 2, 0, CF_X_MOEDA); cfXCelula(wg, lg, 3, 'NÃO'); lg++; }
+    var lgTotal = lg;
+    cfXCelula(wg, lgTotal, 1, 'ENTRA NA COMPRA BRUTA', null, null, true);
+    cfXCelula(wg, lgTotal, 2, { formula: 'SUMIF(C5:C' + (lg - 1) + ',"SIM",B5:B' + (lg - 1) + ')' }, CF_X_MOEDA, null, true);
+    cfXCelula(wg, lgTotal + 1, 1, 'Fora da conta', null, CF_X_CINZA);
+    cfXCelula(wg, lgTotal + 1, 2, { formula: 'SUMIF(C5:C' + (lg - 1) + ',"NÃO",B5:B' + (lg - 1) + ')' }, CF_X_MOEDA, CF_X_CINZA);
+
+    // ---- aba Vendas ----
+    var wv = wb.addWorksheet('Vendas', { views: [{ showGridLines: false }] });
+    cfXTitulo(wv, 'VENDAS DO MÊS — ' + nfNomeMes(mes), 'Faturamento por canal. O total alimenta a aba Confronto.', 3);
+    cfXCab(wv, 4, ['Canal', 'Valor', '% da venda'], [32, 18, 14]);
+    var lv = 5;
+    (r.reg.vendas || []).forEach(function(v) {
+        cfXCelula(wv, lv, 1, String(v.nome || 'Canal'), null, CF_X_AZUL);
+        cfXCelula(wv, lv, 2, Number(v.valor) || 0, CF_X_MOEDA, CF_X_AZUL);
+        cfXCelula(wv, lv, 3, { formula: 'IFERROR(B' + lv + '/$B$' + (5 + (r.reg.vendas || []).length) + ',0)' }, CF_X_PCT);
+        lv++;
+    });
+    if (lv === 5) { cfXCelula(wv, lv, 1, 'Digite aqui o canal', null, CF_X_AZUL); cfXCelula(wv, lv, 2, 0, CF_X_MOEDA, CF_X_AZUL); lv++; }
+    var lvTotal = lv;
+    cfXCelula(wv, lvTotal, 1, 'TOTAL', null, null, true);
+    cfXCelula(wv, lvTotal, 2, { formula: 'SUM(B5:B' + (lv - 1) + ')' }, CF_X_MOEDA, null, true);
+
+    // ---- aba Eventos ----
+    var we = wb.addWorksheet('Eventos', { views: [{ showGridLines: false }] });
+    cfXTitulo(we, 'EVENTOS E ENCOMENDAS — ' + nfNomeMes(mes), 'Mercadoria usada fora do movimento da casa. Sai da conta das compras.', 2);
+    cfXCab(we, 4, ['Evento / encomenda', 'Valor'], [46, 18]);
+    var le = 5;
+    (r.reg.eventos || []).forEach(function(v) {
+        cfXCelula(we, le, 1, String(v.nome || 'Evento'), null, CF_X_AZUL);
+        cfXCelula(we, le, 2, Number(v.valor) || 0, CF_X_MOEDA, CF_X_AZUL);
+        le++;
+    });
+    if (le === 5) { cfXCelula(we, le, 1, 'Digite aqui o evento', null, CF_X_AZUL); cfXCelula(we, le, 2, 0, CF_X_MOEDA, CF_X_AZUL); le++; }
+    var leTotal = le;
+    cfXCelula(we, leTotal, 1, 'TOTAL ABATIDO DAS COMPRAS', null, null, true);
+    cfXCelula(we, leTotal, 2, { formula: 'SUM(B5:B' + (le - 1) + ')' }, CF_X_MOEDA, null, true);
+
+    // ---- aba Confronto (fica na frente) ----
+    var ws = wb.addWorksheet('Confronto', { views: [{ showGridLines: false }] });
+    cfXTitulo(ws, 'CONFRONTO DO MÊS — COMPRA × VENDA', 'a bela Sintra · ' + nfNomeMes(mes) + ' · gerado em ' + nfDataBR(nfHojeIso()), 3);
+    ws.getColumn(1).width = 40; ws.getColumn(2).width = 18; ws.getColumn(3).width = 58;
+    cfXCelula(ws, 3, 1, 'Azul = você digita   ·   Verde = vem das outras abas   ·   Preto = fórmula, não mexa', null, CF_X_CINZA);
+
+    cfXCab(ws, 5, ['O QUE ENTRA NA CONTA', 'Valor', 'De onde vem']);
+    var ent = [
+        ['Compra bruta do mês',      { formula: "'Compras por grupo'!B" + lgTotal }, CF_X_MOEDA, CF_X_VERDE, 'Soma dos grupos marcados com SIM na aba "Compras por grupo"'],
+        ['(−) Eventos e encomendas', { formula: 'Eventos!B' + leTotal },             CF_X_MOEDA, CF_X_VERDE, 'Total da aba "Eventos"'],
+        ['Venda do mês',             { formula: 'Vendas!B' + lvTotal },              CF_X_MOEDA, CF_X_VERDE, 'Total da aba "Vendas"'],
+        ['Meta de CMV',              (Number(r.meta) || 0) / 100,                    CF_X_PCT,   CF_X_AZUL,  'A meta que você persegue'],
+        ['Dias do mês',              r.diasMes,                                      '0',        CF_X_AZUL,  'Dias do mês de competência'],
+        ['Dias já corridos',         r.diasCorridos,                                 '0',        CF_X_AZUL,  'Quantos dias já passaram — serve para projetar o fechamento']
+    ];
+    var l = 6;
+    ent.forEach(function(e) {
+        cfXCelula(ws, l, 1, e[0]);
+        cfXCelula(ws, l, 2, e[1], e[2], e[3]);
+        cfXCelula(ws, l, 3, e[4], null, CF_X_CINZA);
+        l++;
+    });
+    var B_BRUTA = '$B$6', B_EVENT = '$B$7', B_VENDA = '$B$8', B_META = '$B$9', B_DIASM = '$B$10', B_DIASC = '$B$11';
+
+    l++;
+    cfXCab(ws, l, ['RESULTADO DO MÊS', 'Valor', 'Como se calcula']); l++;
+    var res = [
+        ['Compra bruta',             '=' + B_BRUTA,                                           CF_X_MOEDA, 'Soma das notas do mês', false],
+        ['(−) Eventos e encomendas', '=' + B_EVENT,                                           CF_X_MOEDA, 'Mercadoria que saiu para eventos', false],
+        ['(=) Compra líquida',       '=' + B_BRUTA + '-' + B_EVENT,                           CF_X_MOEDA, 'Compra bruta menos eventos — é essa que vale', true],
+        ['Venda do mês',             '=' + B_VENDA,                                           CF_X_MOEDA, 'Soma dos canais', false],
+        ['CMV do mês',               '=IFERROR((' + B_BRUTA + '-' + B_EVENT + ')/' + B_VENDA + ',0)', CF_X_PCT, 'Compra líquida ÷ venda', true],
+        ['CMV bruto (sem abater eventos)', '=IFERROR(' + B_BRUTA + '/' + B_VENDA + ',0)',      CF_X_PCT,  'Compra bruta ÷ venda', false],
+        ['Meta de CMV',              '=' + B_META,                                            CF_X_PCT,  'A meta informada acima', false],
+        ['Diferença para a meta (p.p.)', '=IFERROR((' + B_BRUTA + '-' + B_EVENT + ')/' + B_VENDA + ',0)-' + B_META, CF_X_PCT, 'Positivo = passou da meta', false],
+        ['Compra que a meta permitia', '=' + B_META + '*' + B_VENDA,                          CF_X_MOEDA, 'Meta × venda já realizada', false],
+        ['Gastou a mais do que a meta', '=(' + B_BRUTA + '-' + B_EVENT + ')-' + B_META + '*' + B_VENDA, CF_X_MOEDA, 'Negativo = sobrou folga', true]
+    ];
+    res.forEach(function(x) {
+        cfXCelula(ws, l, 1, x[0], null, null, x[4]);
+        cfXCelula(ws, l, 2, { formula: x[1].substr(1) }, x[2], null, x[4]);
+        cfXCelula(ws, l, 3, x[3], null, CF_X_CINZA);
+        l++;
+    });
+
+    l++;
+    cfXCab(ws, l, ['PROJEÇÃO ATÉ O FIM DO MÊS', 'Valor', 'Como se calcula']); l++;
+    var lMedia = l, lPrevia = l + 1;
+    var proj = [
+        ['Venda média por dia',        'IFERROR(' + B_VENDA + '/' + B_DIASC + ',0)',  CF_X_MOEDA, 'Venda do mês ÷ dias já corridos', false],
+        ['Prévia de venda do mês',     '$B$' + lMedia + '*' + B_DIASM,                CF_X_MOEDA, 'Venda média por dia × dias do mês', false],
+        ['Compra que caberia na meta', B_META + '*$B$' + lPrevia,                     CF_X_MOEDA, 'Meta × prévia de venda', false],
+        ['Ainda pode comprar',         B_META + '*$B$' + lPrevia + '-(' + B_BRUTA + '-' + B_EVENT + ')', CF_X_MOEDA, 'Negativo = já passou do limite. É o número que decide a compra no meio do mês.', true],
+        ['Dias restantes',             'MAX(0,' + B_DIASM + '-' + B_DIASC + ')',      '0',        'Dias do mês menos dias corridos', false]
+    ];
+    proj.forEach(function(x) {
+        cfXCelula(ws, l, 1, x[0], null, null, x[4]);
+        cfXCelula(ws, l, 2, { formula: x[1] }, x[2], null, x[4]);
+        cfXCelula(ws, l, 3, x[3], null, CF_X_CINZA);
+        l++;
+    });
+
+    l += 1;
+    ws.mergeCells(l, 1, l + 2, 3);
+    var obs = ws.getCell(l, 1);
+    obs.value = 'Como ler: a compra líquida é a que conta, porque a mercadoria usada em eventos e encomendas já foi abatida. ' +
+        'O "ainda pode comprar" é a meta aplicada sobre a prévia de venda, menos o que já foi comprado — é o número que decide a compra no meio do mês. ' +
+        'Troque a meta, os dias ou qualquer valor nas outras abas e tudo recalcula sozinho.';
+    obs.font = { name: 'Arial', size: 10, color: { argb: CF_X_CINZA } };
+    obs.alignment = { wrapText: true, vertical: 'top', indent: 1 };
+
+    wb.worksheets.forEach(function(w, i) { w.orderNo = i; });
+    return wb;
+}
+
+function cfExcel(modo) {
+    var aviso = document.getElementById('cfAvisoExcel');
+    aviso.style.display = 'block';
+    aviso.innerText = 'Gerando a planilha...';
+    var mes = cfMes;
+    nfGarantirExcel(function(err) {
+        if (err || !window.ExcelJS) { aviso.innerText = 'Não consegui carregar o gerador de Excel (sem internet?). Tente de novo.'; return; }
+        var wb;
+        try { wb = cfMontarExcel(mes); }
+        catch (e) { aviso.innerText = 'Não consegui montar a planilha: ' + e.message; return; }
+        wb.xlsx.writeBuffer().then(function(buf) {
+            var nome = 'Compra x Venda ' + nfNomeMes(mes) + '.xlsx';
+            var tipo = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            var blob = new Blob([buf], { type: tipo });
+            var arquivo = null;
+            try { arquivo = new File([blob], nome, { type: tipo }); } catch (e2) { }
+            if (modo === 'enviar' && arquivo && navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+                navigator.share({ files: [arquivo], title: nome }).catch(function() { });
+                aviso.innerText = '📤 Escolha onde enviar (WhatsApp, e-mail...).';
+                return;
+            }
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = nome;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+            aviso.innerText = '✅ Planilha gerada: ' + nome;
+        }).catch(function(e3) {
+            aviso.innerText = 'Não consegui gerar a planilha: ' + (e3 && e3.message ? e3.message : 'erro');
+        });
     });
 }
 
