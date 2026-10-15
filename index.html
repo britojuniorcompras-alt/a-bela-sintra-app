@@ -12083,10 +12083,14 @@ function cfRegistro(mes) {
     if (!r.grupos || typeof r.grupos !== 'object') r.grupos = {};
     return r;
 }
-// Bonificada é brinde: nunca entra. Os demais entram, a não ser que ele desligue.
+// Qual grupo entra na compra bruta quando ele ainda não escolheu nada.
+// Segue o mesmo critério do Controle mensal: bonificada é brinde, e limpeza,
+// manutenção e gráfica são custos fixos — ficam de fora até ele mandar entrar.
+var CF_FORA_PADRAO = { bonificada: 1, limpeza: 1, manutencao: 1, grafica: 1 };
 function cfGrupoEntra(reg, id) {
     if (reg.grupos && Object.prototype.hasOwnProperty.call(reg.grupos, id)) return !!reg.grupos[id];
-    return id !== 'bonificada';
+    if (String(id).indexOf('lanc:') === 0) return !CF_FORA_PADRAO[String(id).substr(5)];
+    return !CF_FORA_PADRAO[id];
 }
 
 // Compras do mês por grupo, com as parcelas de uma mesma nota somando uma vez só
@@ -12106,6 +12110,24 @@ function cfComprasPorGrupo(mes) {
     // notas sem setor não somem da tela: viram uma linha própria
     var semSetor = Math.round((porGrupo.semsetor || 0) * 100) / 100;
     if (semSetor) lista.push({ id: 'semsetor', nome: 'Sem setor', icone: '❔', cor: '#A79FBE', valor: semSetor });
+    // Meses que vieram das planilhas antigas não têm nota lançada aqui, só o lançamento
+    // do Controle mensal. Sem isto a compra bruta desses meses aparecia como zero.
+    var porBloco = {};
+    lancamentosCache.forEach(function(l) {
+        if (l.mes !== mes) return;
+        if (l.tipo !== 'bloco' && l.tipo !== 'caixa') return;
+        var bid = l.tipo === 'caixa' ? 'caixa' : l.bloco;
+        if (!bid) return;
+        porBloco[bid] = (porBloco[bid] || 0) + (Number(l.valor) || 0);
+    });
+    Object.keys(porBloco).forEach(function(bid) {
+        var b = null;
+        for (var i = 0; i < NF_BLOCOS.length; i++) { if (NF_BLOCOS[i].id === bid) { b = NF_BLOCOS[i]; break; } }
+        var v = Math.round(porBloco[bid] * 100) / 100;
+        if (!v) return;
+        lista.push({ id: 'lanc:' + bid, nome: (b ? b.nome : bid) + ' (controle mensal)', icone: b ? b.icone : '📋',
+                     cor: '#A79FBE', valor: v, doControle: true });
+    });
     return lista.filter(function(x) { return x.valor > 0; }).sort(function(a, b) { return b.valor - a.valor; });
 }
 
@@ -12113,8 +12135,16 @@ function cfSoma(lista) {
     return Math.round((lista || []).reduce(function(s, x) { return s + (Number(x.valor) || 0); }, 0) * 100) / 100;
 }
 
-function cfCalcular(mes) {
-    var reg = cfRegistro(mes);
+// Versão só-leitura: usada pelo gráfico dos 6 meses, que não deve criar mês vazio no cache
+function cfRegistroSoLeitura(mes) {
+    return confrontoCache[mes] ? cfRegistro(mes) : {
+        competencia: mes, vendas: [], eventos: [], meta: CF_META_PADRAO,
+        dias_mes: cfDiasNoMes(mes), dias_corridos: cfDiasNoMes(mes), grupos: {}
+    };
+}
+
+function cfCalcular(mes, soLeitura) {
+    var reg = soLeitura ? cfRegistroSoLeitura(mes) : cfRegistro(mes);
     var grupos = cfComprasPorGrupo(mes);
     var bruta = 0, fora = 0;
     grupos.forEach(function(g) {
@@ -12157,42 +12187,47 @@ function cfAbrir() {
     cfSincronizar(re);
 }
 function cfMudarMes(delta) {
+    // sai do campo antes de trocar o mês: senão o valor do mês anterior ficava na tela
+    // e, ao sair dele depois, era gravado no mês novo
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     cfMes = nfMesAnterior(cfMes, -delta);
     cfRenderizar();
 }
 
-function cfCorDoCmv(c) {
-    var r = cfCalcular(cfMes);
-    if (!r.venda) return '#A79FBE';
-    if (c <= r.meta) return '#7FD6A6';
-    if (c <= r.meta + 2) return '#E8C45D';
-    return '#E85D5D';
-}
-
-function cfRenderizar() {
+// manterListas = true quando a pessoa só digitou num campo: aí as listas de vendas e
+// eventos NÃO são redesenhadas. Redesenhar no meio da digitação fazia o toque no ✕
+// cair num botão que já tinha sido destruído, e a linha não era apagada.
+function cfRenderizar(manterListas) {
     if (!document.getElementById('cfTitulo')) return;
     var mes = cfMes, r = cfCalcular(mes);
     document.getElementById('cfTitulo').innerText = nfNomeMes(mes);
 
-    // Destaque: o CMV do mês contra a meta
-    var cor = r.venda ? (r.cmv <= r.meta ? '#7FD6A6' : (r.cmv <= r.meta + 2 ? '#E8C45D' : '#E85D5D')) : '#A79FBE';
+    var temMeta = r.meta > 0;
+    var eventosDemais = r.eventos > r.bruta && r.bruta > 0;
+    var cor = (r.venda && temMeta) ? (r.cmv <= r.meta ? '#7FD6A6' : (r.cmv <= r.meta + 2 ? '#E8C45D' : '#E85D5D')) : '#A79FBE';
     var pp = r.cmv - r.meta;
-    var larg = r.meta > 0 ? Math.min(100, (r.cmv / (r.meta * 1.8)) * 100) : 0;
-    var posMeta = r.meta > 0 ? Math.min(100, (r.meta / (r.meta * 1.8)) * 100) : 0;
+    var mostraRegua = r.venda > 0 && temMeta && r.cmv >= 0;
+    var larg = mostraRegua ? Math.max(0, Math.min(100, (r.cmv / (r.meta * 1.8)) * 100)) : 0;
+    var posMeta = mostraRegua ? Math.min(100, 100 / 1.8) : 0;
+    var sub;
+    if (!r.venda) sub = 'preencha as vendas do mês abaixo';
+    else if (!temMeta) sub = 'defina a meta de CMV lá embaixo para comparar';
+    else sub = 'meta ' + cfPct(r.meta) + ' · ' + (Math.abs(pp) < 0.05 ? 'em cima da meta'
+            : cfNum(Math.abs(pp)) + ' p.p. ' + (pp > 0 ? 'acima' : 'abaixo'));
     document.getElementById('cfHero').innerHTML =
         '<div class="nf-rc-label">CMV do mês — compra sobre venda</div>' +
         '<div class="nf-hero-num" style="color:' + cor + ';">' + (r.venda ? cfPct(r.cmv) : '—') + '</div>' +
-        '<div class="nf-hero-sub">' + (r.venda
-            ? 'meta ' + cfPct(r.meta) + ' · ' + (Math.abs(pp) < 0.05 ? 'em cima da meta'
-                : cfNum(Math.abs(pp)) + ' p.p. ' + (pp > 0 ? 'acima' : 'abaixo'))
-            : 'preencha as vendas do mês abaixo') + '</div>' +
-        (r.venda ? '<div class="cf-regua"><div class="cf-regua-cheia" style="width:' + larg + '%;background:' + cor + ';"></div>' +
+        '<div class="nf-hero-sub">' + sub + '</div>' +
+        (mostraRegua ? '<div class="cf-regua"><div class="cf-regua-cheia" style="width:' + larg + '%;background:' + cor + ';"></div>' +
             '<div class="cf-regua-meta" style="left:' + posMeta + '%;"></div></div>' +
             '<div class="cf-regua-legenda"><span>0%</span><span>meta ' + cfPct(r.meta) + '</span><span>' + cfPct(r.meta * 1.8) + '</span></div>' : '');
 
     // Veredito em uma frase
     var vd = document.getElementById('cfVeredito');
-    if (!r.venda) {
+    if (eventosDemais) {
+        vd.innerHTML = '<div class="cf-veredito cf-ruim">⚠️ Os eventos (' + nfMoeda(r.eventos) + ') estão maiores que as compras do mês (' +
+            nfMoeda(r.bruta) + '). Confira os valores — a conta fica negativa assim.</div>';
+    } else if (!r.venda || !temMeta) {
         vd.innerHTML = '';
     } else if (r.excesso > 0) {
         vd.innerHTML = '<div class="cf-veredito cf-ruim">⚠️ Comprou <b>' + nfMoeda(r.excesso) + '</b> a mais do que a meta de ' +
@@ -12205,34 +12240,45 @@ function cfRenderizar() {
     document.getElementById('cfKpis').innerHTML =
         cfCard('Compra bruta', nfMoeda(r.bruta), r.fora ? nfMoeda(r.fora) + ' fora da conta' : 'notas do mês') +
         cfCard('(−) Eventos e encomendas', nfMoeda(r.eventos), r.reg.eventos.length + (r.reg.eventos.length === 1 ? ' lançamento' : ' lançamentos')) +
-        cfCard('= Compra líquida', nfMoeda(r.liquida), 'é essa que vale', '#E8C45D') +
+        cfCard('(=) Compra líquida', nfMoeda(r.liquida), 'é essa que vale', '#E8C45D') +
         cfCard('Venda do mês', nfMoeda(r.venda), r.venda ? 'bruto ' + cfPct(r.cmvBruto) + ' sem abater eventos' : 'a preencher');
 
-    // Projeção
+    // Projeção — sem dias corridos não dá para projetar nada
+    var temProjecao = r.diasCorridos > 0 && r.venda > 0;
     document.getElementById('cfProjecao').innerHTML =
         '<div class="cf-mini">' +
             '<div><div class="cf-mini-lab">Dias corridos</div><div class="cf-mini-num">' + r.diasCorridos + ' de ' + r.diasMes + '</div></div>' +
-            '<div><div class="cf-mini-lab">Venda média por dia</div><div class="cf-mini-num">' + nfMoeda(r.mediaDia) + '</div></div>' +
+            '<div><div class="cf-mini-lab">Venda média por dia</div><div class="cf-mini-num">' + (temProjecao ? nfMoeda(r.mediaDia) : '—') + '</div></div>' +
         '</div>' +
         '<div class="cf-mini">' +
-            '<div><div class="cf-mini-lab">Prévia de venda do mês</div><div class="cf-mini-num">' + nfMoeda(r.previaVenda) + '</div></div>' +
-            '<div><div class="cf-mini-lab">' + (r.saldoMes >= 0 ? 'Ainda pode comprar' : 'Já passou do limite em') + '</div>' +
-            '<div class="cf-mini-num" style="color:' + (r.saldoMes >= 0 ? '#7FD6A6' : '#E85D5D') + ';">' + nfMoeda(Math.abs(r.saldoMes)) + '</div></div>' +
+            '<div><div class="cf-mini-lab">Prévia de venda do mês</div><div class="cf-mini-num">' + (temProjecao ? nfMoeda(r.previaVenda) : '—') + '</div></div>' +
+            '<div><div class="cf-mini-lab">' + ((temProjecao && temMeta && r.saldoMes < 0) ? 'Já passou do limite em' : 'Ainda pode comprar') + '</div>' +
+            '<div class="cf-mini-num" style="color:' + ((temProjecao && temMeta) ? (r.saldoMes >= 0 ? '#7FD6A6' : '#E85D5D') : '#A79FBE') + ';">' +
+            ((temProjecao && temMeta) ? nfMoeda(Math.abs(r.saldoMes)) : '—') + '</div></div>' +
         '</div>' +
-        '<div class="nf-dica" style="margin:8px 2px 0 2px;">Na meta de ' + cfPct(r.meta) + ' sobre a prévia de ' + nfMoeda(r.previaVenda) +
-        ', a compra do mês inteiro caberia em ' + nfMoeda(r.permitidoMes) + '.' +
-        (r.diasRestantes ? ' Faltam ' + r.diasRestantes + (r.diasRestantes === 1 ? ' dia.' : ' dias.') : '') + '</div>';
+        '<div class="nf-dica" style="margin:8px 2px 0 2px;">' + (!temProjecao
+            ? (r.venda ? 'Informe os <b>dias corridos</b> lá embaixo para o app projetar o fechamento do mês.'
+                       : 'Preencha as vendas do mês para o app projetar o fechamento.')
+            : (!temMeta ? 'Defina a meta de CMV lá embaixo para saber quanto ainda pode comprar.'
+                : 'Na meta de ' + cfPct(r.meta) + ' sobre a prévia de ' + nfMoeda(r.previaVenda) +
+                  ', a compra do mês inteiro caberia em ' + nfMoeda(r.permitidoMes) + '.' +
+                  (r.diasRestantes ? ' Faltam ' + r.diasRestantes + (r.diasRestantes === 1 ? ' dia.' : ' dias.') : ''))) + '</div>';
 
-    document.getElementById('cfVendas').innerHTML =
-        cfLinhasHtml(r.reg.vendas, 'vendas', 'Canal (ex: IFOOD A BELA)') +
-        '<button class="cf-add" onclick="cfAdicionarLinha(\'vendas\')">+ Adicionar canal de venda</button>' +
-        '<div class="cf-total"><span>Total das vendas</span><b>' + nfMoeda(r.venda) + '</b></div>';
+    if (manterListas) {
+        var tv = document.getElementById('cfTotVendasNum'); if (tv) tv.innerText = nfMoeda(r.venda);
+        var te = document.getElementById('cfTotEventosNum'); if (te) te.innerText = nfMoeda(r.eventos);
+    } else {
+        document.getElementById('cfVendas').innerHTML =
+            cfLinhasHtml(r.reg.vendas, 'vendas', 'Canal (ex: IFOOD A BELA)') +
+            '<button class="cf-add" onclick="cfAdicionarLinha(\'vendas\')">+ Adicionar canal de venda</button>' +
+            '<div class="cf-total"><span>Total das vendas</span><b id="cfTotVendasNum">' + nfMoeda(r.venda) + '</b></div>';
+        document.getElementById('cfEventos').innerHTML =
+            cfLinhasHtml(r.reg.eventos, 'eventos', 'Evento ou encomenda') +
+            '<button class="cf-add" onclick="cfAdicionarLinha(\'eventos\')">+ Adicionar evento ou encomenda</button>' +
+            '<div class="cf-total"><span>Total abatido das compras</span><b id="cfTotEventosNum">' + nfMoeda(r.eventos) + '</b></div>';
+    }
 
-    document.getElementById('cfEventos').innerHTML =
-        cfLinhasHtml(r.reg.eventos, 'eventos', 'Evento ou encomenda') +
-        '<button class="cf-add" onclick="cfAdicionarLinha(\'eventos\')">+ Adicionar evento ou encomenda</button>' +
-        '<div class="cf-total"><span>Total abatido das compras</span><b>' + nfMoeda(r.eventos) + '</b></div>';
-
+    var temFixoFora = r.grupos.some(function(g) { return !g.entra && g.id !== 'bonificada'; });
     document.getElementById('cfGrupos').innerHTML = r.grupos.length
         ? r.grupos.map(function(g) {
             var perc = r.venda ? (g.valor / r.venda) * 100 : 0;
@@ -12241,34 +12287,36 @@ function cfRenderizar() {
                 '<div class="cf-grupo-nome">' + g.icone + ' ' + nfEsc(g.nome) + '</div>' +
                 '<div class="cf-grupo-val">' + nfMoeda(g.valor) +
                 '<small>' + (g.entra ? (r.venda ? cfPct(perc) + ' da venda' : 'na conta') : 'fora da conta') + '</small></div></div>';
-        }).join('') + '<div class="cf-total"><span>Entra na conta</span><b>' + nfMoeda(r.bruta) + '</b></div>'
+        }).join('') + '<div class="cf-total"><span>Entra na conta</span><b>' + nfMoeda(r.bruta) + '</b></div>' +
+          (temFixoFora ? '<div class="nf-dica" style="margin:8px 2px 0 2px;">Limpeza, Manutenção e Gráfica começam fora da conta porque no Controle mensal são custos fixos. Toque no grupo para incluir.</div>' : '')
         : '<div class="nf-dica" style="margin:0;">Nenhuma nota protocolada neste mês ainda.</div>';
 
-    document.getElementById('cfMeta').value = cfNum(r.meta);
-    document.getElementById('cfDiasMes').value = r.diasMes;
-    document.getElementById('cfDiasCorridos').value = r.diasCorridos;
+    // não sobrescreve o campo que a pessoa está digitando
+    var foco = document.activeElement;
+    var m = document.getElementById('cfMeta'); if (m !== foco) m.value = cfNum(r.meta);
+    var dm = document.getElementById('cfDiasMes'); if (dm !== foco) dm.value = r.diasMes;
+    var dc = document.getElementById('cfDiasCorridos'); if (dc !== foco) dc.value = r.diasCorridos;
 
     // CMV dos últimos 6 meses — só aparece o mês que tem venda lançada
     var serie = [];
     for (var i = 5; i >= 0; i--) {
-        var m = nfMesAnterior(mes, i);
-        var c = cfCalcular(m);
-        serie.push({ mes: m, v: c.venda ? c.cmv : 0, meta: c.meta });
+        var mm = nfMesAnterior(mes, i);
+        var c = cfCalcular(mm, true);
+        serie.push({ mes: mm, v: (c.venda && c.cmv > 0) ? c.cmv : 0, meta: c.meta });
     }
-    var topo = serie.reduce(function(t, s) { return Math.max(t, s.v); }, 0) || 1;
-    document.getElementById('cfEvolucao').innerHTML = serie.some(function(s) { return s.v > 0; })
-        ? '<div class="nf-colunas">' + serie.map(function(s) {
-            var alt = Math.max(2, (s.v / topo) * 100);
-            var c2 = !s.v ? '#4A4458' : (s.v <= s.meta ? '#7FD6A6' : (s.v <= s.meta + 2 ? '#E8C45D' : '#E85D5D'));
-            return '<div class="nf-coluna-item" onclick="cfMes=\'' + s.mes + '\';cfRenderizar();">' +
-                '<div class="nf-coluna-valor">' + (s.v ? cfNum(s.v) : '') + '</div>' +
-                '<div class="nf-coluna-trilho"><div class="nf-coluna' + (s.mes === mes ? ' nf-coluna-ativa' : '') +
+    var topo = serie.reduce(function(t, x) { return Math.max(t, x.v); }, 0) || 1;
+    document.getElementById('cfEvolucao').innerHTML = serie.some(function(x) { return x.v > 0; })
+        ? '<div class="nf-colunas">' + serie.map(function(x) {
+            var alt = Math.max(2, (x.v / topo) * 100);
+            var c2 = !x.v ? '#4A4458' : (x.v <= x.meta ? '#7FD6A6' : (x.v <= x.meta + 2 ? '#E8C45D' : '#E85D5D'));
+            return '<div class="nf-coluna-item" onclick="cfMes=\'' + x.mes + '\';cfRenderizar();">' +
+                '<div class="nf-coluna-valor">' + (x.v ? cfNum(x.v) : '') + '</div>' +
+                '<div class="nf-coluna-trilho"><div class="nf-coluna' + (x.mes === mes ? ' nf-coluna-ativa' : '') +
                 '" style="height:' + alt + '%;background:' + c2 + ';"></div></div>' +
-                '<div class="nf-coluna-mes">' + nfNomeMes(s.mes).substr(0, 3) + '</div></div>';
+                '<div class="nf-coluna-mes">' + nfNomeMes(x.mes).substr(0, 3) + '</div></div>';
         }).join('') + '</div><div class="nf-dica" style="margin:6px 2px 0 2px;">CMV em %. Toque numa coluna para abrir o mês.</div>'
         : '<div class="nf-dica" style="margin:0;">Ainda não há meses com venda lançada para comparar.</div>';
 }
-
 function cfCard(rotulo, num, sub, cor) {
     return '<div class="nf-resumo-card" style="cursor:default;"><div class="nf-rc-label">' + rotulo + '</div>' +
         '<div class="nf-rc-num" style="font-size:17px;line-height:1.5;' + (cor ? 'color:' + cor + ';' : '') + '">' + num + '</div>' +
@@ -12290,7 +12338,7 @@ function cfMudarLinha(tipo, i, campo, valor) {
     var reg = cfRegistro(cfMes);
     if (!reg[tipo] || !reg[tipo][i]) return;
     reg[tipo][i][campo] = (campo === 'valor') ? (nfParseValor(valor) || 0) : valor;
-    cfGravar();
+    cfGravar(true);
 }
 function cfAdicionarLinha(tipo) {
     var reg = cfRegistro(cfMes);
@@ -12313,13 +12361,23 @@ function cfAlternarGrupo(id) {
 }
 function cfMudarCampo(campo, valor) {
     var reg = cfRegistro(cfMes);
-    if (campo === 'meta') reg.meta = nfParseValor(valor) || 0;
-    else reg[campo] = Math.max(0, parseInt(valor, 10) || 0);
-    cfGravar();
+    if (campo === 'meta') {
+        var v = nfParseValor(valor) || 0;
+        // ninguém persegue meta de 0,33% — quem digita "0,33" quer dizer 33%
+        if (v > 0 && v <= 1) v = v * 100;
+        reg.meta = Math.min(100, v);
+    } else {
+        var n = Math.max(0, parseInt(valor, 10) || 0);
+        if (campo === 'dias_mes') n = Math.min(31, n) || cfDiasNoMes(cfMes);
+        reg[campo] = n;
+    }
+    cfGravar(campo === 'meta');
 }
-function cfGravar() {
+var cfPendentes = {};
+function cfGravar(manterListas) {
     cfSalvarLocal();
-    cfRenderizar();
+    cfPendentes[cfMes] = true;   // enquanto não subir, o servidor não pode sobrescrever
+    cfRenderizar(manterListas);
     // junta as mexidas seguidas numa gravação só, pra não bater no servidor a cada tecla
     if (cfTimerSalvar) clearTimeout(cfTimerSalvar);
     var mes = cfMes;
@@ -12342,6 +12400,7 @@ function cfEnviarServidor(mes) {
         body: JSON.stringify(corpo)
     }).then(function(resp) {
         if (!resp.ok) throw new Error('status ' + resp.status);
+        delete cfPendentes[mes];
         supabaseOnline = true; atualizarAvisoOffline();
     }).catch(function(err) {
         supabaseOnline = false;
@@ -12357,6 +12416,8 @@ function cfSincronizar(cb) {
         if (err || !Array.isArray(dados)) { if (cb) cb(); return; }
         dados.forEach(function(d) {
             if (!d.competencia) return;
+            // mês com edição ainda não confirmada pelo servidor: o que está no aparelho manda
+            if (cfPendentes[d.competencia]) return;
             confrontoCache[d.competencia] = {
                 competencia: d.competencia,
                 vendas: Array.isArray(d.vendas) ? d.vendas : [],
@@ -12418,6 +12479,10 @@ function cfMontarExcel(mes) {
     wb.creator = 'A Bela Sintra';
     wb.calcProperties = { fullCalcOnLoad: true };
 
+    // A ordem das abas é a ordem em que são criadas; a Confronto é criada primeiro
+    // para o Excel abrir nela, e só é preenchida lá embaixo.
+    var ws = wb.addWorksheet('Confronto', { views: [{ showGridLines: false }] });
+
     // ---- aba Compras por grupo ----
     var wg = wb.addWorksheet('Compras por grupo', { views: [{ showGridLines: false }] });
     cfXTitulo(wg, 'COMPRAS POR GRUPO — ' + nfNomeMes(mes), 'Vem das notas protocoladas no mês. "Entra?" com SIM soma na compra bruta.', 4);
@@ -12468,8 +12533,7 @@ function cfMontarExcel(mes) {
     cfXCelula(we, leTotal, 1, 'TOTAL ABATIDO DAS COMPRAS', null, null, true);
     cfXCelula(we, leTotal, 2, { formula: 'SUM(B5:B' + (le - 1) + ')' }, CF_X_MOEDA, null, true);
 
-    // ---- aba Confronto (fica na frente) ----
-    var ws = wb.addWorksheet('Confronto', { views: [{ showGridLines: false }] });
+    // ---- preenche a aba Confronto ----
     cfXTitulo(ws, 'CONFRONTO DO MÊS — COMPRA × VENDA', 'a bela Sintra · ' + nfNomeMes(mes) + ' · gerado em ' + nfDataBR(nfHojeIso()), 3);
     ws.getColumn(1).width = 40; ws.getColumn(2).width = 18; ws.getColumn(3).width = 58;
     cfXCelula(ws, 3, 1, 'Azul = você digita   ·   Verde = vem das outras abas   ·   Preto = fórmula, não mexa', null, CF_X_CINZA);
@@ -12539,7 +12603,6 @@ function cfMontarExcel(mes) {
     obs.font = { name: 'Arial', size: 10, color: { argb: CF_X_CINZA } };
     obs.alignment = { wrapText: true, vertical: 'top', indent: 1 };
 
-    wb.worksheets.forEach(function(w, i) { w.orderNo = i; });
     return wb;
 }
 
