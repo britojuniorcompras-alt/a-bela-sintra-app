@@ -472,6 +472,34 @@
     .nf-dia-total { text-align: center; padding: 18px 0 6px 0; color: var(--text-dim); font-size: 14px; }
     .nf-dia-total b { color: var(--text); }
     .nf-controle-btn { background: rgba(107,163,232,0.2); color: #9CC3F2; }
+    /* ---- Calculadora de recebimento de peixes ---- */
+    .px-barra { padding: 0 20px 4px 20px; }
+    .px-barra button { width: 100%; border: none; border-radius: 16px; padding: 13px; cursor: pointer;
+        background: rgba(63,184,175,0.18); color: #3FB8AF; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; }
+    .px-linha { display: flex; align-items: center; gap: 7px; background: var(--surface); border-radius: 14px; padding: 9px 10px; margin-bottom: 8px; }
+    .px-linha.px-ativa { box-shadow: inset 0 0 0 1.5px rgba(63,184,175,0.55); }
+    .px-nome { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1.25; }
+    .px-nome small { display: block; font-size: 10.5px; font-weight: 500; color: var(--text-dim); margin-top: 1px; }
+    .px-linha input { background: var(--surface-2); border: none; border-radius: 10px; color: var(--text);
+        font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; padding: 9px 6px; text-align: center; min-width: 0; }
+    .px-linha input.px-qtd { flex: 0 0 58px; }
+    .px-linha input.px-preco { flex: 0 0 66px; }
+    .px-nome b { color: #3FB8AF; font-weight: 700; }
+    .px-cab { display: flex; gap: 7px; padding: 0 10px 6px 10px; font-size: 10px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .4px; color: var(--text-dim); }
+    .px-cab span:nth-child(1) { flex: 1; }
+    .px-cab span:nth-child(2) { flex: 0 0 58px; text-align: center; }
+    .px-cab span:nth-child(3) { flex: 0 0 66px; text-align: center; }
+    .px-total { background: var(--surface); border-radius: 20px; padding: 16px; text-align: center; margin-top: 12px;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
+    .px-total .px-total-num { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 700; color: #3FB8AF; line-height: 1.15; }
+    .px-total .px-total-sub { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+    .px-hist { background: var(--surface); border-radius: 14px; padding: 11px 13px; margin-bottom: 8px; cursor: pointer;
+        display: flex; align-items: center; gap: 10px; }
+    .px-hist-txt { flex: 1; min-width: 0; }
+    .px-hist-txt b { font-size: 13.5px; }
+    .px-hist-txt small { display: block; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    .px-hist-val { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; color: #3FB8AF; }
     /* ---- Confronto do mês: compra x venda ---- */
     .cf-veredito { border-radius: 18px; padding: 14px 16px; margin: 12px 0 4px 0; font-size: 13.5px; line-height: 1.5; }
     .cf-veredito b { font-family: 'Space Grotesk', sans-serif; font-size: 16px; }
@@ -692,6 +720,8 @@
         <img id="setorBannerImg" src="" alt="">
         <div class="setor-banner-titulo" id="setorBannerTitulo"></div>
     </div>
+
+    <div class="px-barra" id="setorFerramenta" style="display:none;"></div>
 
     <div class="grupo-nav-header" id="grupoNavHeader" style="display:none;">
         <button class="back-btn-inline" onclick="voltarParaFolders()">←</button>
@@ -1286,6 +1316,44 @@
         <button class="nf-protocolos-btn nf-confronto-btn" onclick="cfExcel('baixar')">📊 Baixar planilha Excel</button>
         <button class="nf-protocolos-btn nf-gastos-btn" onclick="cfExcel('enviar')">📤 Enviar planilha Excel</button>
         <div id="cfAvisoExcel" class="nf-status" style="display:none;"></div>
+    </div>
+</div>
+
+<div id="peixes-calc-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="pxVoltar()">←</button>
+        <h2 id="pxTitulo">Receber peixes</h2>
+    </div>
+    <div style="padding: 14px 20px 24px 20px;">
+        <div class="nf-linha2">
+            <div><label class="nf-label" for="pxData">Data do recebimento</label>
+            <input type="date" id="pxData" class="text-input" onchange="pxMudarCabecalho()"></div>
+            <div><label class="nf-label" for="pxFornecedor">Fornecedor</label>
+            <input type="text" id="pxFornecedor" class="text-input" placeholder="Ex: Ceagesp" onchange="pxMudarCabecalho()"></div>
+        </div>
+
+        <div class="nf-secao-titulo">O que chegou</div>
+        <div class="nf-dica" style="margin: -4px 2px 10px 2px;">Digite o peso de cada item. O preço já vem do último recebimento — corrija se o do dia for outro.</div>
+        <div class="px-cab"><span>Produto</span><span>Kg</span><span>R$/kg</span></div>
+        <div id="pxItens"></div>
+        <button class="cf-add" onclick="pxNovoProduto()">+ Adicionar outro produto</button>
+
+        <div class="px-total">
+            <div class="nf-rc-label">Total do recebimento</div>
+            <div class="px-total-num" id="pxTotalNum">R$ 0,00</div>
+            <div class="px-total-sub" id="pxTotalSub">nenhum item lançado</div>
+        </div>
+
+        <div class="nf-secao-titulo">Observação</div>
+        <textarea id="pxObs" class="edit-obs" style="display:block;" placeholder="Ex: devolução a resolver: 30kg de camarão" onchange="pxMudarCabecalho()"></textarea>
+
+        <div id="pxAviso" class="nf-status" style="display:none;"></div>
+        <button class="nf-protocolos-btn px-salvar" style="margin-top:12px;" onclick="pxSalvar()">💾 Salvar recebimento</button>
+        <button class="nf-protocolos-btn" onclick="pxCompartilhar()">📤 Compartilhar o resumo</button>
+        <button class="nf-passo-link" id="pxBtnExcluir" style="display:none;" onclick="pxExcluir()">Excluir este recebimento</button>
+
+        <div class="nf-secao-titulo">Recebimentos anteriores</div>
+        <div id="pxHistorico"></div>
     </div>
 </div>
 
@@ -5452,6 +5520,17 @@ function aplicarAccentSetor() {
 
 function atualizarBannerSetor() {
     var setor = getSetorAtivo();
+    // ferramenta própria do setor: por enquanto só os peixes têm uma
+    var ferramenta = document.getElementById('setorFerramenta');
+    if (ferramenta) {
+        if (setor.id === 'peixes') {
+            ferramenta.style.display = 'block';
+            ferramenta.innerHTML = '<button onclick="pxAbrir()">🐟 Calculadora de recebimento</button>';
+        } else {
+            ferramenta.style.display = 'none';
+            ferramenta.innerHTML = '';
+        }
+    }
     var banner = document.getElementById('setorBanner');
     var img = document.getElementById('setorBannerImg');
     var titulo = document.getElementById('setorBannerTitulo');
@@ -12035,6 +12114,297 @@ function nfAbrirGastos() {
 function nfMudarMesGastos(delta) {
     nfMesGastos = nfMesAnterior(nfMesGastos, -delta);
     nfRenderizarGastos();
+}
+
+// ================= Calculadora de recebimento de peixes =================
+// Mesma conta da planilha PLANILHA PEIXES: peso × preço do quilo, somando tudo.
+// O preço de cada produto vem do último recebimento salvo; na primeira vez,
+// dos preços que já estavam na planilha dele.
+var PX_CATALOGO = [
+    { nome: 'CAMARÃO 08/10',       preco: 150 },
+    { nome: 'CAMARÃO 11/15',       preco: 140 },
+    { nome: 'CAMARÃO 25/30',       preco: 90 },
+    { nome: 'CAMARÃO SEM CABEÇA',  preco: null },
+    { nome: 'LULA LIMPA',          preco: 70 },
+    { nome: 'POLVO G',             preco: 75 },
+    { nome: 'LINGUADO',            preco: null },
+    { nome: 'LAGOSTINS',           preco: 65 },
+    { nome: 'CAVACA',              preco: 85 },
+    { nome: 'TAMBORIL',            preco: 30 },
+    { nome: 'OLHO DE CÃO',         preco: null }
+];
+var pxRecebimentos = pxLerLocal();
+var pxAtual = null;          // recebimento aberto na tela
+var pxEditandoId = null;     // id quando está mexendo num já salvo
+
+function pxLerLocal() {
+    try { var d = localStorage.getItem('peixesRecebimentosABS'); return d ? JSON.parse(d) : []; } catch (e) { return []; }
+}
+function pxSalvarLocal() {
+    try { localStorage.setItem('peixesRecebimentosABS', JSON.stringify(pxRecebimentos)); } catch (e) { }
+}
+
+// Último preço que ele pagou por esse produto, olhando do recebimento mais novo para trás
+function pxUltimoPreco(nome) {
+    var alvo = nfNormalizar(nome);
+    var ordenados = pxRecebimentos.slice().sort(function(a, b) {
+        return String(b.data || '').localeCompare(String(a.data || ''));
+    });
+    for (var i = 0; i < ordenados.length; i++) {
+        var itens = ordenados[i].itens || [];
+        for (var j = 0; j < itens.length; j++) {
+            if (nfNormalizar(itens[j].nome) === alvo && Number(itens[j].preco) > 0) return Number(itens[j].preco);
+        }
+    }
+    for (var k = 0; k < PX_CATALOGO.length; k++) {
+        if (nfNormalizar(PX_CATALOGO[k].nome) === alvo) return PX_CATALOGO[k].preco;
+    }
+    return null;
+}
+
+// Monta a lista do dia: o catálogo + qualquer produto que ele tenha criado antes
+function pxItensIniciais() {
+    var vistos = {}, lista = [];
+    PX_CATALOGO.forEach(function(p) {
+        vistos[nfNormalizar(p.nome)] = 1;
+        lista.push({ nome: p.nome, qtd: null, preco: pxUltimoPreco(p.nome) });
+    });
+    pxRecebimentos.forEach(function(r) {
+        (r.itens || []).forEach(function(it) {
+            var k = nfNormalizar(it.nome);
+            if (!k || vistos[k]) return;
+            vistos[k] = 1;
+            lista.push({ nome: it.nome, qtd: null, preco: pxUltimoPreco(it.nome) });
+        });
+    });
+    return lista;
+}
+
+function pxNovoRecebimento() {
+    pxEditandoId = null;
+    pxAtual = { id: null, data: nfHojeIso(), fornecedor: '', itens: pxItensIniciais(), obs: '' };
+}
+
+function pxAbrir() {
+    pxNovoRecebimento();
+    pxRenderizar();
+    trocarTela('peixes-calc-screen');
+    pxSincronizar(function() {
+        if (!document.getElementById('peixes-calc-screen').classList.contains('active')) return;
+        // os preços de partida podem ter mudado com o que veio do servidor
+        if (!pxEditandoId && !pxTemLancamento()) pxAtual.itens = pxItensIniciais();
+        pxRenderizar();
+    });
+}
+function pxVoltar() {
+    if (pxTemLancamento() && !confirm('Sair sem salvar este recebimento?')) return;
+    trocarTela('main-screen');
+    trocarSetor('peixes');
+}
+function pxTemLancamento() {
+    if (!pxAtual) return false;
+    if (pxEditandoId) return false;
+    return (pxAtual.itens || []).some(function(i) { return Number(i.qtd) > 0; });
+}
+
+function pxTotal() {
+    if (!pxAtual) return 0;
+    var t = 0;
+    (pxAtual.itens || []).forEach(function(i) { t += (Number(i.qtd) || 0) * (Number(i.preco) || 0); });
+    return Math.round(t * 100) / 100;
+}
+
+function pxRenderizar() {
+    if (!pxAtual || !document.getElementById('pxItens')) return;
+    document.getElementById('pxTitulo').innerText = pxEditandoId ? 'Recebimento salvo' : 'Receber peixes';
+    document.getElementById('pxData').value = pxAtual.data || nfHojeIso();
+    var f = document.getElementById('pxFornecedor');
+    if (f !== document.activeElement) f.value = pxAtual.fornecedor || '';
+    var o = document.getElementById('pxObs');
+    if (o !== document.activeElement) o.value = pxAtual.obs || '';
+    document.getElementById('pxBtnExcluir').style.display = pxEditandoId ? 'block' : 'none';
+    document.querySelector('.px-salvar').innerText = pxEditandoId ? '💾 Salvar alterações' : '💾 Salvar recebimento';
+
+    document.getElementById('pxItens').innerHTML = (pxAtual.itens || []).map(function(it, i) {
+        var sub = (Number(it.qtd) || 0) * (Number(it.preco) || 0);
+        var ativa = Number(it.qtd) > 0;
+        return '<div class="px-linha' + (ativa ? ' px-ativa' : '') + '">' +
+            '<div class="px-nome">' + nfEsc(it.nome) +
+            (ativa ? '<small>' + cfNum(it.qtd) + ' kg × ' + nfMoeda(it.preco) + ' = <b>' + nfMoeda(sub) + '</b></small>' : '') + '</div>' +
+            '<input type="text" class="px-qtd" inputmode="decimal" placeholder="0" value="' + (Number(it.qtd) ? cfNum(it.qtd) : '') + '" onchange="pxMudarItem(' + i + ',\'qtd\',this.value)">' +
+            '<input type="text" class="px-preco" inputmode="decimal" placeholder="0,00" value="' + (Number(it.preco) ? cfNum(it.preco) : '') + '" onchange="pxMudarItem(' + i + ',\'preco\',this.value)">' +
+            '</div>';
+    }).join('');
+
+    var total = pxTotal();
+    var qtdItens = (pxAtual.itens || []).filter(function(i) { return Number(i.qtd) > 0; }).length;
+    var kg = (pxAtual.itens || []).reduce(function(s, i) { return s + (Number(i.qtd) || 0); }, 0);
+    document.getElementById('pxTotalNum').innerText = nfMoeda(total);
+    document.getElementById('pxTotalSub').innerText = qtdItens
+        ? qtdItens + (qtdItens === 1 ? ' item' : ' itens') + ' · ' + cfNum(kg) + ' kg'
+        : 'nenhum item lançado';
+
+    pxRenderizarHistorico();
+}
+
+function pxRenderizarHistorico() {
+    var el = document.getElementById('pxHistorico');
+    if (!el) return;
+    var lista = pxRecebimentos.slice().sort(function(a, b) {
+        return String(b.data || '').localeCompare(String(a.data || '')) || String(b.criado_em || '').localeCompare(String(a.criado_em || ''));
+    }).slice(0, 25);
+    el.innerHTML = lista.length ? lista.map(function(r) {
+        var n = (r.itens || []).filter(function(i) { return Number(i.qtd) > 0; }).length;
+        return '<div class="px-hist" onclick="pxAbrirSalvo(\'' + r.id + '\')">' +
+            '<div class="px-hist-txt"><b>' + nfDataBR(r.data) + (r.fornecedor ? ' · ' + nfEsc(r.fornecedor) : '') + '</b>' +
+            '<small>' + n + (n === 1 ? ' item' : ' itens') + (r.usuario ? ' · ' + nfEsc(r.usuario) : '') + '</small></div>' +
+            '<div class="px-hist-val">' + nfMoeda(r.total) + '</div></div>';
+    }).join('') : '<div class="nf-dica" style="margin:0;">Nenhum recebimento salvo ainda.</div>';
+}
+
+function pxMudarItem(i, campo, valor) {
+    if (!pxAtual || !pxAtual.itens[i]) return;
+    pxAtual.itens[i][campo] = nfParseValor(valor) || null;
+    pxRenderizar();
+}
+function pxMudarCabecalho() {
+    if (!pxAtual) return;
+    pxAtual.data = document.getElementById('pxData').value || nfHojeIso();
+    pxAtual.fornecedor = document.getElementById('pxFornecedor').value.trim();
+    pxAtual.obs = document.getElementById('pxObs').value.trim();
+}
+function pxNovoProduto() {
+    if (!pxAtual) return;
+    var nome = prompt('Nome do produto novo (ex: ROBALO):');
+    if (nome === null) return;
+    nome = String(nome).trim().toUpperCase();
+    if (!nome) return;
+    var existe = (pxAtual.itens || []).some(function(i) { return nfNormalizar(i.nome) === nfNormalizar(nome); });
+    if (existe) { alert('Esse produto já está na lista.'); return; }
+    pxAtual.itens.push({ nome: nome, qtd: null, preco: pxUltimoPreco(nome) });
+    pxRenderizar();
+    setTimeout(function() {
+        var campos = document.querySelectorAll('#pxItens .px-qtd');
+        if (campos.length) { campos[campos.length - 1].scrollIntoView({ block: 'center' }); campos[campos.length - 1].focus(); }
+    }, 80);
+}
+
+function pxAviso(texto) {
+    var el = document.getElementById('pxAviso');
+    if (!el) return;
+    if (!texto) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.innerText = texto;
+}
+
+function pxSalvar() {
+    if (!pxAtual) return;
+    pxMudarCabecalho();
+    var itens = (pxAtual.itens || []).filter(function(i) { return Number(i.qtd) > 0; })
+        .map(function(i) { return { nome: i.nome, qtd: Number(i.qtd), preco: Number(i.preco) || 0 }; });
+    if (!itens.length) { alert('Lance o peso de pelo menos um produto.'); return; }
+    var semPreco = itens.filter(function(i) { return !i.preco; });
+    if (semPreco.length && !confirm(semPreco.length === 1
+        ? semPreco[0].nome + ' está sem preço. Salvar assim?'
+        : semPreco.length + ' produtos estão sem preço. Salvar assim?')) return;
+
+    var reg = {
+        id: pxEditandoId || ('px' + Date.now() + Math.random().toString(36).substr(2, 5)),
+        data: pxAtual.data || nfHojeIso(),
+        fornecedor: pxAtual.fornecedor || null,
+        itens: itens,
+        total: pxTotal(),
+        obs: pxAtual.obs || null,
+        usuario: (typeof usuarioAtual !== 'undefined' && usuarioAtual) ? usuarioAtual : null
+    };
+    pxRecebimentos = pxRecebimentos.filter(function(r) { return r.id !== reg.id; });
+    pxRecebimentos.push(reg);
+    pxSalvarLocal();
+
+    if (pxEditandoId) {
+        supabasePatch('peixes_recebimentos', 'id=eq.' + encodeURIComponent(reg.id), reg, function() { });
+        pxAviso('✅ Alterações salvas.');
+        pxRenderizar();
+    } else {
+        supabasePost('peixes_recebimentos', reg, function() { });
+        pxAviso('✅ Recebimento de ' + nfDataBR(reg.data) + ' salvo — ' + nfMoeda(reg.total) + '.');
+        registrarNoHistoricoCompartilhado({
+            data: nfDataBR(reg.data),
+            setor: 'Peixes e Frutos do Mar (recebimento)',
+            tipo: 'peixes',
+            itens: [nfMoeda(reg.total) + ' · ' + itens.length + (itens.length === 1 ? ' item' : ' itens') + (reg.fornecedor ? ' · ' + reg.fornecedor : '')]
+        });
+        pxNovoRecebimento();
+        pxRenderizar();
+        window.scrollTo(0, 0);
+    }
+}
+
+function pxAbrirSalvo(id) {
+    var r = pxRecebimentos.filter(function(x) { return x.id === id; })[0];
+    if (!r) return;
+    pxEditandoId = id;
+    // mostra o salvo com as linhas que ele lançou, mantendo os campos editáveis
+    pxAtual = { id: id, data: r.data, fornecedor: r.fornecedor || '', obs: r.obs || '',
+                itens: (r.itens || []).map(function(i) { return { nome: i.nome, qtd: Number(i.qtd), preco: Number(i.preco) }; }) };
+    pxAviso('');
+    pxRenderizar();
+    window.scrollTo(0, 0);
+}
+
+function pxExcluir() {
+    if (!pxEditandoId) return;
+    var r = pxRecebimentos.filter(function(x) { return x.id === pxEditandoId; })[0];
+    if (!r) return;
+    if (!confirm('Excluir o recebimento de ' + nfDataBR(r.data) + ' (' + nfMoeda(r.total) + ')?')) return;
+    pxRecebimentos = pxRecebimentos.filter(function(x) { return x.id !== pxEditandoId; });
+    pxSalvarLocal();
+    supabaseDelete('peixes_recebimentos', 'id=eq.' + encodeURIComponent(pxEditandoId), function() { });
+    pxNovoRecebimento();
+    pxAviso('Recebimento excluído.');
+    pxRenderizar();
+    window.scrollTo(0, 0);
+}
+
+function pxCompartilhar() {
+    if (!pxAtual) return;
+    pxMudarCabecalho();
+    var itens = (pxAtual.itens || []).filter(function(i) { return Number(i.qtd) > 0; });
+    if (!itens.length) { alert('Lance o peso de pelo menos um produto.'); return; }
+    var linhas = ['*RECEBIMENTO DE PEIXES*', nfDataBR(pxAtual.data) + (pxAtual.fornecedor ? ' · ' + pxAtual.fornecedor : ''), ''];
+    itens.forEach(function(i) {
+        linhas.push(i.nome + ' — ' + cfNum(i.qtd) + ' kg × ' + nfMoeda(i.preco) + ' = ' + nfMoeda((Number(i.qtd) || 0) * (Number(i.preco) || 0)));
+    });
+    linhas.push('');
+    linhas.push('*TOTAL: ' + nfMoeda(pxTotal()) + '*');
+    if (pxAtual.obs) { linhas.push(''); linhas.push('Obs: ' + pxAtual.obs); }
+    var texto = linhas.join('\n');
+    if (navigator.share) {
+        navigator.share({ title: 'Recebimento de peixes', text: texto }).catch(function() { });
+        return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(function() { pxAviso('📋 Resumo copiado — é só colar no WhatsApp.'); },
+                                                  function() { alert(texto); });
+        return;
+    }
+    alert(texto);
+}
+
+function pxSincronizar(cb) {
+    supabaseGet('peixes_recebimentos', 'select=*&order=data.desc', function(err, dados) {
+        if (err || !Array.isArray(dados)) { if (cb) cb(); return; }
+        var noServidor = {};
+        dados.forEach(function(d) { noServidor[d.id] = 1; });
+        // o que foi salvo aqui e ainda não subiu continua na lista
+        var locais = pxRecebimentos.filter(function(r) { return !noServidor[r.id]; });
+        pxRecebimentos = dados.map(function(d) {
+            return { id: d.id, data: d.data, fornecedor: d.fornecedor, itens: Array.isArray(d.itens) ? d.itens : [],
+                     total: Number(d.total) || 0, obs: d.obs, usuario: d.usuario, criado_em: d.criado_em };
+        }).concat(locais);
+        pxSalvarLocal();
+        if (cb) cb();
+    });
 }
 
 // ================= Confronto do mês: COMPRA × VENDA =================
