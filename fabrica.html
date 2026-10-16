@@ -402,6 +402,11 @@ body.com-rasc .shtoast{bottom:104px}
 .bac-in .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--ac);color:#fff;font-size:.72rem;margin-right:6px}
 .bac-vd{border-radius:8px;padding:10px 13px;margin:4px 0 12px;font-size:.88rem;line-height:1.5;border-left:5px solid var(--mut);background:var(--surf2)}
 .bac-vd.bom{border-left-color:var(--gn);background:var(--gnl)} .bac-vd.ruim{border-left-color:var(--rd)}
+.rtb input.pin{width:62px}
+.rtb td{vertical-align:middle}
+.rtb .ok{color:var(--gn);font-weight:700}
+.rtb .nok{color:var(--rd);font-weight:700}
+.rtb .em{background:var(--gnl)}
 .bt-sel{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 10px}
 .bt-sel b{font-size:.82rem;margin-right:4px}
 .bt-sel button{font:inherit;font-size:.82rem;font-weight:700;min-width:38px;padding:6px 10px;border-radius:8px;border:1px solid var(--bdr);background:var(--surf2);color:var(--txt);cursor:pointer}
@@ -860,6 +865,18 @@ body:not(.foco) .somenteFoco{display:none!important}
         </div>
         <div id="bat-out"></div>
         <div id="bat-status"></div>
+      </div>
+    </div>
+
+    <div class="card" id="rend-card" style="margin-bottom:16px">
+      <div class="sec-ttl">🧾 Rendimento dos demais ingredientes <span style="font-weight:400;font-size:.8rem;color:var(--mut)">· o que sobra depois de descascar, limpar ou moer</span></div>
+      <div style="padding:13px 19px">
+        <p style="font-size:.84rem;color:var(--mut);margin:0 0 10px">Mesma conta do bacalhau e da batata, em forma de tabela. Pese o ingrediente como ele chega, prepare, pese de novo e veja o custo real. Deixe em branco o que não tem perda. Ligando o <b>usar</b>, o preço daquele ingrediente passa a ser o custo real em todas as abas.</p>
+        <div class="tw" style="margin:0 -19px"><table class="dtbl rtb">
+          <thead><tr><th>Ingrediente</th><th class="tr">Preço do bruto</th><th class="tr">Peso bruto</th><th class="tr">Peso aproveitado</th><th class="tr">Rendimento</th><th class="tr">Custo real</th><th class="tr">Comprar/mês</th><th class="tr">No painel</th></tr></thead>
+          <tbody id="rendtb"></tbody>
+        </table></div>
+        <p style="font-size:.77rem;color:var(--mut);padding:10px 0 4px">Quantidades por mês na linha <span class="refnm" data-fmt="L"></span>, já com a quebra de produção. A quantidade por batch de cada ingrediente é editável na tabela de Preços de Insumo, no topo da aba.</p>
       </div>
     </div>
 
@@ -1841,7 +1858,8 @@ function setA(k,v){ A[k]=v; renderAll(); }
 let SB=null, USER=null, salvando=null, statusSalvo='', carregado=false;
 const instantaneo = () => ({
   v:3, quando:new Date().toISOString(),
-  insumos:REC.map(i=>({id:i.id,preco:i.preco})),
+  insumos:REC.map(i=>({id:i.id,preco:i.preco,qtd:i.qtd})),
+  rendimentos:Object.fromEntries(Object.keys(REND).map(k=>[k,{...REND[k]}])),
   fixos:FIX.map(i=>({id:i.id,valor:i.valor})),
   precos:Object.fromEntries(Object.keys(F).map(k=>[k,F[k].pv])),
   A:{emb:A.emb,com:A.com,per:A.per,pz:A.pz,vol:A.vol,inv:A.inv,depMeses:A.depMeses,peso:A.peso,cap:A.cap,rbt12:A.rbt12,escFix:A.escFix,obra:A.obra,obraMeses:A.obraMeses,foco:A.foco,credICMS:A.credICMS},
@@ -1879,7 +1897,9 @@ function resultadoAtual(){                 // números já calculados, para o co
 function aplicar(d){
   if(!d||typeof d!=='object') return false;
   try{
-    (d.insumos||[]).forEach(x=>{const it=REC.find(y=>y.id===x.id); if(it&&isFinite(x.preco)) it.preco=x.preco;});
+    (d.insumos||[]).forEach(x=>{const it=REC.find(y=>y.id===x.id); if(!it) return;
+      if(isFinite(x.preco)) it.preco=x.preco;
+      if(isFinite(x.qtd)&&x.qtd>=0&&x.qtd<=1000&&it.id!=='bac') it.qtd=x.qtd;});
     (d.fixos||[]).forEach(x=>{const it=FIX.find(y=>y.id===x.id); if(it&&isFinite(x.valor)) it.valor=x.valor;});
     for(const k in (d.precos||{})) if(F[k]&&isFinite(d.precos[k])) F[k].pv=d.precos[k];
     A.peso=30;   // versoes salvas antes do campo de peso eram todas de 30 g
@@ -1897,7 +1917,8 @@ function aplicar(d){
     A.foco = F[A.foco] ? A.foco : '';
     if(A.foco){ REF.k=A.foco; sim.fid=A.foco; PROP.fid=A.foco; }
     if(isFinite(d.dias)) INS.dias=d.dias;
-    [['bac',d.bacalhau],['bat',d.batata]].forEach(([id,b])=>{ b=b||{}; const ok=x=>isFinite(x)&&x>0, r=REND[id];
+    const _rd=d.rendimentos||{};
+    Object.keys(REND).map(id=>[id, id==='bac'?(d.bacalhau||_rd.bac):(id==='bat'?(d.batata||_rd.bat):_rd[id])]).forEach(([id,b])=>{ b=b||{}; const ok=x=>isFinite(x)&&x>0, r=REND[id];
       r.sujo=ok(b.sujo)?+b.sujo:null; r.ps=ok(b.ps)?+b.ps:null; r.pl=ok(b.pl)?+b.pl:null;
       r.cl=(isFinite(b.cl)&&b.cl>=0)?+b.cl:0; r.proc=ok(b.proc)?+b.proc:null; r.usar=!!b.usar&&!!testeDe(id); r.desligou=!!b.desligou;
       aplicaRend(id); });
@@ -2587,6 +2608,7 @@ const REC = [
   {id:'alh',nome:'Alho',                    qtd:0.01, un:'kg', preco:25.00},
   {id:'ceb',nome:'Cebola',                  qtd:0.03, un:'kg', preco:4.00},
   {id:'sls',nome:'Salsa',                   qtd:0.01, un:'kg', preco:11.19},
+  {id:'mpi',nome:'Molho de pimenta',        qtd:0,    un:'lt', preco:0},
 ];
 const INS = { dias:22 };
 
@@ -2670,13 +2692,20 @@ function fmtPin(id){
 // ===== RENDIMENTO DOS INSUMOS QUE PASSAM POR PREPARO (bacalhau e batata) =====
 // bruto = como chega do fornecedor · pronto = como entra na massa (é o que a ficha técnica usa)
 const RCFG={
-  bac:{nome:'bacalhau', bruto:'sujo', pronto:'limpo', brutoF:'sujo', prontoF:'limpo', art:'o',
+  bac:{nome:'bacalhau', bruto:'sujo', pronto:'limpo', art:'o',
        hoje:'já limpo e processado', nota:'o rendimento muda com o tamanho do peixe e com o ponto de sal'},
-  bat:{nome:'batata', bruto:'in natura', pronto:'cozida', brutoF:'in natura', prontoF:'cozida', art:'a',
+  bat:{nome:'batata', bruto:'in natura', pronto:'cozida', art:'a',
        hoje:'já cozida e descascada', nota:'o rendimento muda com o tipo da batata e com o ponto de cozimento'},
+  ovo:{nome:'ovos', bruto:'com casca', pronto:'sem casca', art:'os', hoje:'já sem casca', nota:'pese os ovos inteiros e depois só a parte usada'},
+  alh:{nome:'alho', bruto:'com casca', pronto:'descascado', art:'o', hoje:'já descascado', nota:'pese as cabeças inteiras e depois os dentes limpos'},
+  ceb:{nome:'cebola', bruto:'com casca', pronto:'descascada', art:'a', hoje:'já descascada', nota:'pese inteira e depois descascada e aparada'},
+  sls:{nome:'salsa', bruto:'com talo', pronto:'só folhas', art:'a', hoje:'já limpa', nota:'pese o maço inteiro e depois só as folhas'},
+  aze:{nome:'azeite', bruto:'da lata', pronto:'aproveitado', art:'o', hoje:'como entra na massa', nota:'use se houver sobra na lata ou perda na transferência'},
+  pim:{nome:'pimenta branca', bruto:'em grão', pronto:'moída', art:'a', hoje:'já moída', nota:'pese os grãos e depois o pó peneirado'},
+  sre:{nome:'sal refinado', bruto:'do saco', pronto:'aproveitado', art:'o', hoje:'como entra na massa', nota:'normalmente não tem perda'},
+  mpi:{nome:'molho de pimenta', bruto:'do galão', pronto:'aproveitado', art:'o', hoje:'como entra na massa', nota:'use se houver perda na transferência'},
 };
-const REND={ bac:{sujo:null, ps:null, pl:null, cl:0, usar:false, proc:null, desligou:false},
-             bat:{sujo:null, ps:null, pl:null, cl:0, usar:false, proc:null, desligou:false} };
+const REND=Object.fromEntries(REC.map(i=>[i.id,{sujo:null, ps:null, pl:null, cl:0, usar:false, proc:null, desligou:false}]));
 const BAC=REND.bac;                                   // nome antigo, mantido para o resto do painel
 function testeDe(id){                                 // null enquanto o teste estiver incompleto
   const r=REND[id]; if(!r||!(r.sujo>0 && r.ps>0 && r.pl>0)) return null;
@@ -2740,7 +2769,53 @@ function rRend(id){
     <div class="tw"><table class="dtbl"><thead><tr><th>Linha</th><th class="tr">${cap(C.pronto)} por batch</th><th class="tr">${cap(C.bruto)} por batch</th><th class="tr">${cap(C.bruto)} por dia</th><th class="tr">${cap(C.bruto)} por mês</th></tr></thead><tbody>${linhas}</tbody></table></div>
     <p style="font-size:.77rem;color:var(--mut);margin:8px 0 0">Para ${N(A.vol)} un/mês, com a quebra de produção. Faça o teste com pelo menos 5 kg e repita a cada lote novo: ${C.nota}.</p>`;
 }
-const rBac=()=>{ rRend('bac'); rRend('bat'); };
+const rBac=()=>{ rRend('bac'); rRend('bat'); rRendTab(); };
+// tabela compacta com os demais ingredientes
+function rRendTab(){
+  const tb=document.getElementById('rendtb'); if(!tb) return;
+  const ids=REC.map(i=>i.id).filter(i=>i!=='bac'&&i!=='bat');
+  const q=1/(1-A.per), RK=REF.k;
+  const conta=id=>{ const it=REC.find(x=>x.id===id), t=testeDe(id), proc=precoProc(id);
+    const prontoMes=A.vol*q/F[RK].u*qtdDe(it,RK);
+    return {it, t, proc, prontoMes, brutoMes:t?prontoMes/t.rend:null, dif:t?t.custo-proc:null};
+  };
+  const calc=id=>{ const r=conta(id), C=RCFG[id], on=!!REND[id].usar;
+    return {
+      rend: r.t?`<span class="${on?'ok':''}">${(r.t.rend*100).toFixed(1).replace('.',',')}%</span>`:'—',
+      custo: r.t?`<span class="${r.dif<=0?'ok':'nok'}">${R(r.t.custo)}</span><span style="display:block;font-size:.68rem;color:var(--mut)">hoje ${R(r.proc)}</span>`:'—',
+      mes: r.t?`${fmtQ(Math.round(r.brutoMes*10)/10)} ${r.it.un}<span style="display:block;font-size:.68rem;color:var(--mut)">rende ${fmtQ(Math.round(r.prontoMes*10)/10)} ${r.it.un}</span>`:`${fmtQ(Math.round(r.prontoMes*10)/10)} ${r.it.un}`,
+      acao: r.t?`<button class="vsb" style="${on?'':'background:var(--ac);color:#fff;border-color:var(--ac)'}" onclick="setRendUsar('${id}',${on?'false':'true'})">${on?'✅ usando':'usar'}</button>`:'<span style="color:var(--mut);font-size:.76rem">—</span>',
+      on
+    };
+  };
+  if(tb.contains(document.activeElement)){            // não redesenha enquanto o usuário digita
+    ids.forEach(id=>{ const c=calc(id);
+      ['rend','custo','mes','acao'].forEach(campo=>{ const el=document.getElementById('rc-'+id+'-'+campo); if(el) el.innerHTML=c[campo]; });
+      const tr=document.getElementById('rr-'+id); if(tr) tr.className=c.on?'em':'';
+    });
+    return;
+  }
+  const inp=(id,k,ph)=>`<span class="pinw">${k==='sujo'?'<span class="cur">R$</span>':''}<input class="pin" type="text" inputmode="decimal" autocomplete="off" id="${id}-${k}" aria-label="${ph}" value="${REND[id][k]>0?REND[id][k].toFixed(2).replace('.',','):''}" oninput="setRend('${id}','${k}',this.value)" onblur="rRendCampos('${id}')" onkeydown="if(event.key==='Enter')this.blur()">${k!=='sujo'?`<span class="cur">${REC.find(x=>x.id===id).un}</span>`:'<span class="cur">/'+REC.find(x=>x.id===id).un+'</span>'}</span>`;
+  tb.innerHTML=ids.map(id=>{ const C=RCFG[id], it=REC.find(x=>x.id===id), c=calc(id);
+    return `<tr id="rr-${id}" class="${c.on?'em':''}">
+      <td><strong>${it.nome}</strong><span style="display:block;font-size:.7rem;color:var(--mut)">${C.bruto} → ${C.pronto}</span></td>
+      <td class="tr">${inp(id,'sujo','Preço do '+it.nome+' '+C.bruto)}</td>
+      <td class="tr">${inp(id,'ps','Peso bruto do teste de '+it.nome)}</td>
+      <td class="tr">${inp(id,'pl','Peso aproveitado do teste de '+it.nome)}</td>
+      <td class="tr fn" id="rc-${id}-rend">${c.rend}</td>
+      <td class="tr fn" id="rc-${id}-custo">${c.custo}</td>
+      <td class="tr fn" id="rc-${id}-mes">${c.mes}</td>
+      <td class="tr" id="rc-${id}-acao">${c.acao}</td></tr>`;
+  }).join('');
+}
+const fmtQ=x=>Number(x||0).toLocaleString('pt-BR',{maximumFractionDigits:3});
+function setQtd(id,v){
+  const it=REC.find(x=>x.id===id); if(!it||id==='bac') return;
+  const el=document.getElementById('qt-'+id), n=parseNum(v);
+  if(n===null||n<0||n>1000){ if(el) el.classList.add('bad'); return; }
+  if(el) el.classList.remove('bad');
+  it.qtd=n; recalcF(); renderAll(); rFCards(); rSim(); rProj();
+}
 function setPreco(id,v){
   if(REND[id] && REND[id].usar){ toast('Preço calculado pelo teste de rendimento — use o botão "Voltar para..." no cartão para digitar o preço'); return; }
   const it=REC.find(x=>x.id===id); if(!it) return;
@@ -3000,7 +3075,7 @@ function rInsumos(){
              ? (LK().length===1
                  ? fmtNum(qtdDe(it,LK()[0]),2)+' kg'
                  : LK().map(k=>fmtNum(F[k].bac,2)).join(' · ')+' kg<span style="display:block;font-size:.7rem">'+LK().map(k=>NM[k]).join(' · ')+'</span>')
-             : it.qtd.toString().replace('.',',')+' '+it.un}</td>
+             : `<span class="pinw"><input class="pin" type="text" inputmode="decimal" autocomplete="off" id="qt-${it.id}" aria-label="Quantidade de ${it.nome} por batch" value="${fmtQ(it.qtd)}" style="width:58px" oninput="setQtd('${it.id}',this.value)" onblur="this.value=fmtQ(REC.find(x=>x.id==='${it.id}').qtd)" onkeydown="if(event.key==='Enter')this.blur()"><span class="cur">${it.un}</span></span>`}</td>
         <td class="tr" style="padding-right:19px"><span class="pinw"><span class="cur">R$</span><input class="pin" type="text"
              inputmode="decimal" autocomplete="off" id="pin-${it.id}" aria-label="Preço de ${it.nome}"
              value="${fmtNum(it.preco)}" oninput="setPreco('${it.id}',this.value)" onblur="fmtPin('${it.id}')"
