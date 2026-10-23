@@ -1424,7 +1424,37 @@
 <div id="checklistdiaria-screen" class="screen">
     <div class="screen-header">
         <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
-        <h2>Checklist Diária</h2>
+        <h2>Checklists</h2>
+    </div>
+    <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
+        <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirEditarSetorChecklist(null)">➕ Novo setor</button>
+        <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirHistoricoChecklist()">🕘 Histórico</button>
+    </div>
+    <div class="product-list" id="checklistSetoresLista"></div>
+</div>
+
+<div id="checklist-setor-edit-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('checklistdiaria-screen')">←</button>
+        <h2 id="checklistSetorTituloTela">Novo setor</h2>
+    </div>
+    <div class="edit-container">
+        <label style="display:block; font-family:'Inter',sans-serif; font-size:13px; color:var(--text-dim); margin-bottom:6px;">Nome do setor</label>
+        <input id="checklistSetorNome" type="text" placeholder="Ex: Temperatura das geladeiras"
+               style="width:100%; padding:14px; border:none; border-radius:14px; background:var(--surface); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; outline:none; box-sizing:border-box;">
+        <label style="display:block; font-family:'Inter',sans-serif; font-size:13px; color:var(--text-dim); margin:16px 0 6px;">Ícone</label>
+        <div id="checklistSetorIcones" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        <div class="edit-actions" style="margin-top:18px;">
+            <button class="btn-confirm" style="width:100%;" onclick="salvarSetorChecklist()">Salvar setor</button>
+            <button id="checklistSetorExcluir" class="ficha-add-ingrediente-btn" style="width:100%; box-sizing:border-box; margin-top:8px;" onclick="excluirSetorChecklist()">🗑️ Excluir este setor</button>
+        </div>
+    </div>
+</div>
+
+<div id="checklist-setor-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="abrirChecklistDireto()">←</button>
+        <h2 id="checklistSetorTitulo">Checklist</h2>
     </div>
     <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
         <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirGerenciarChecklistDiaria()">✏️ Editar itens</button>
@@ -1435,10 +1465,13 @@
 
 <div id="checklistdiaria-gerenciar-screen" class="screen">
     <div class="screen-header">
-        <button class="back-btn" onclick="trocarTela('checklistdiaria-screen')">←</button>
-        <h2>Editar itens da checklist</h2>
+        <button class="back-btn" onclick="trocarTela('checklist-setor-screen')">←</button>
+        <h2>Editar itens</h2>
     </div>
     <div class="edit-container">
+        <p style="font-family:'Inter',sans-serif; font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 12px;">
+            Escolha <b>Pede uma medida</b> nos itens que precisam de número (temperatura, por exemplo). A unidade (°C) e a faixa aceitável (mín/máx) são opcionais — com a faixa preenchida, o app avisa quando a medida sai dela.
+        </p>
         <div id="checklistDiariaItensLista"></div>
         <button type="button" class="ficha-add-ingrediente-btn" onclick="adicionarCaixaItemChecklist()" style="width:100%; box-sizing:border-box; margin-top: 6px;">+ Adicionar item</button>
         <div class="edit-actions">
@@ -1447,9 +1480,21 @@
     </div>
 </div>
 
-<div id="checklistdiaria-summary-screen" class="screen">
+<div id="checklist-historico-screen" class="screen">
     <div class="screen-header">
         <button class="back-btn" onclick="trocarTela('checklistdiaria-screen')">←</button>
+        <h2>Histórico de conferências</h2>
+    </div>
+    <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
+        <button type="button" id="checklistHistBtnDia" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="checklistHistTrocarVisao('dia')">📅 Por dia</button>
+        <button type="button" id="checklistHistBtnItem" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="checklistHistTrocarVisao('item')">📈 Por item</button>
+    </div>
+    <div class="product-list" id="checklistHistConteudo"></div>
+</div>
+
+<div id="checklistdiaria-summary-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('checklist-setor-screen')">←</button>
         <h2>Resumo da Checklist</h2>
     </div>
     <div class="summary-list" id="checklistDiariaSummaryList"></div>
@@ -2856,204 +2901,469 @@ function salvarFaixasMargemVinho(faixas) {
 }
 
 // ============================================================
-// CHECKLIST DIÁRIA — itens editáveis pela equipe, marcações resetam todo dia
+// CHECKLIST — setores, itens (com medida) e histórico de conferência
 // ============================================================
-function lerItensChecklistDiariaSeguro() {
-    try {
-        var dados = localStorage.getItem('checklistDiariaItensABS');
-        return dados ? JSON.parse(dados) : [];
-    } catch (erro) { return []; }
-}
+// Cada setor tem sua própria lista de itens. Um item pode ser só "conferido"
+// (✅) ou pedir uma medida (ex: temperatura da geladeira). Toda conferência
+// vira um registro no histórico, com dia, hora, quem fez e o valor medido.
 
-function salvarItensChecklistDiariaSeguro(lista) {
-    try { localStorage.setItem('checklistDiariaItensABS', JSON.stringify(lista)); } catch (erro) { }
-}
+var checklistSetores = [];
+var itensChecklistDiaria = [];
+var checklistHoje = {};            // item_id -> registro de hoje
+var checklistSetorAtivo = null;    // setor aberto no momento
+var checklistHistorico = [];
+var checklistHistVisao = 'dia';
+var checklistHistItemId = '';
+var checklistSetorEditando = null;
+
+var CHECKLIST_ICONES = ['🌡️', '❄️', '🔥', '🧊', '🧼', '🍽️', '🥬', '🐟', '🍷', '🚪', '💡', '🔧', '📋', '⚠️', '🧯', '🚰'];
 
 function chaveDiaChecklist() {
     var hoje = new Date();
     return hoje.getFullYear() + '-' + (hoje.getMonth() + 1 < 10 ? '0' : '') + (hoje.getMonth() + 1) + '-' + (hoje.getDate() < 10 ? '0' : '') + hoje.getDate();
 }
 
-function lerMarcacoesChecklistDiariaSeguro() {
-    try {
-        var dados = localStorage.getItem('checklistDiariaMarcacoesABS');
-        var mapa = dados ? JSON.parse(dados) : {};
-        // Descarta marcações de dias anteriores: a checklist reseta sozinha todo dia
-        var hoje = chaveDiaChecklist();
-        if (mapa.dia !== hoje) { return { dia: hoje, marcados: {} }; }
-        return mapa;
-    } catch (erro) { return { dia: chaveDiaChecklist(), marcados: {} }; }
+function dataBrChecklist(dia) {
+    if (!dia) { return ''; }
+    var p = String(dia).split('-');
+    return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : String(dia);
 }
 
-function salvarMarcacoesChecklistDiariaSeguro(mapa) {
-    try { localStorage.setItem('checklistDiariaMarcacoesABS', JSON.stringify(mapa)); } catch (erro) { }
+function horaBrChecklist(iso) {
+    if (!iso) { return ''; }
+    try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
 }
 
-var itensChecklistDiaria = lerItensChecklistDiariaSeguro();
-var marcacoesChecklistDiaria = lerMarcacoesChecklistDiariaSeguro();
+function checklistCacheLer(chave, padrao) {
+    try { var d = localStorage.getItem(chave); return d ? JSON.parse(d) : padrao; } catch (e) { return padrao; }
+}
+
+function checklistCacheGravar(chave, valor) {
+    try { localStorage.setItem(chave, JSON.stringify(valor)); } catch (e) { }
+}
+
+checklistSetores = checklistCacheLer('checklistSetoresABS', []);
+itensChecklistDiaria = checklistCacheLer('checklistDiariaItensABS', []);
+
+function checklistTelaAtiva(id) {
+    var e = document.getElementById(id);
+    return !!e && e.classList.contains('active');
+}
+
+function checklistSetorPorId(id) {
+    for (var i = 0; i < checklistSetores.length; i++) { if (checklistSetores[i].id === id) { return checklistSetores[i]; } }
+    return null;
+}
+
+function checklistItemPorId(id) {
+    for (var i = 0; i < itensChecklistDiaria.length; i++) { if (itensChecklistDiaria[i].id === id) { return itensChecklistDiaria[i]; } }
+    return null;
+}
+
+function checklistItensDoSetor(setorId) {
+    return itensChecklistDiaria.filter(function (it) { return (it.setor_id || '') === (setorId || ''); });
+}
+
+function checklistUpsert(registro, callback) {
+    fetch(SUPABASE_URL + '/rest/v1/checklist_historico', {
+        method: 'POST',
+        headers: supabaseHeaders({ 'Prefer': 'resolution=merge-duplicates,return=representation' }),
+        body: JSON.stringify(registro)
+    }).then(function (r) { if (!r.ok) { throw new Error('status ' + r.status); } return r.json(); })
+      .then(function (d) { supabaseOnline = true; atualizarAvisoOffline(); if (callback) { callback(null, d); } })
+      .catch(function (e) { supabaseOnline = false; if (callback) { callback(e, null); } });
+}
+
+// ---------- abertura e sincronização ----------
 
 function abrirChecklistDireto() {
+    checklistSetorAtivo = null;
     trocarTela('checklistdiaria-screen');
-    marcacoesChecklistDiaria = lerMarcacoesChecklistDiariaSeguro(); // garante reset se virou o dia
-    renderizarListaChecklistDiaria();
+    renderizarSetoresChecklist();
     sincronizarChecklistDiariaSupabase();
 }
 
 function sincronizarChecklistDiariaSupabase() {
-    supabaseGet('checklist_diaria_itens', 'select=*&order=criado_em.asc', function(err, dados) {
+    supabaseGet('checklist_setores', 'select=*&order=ordem.asc,criado_em.asc', function (err, dados) {
         if (err || !dados) { return; }
-        itensChecklistDiaria = dados.map(function(d) { return { id: d.id, texto: d.texto }; });
-        salvarItensChecklistDiariaSeguro(itensChecklistDiaria);
-        if (setorAtivoId === 'checklistdiaria' || document.getElementById('checklistdiaria-screen').classList.contains('active')) {
-            renderizarListaChecklistDiaria();
-        }
+        checklistSetores = dados;
+        checklistCacheGravar('checklistSetoresABS', checklistSetores);
+        checklistRedesenhar();
     });
 
-    var hoje = chaveDiaChecklist();
-    supabaseGet('checklist_diaria_marcacoes', 'select=*&dia=eq.' + hoje, function(err, dados) {
+    supabaseGet('checklist_diaria_itens', 'select=*&order=ordem.asc,criado_em.asc', function (err, dados) {
         if (err || !dados) { return; }
-        var marcados = {};
-        for (var i = 0; i < dados.length; i++) { marcados[dados[i].item_id] = true; }
-        marcacoesChecklistDiaria = { dia: hoje, marcados: marcados };
-        salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
-        if (document.getElementById('checklistdiaria-screen').classList.contains('active')) {
-            renderizarListaChecklistDiaria();
-        }
+        itensChecklistDiaria = dados.map(function (d) {
+            return { id: d.id, texto: d.texto, setor_id: d.setor_id || '', tipo: d.tipo || 'ok',
+                     unidade: d.unidade || '', vmin: d.vmin, vmax: d.vmax, ordem: d.ordem || 0 };
+        });
+        checklistCacheGravar('checklistDiariaItensABS', itensChecklistDiaria);
+        checklistRedesenhar();
     });
+
+    supabaseGet('checklist_historico', 'select=*&dia=eq.' + chaveDiaChecklist(), function (err, dados) {
+        if (err || !dados) { return; }
+        checklistHoje = {};
+        for (var i = 0; i < dados.length; i++) { checklistHoje[dados[i].item_id] = dados[i]; }
+        checklistRedesenhar();
+    });
+}
+
+function checklistRedesenhar() {
+    if (checklistTelaAtiva('checklistdiaria-screen')) { renderizarSetoresChecklist(); }
+    if (checklistTelaAtiva('checklist-setor-screen')) { renderizarListaChecklistDiaria(); }
+}
+
+// ---------- tela 1: os setores ----------
+
+function renderizarSetoresChecklist() {
+    var lista = document.getElementById('checklistSetoresLista');
+    if (!lista) { return; }
+    lista.innerHTML = '';
+
+    if (checklistSetores.length === 0) {
+        lista.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px; line-height:1.6;'>Nenhum setor criado ainda.<br>Toque em <b>➕ Novo setor</b> pra começar — ex: Temperatura das geladeiras, Abertura do salão, Limpeza.</p>";
+        return;
+    }
+
+    for (var i = 0; i < checklistSetores.length; i++) {
+        (function (setor) {
+            var itens = checklistItensDoSetor(setor.id);
+            var feitos = 0, alertas = 0;
+            for (var k = 0; k < itens.length; k++) {
+                var reg = checklistHoje[itens[k].id];
+                if (reg) { feitos++; if (reg.fora_faixa) { alertas++; } }
+            }
+
+            var div = document.createElement('div');
+            div.className = 'product-item' + (itens.length > 0 && feitos === itens.length ? ' selected' : '');
+            div.onclick = function () { abrirSetorChecklist(setor.id); };
+
+            var icone = document.createElement('div');
+            icone.className = 'product-icon';
+            icone.innerText = setor.icone || '📋';
+
+            var info = document.createElement('div');
+            info.className = 'product-info';
+            var nome = document.createElement('div');
+            nome.className = 'product-name';
+            nome.innerText = setor.nome;
+            var sub = document.createElement('div');
+            sub.style.fontSize = '12px';
+            sub.style.color = 'var(--text-dim)';
+            sub.style.marginTop = '3px';
+            if (itens.length === 0) {
+                sub.innerText = 'Sem itens ainda';
+            } else {
+                sub.innerText = feitos + ' de ' + itens.length + ' conferidos hoje' + (alertas > 0 ? ' · ⚠️ ' + alertas + ' fora da faixa' : '');
+                if (alertas > 0) { sub.style.color = '#E8A33D'; }
+            }
+            info.appendChild(nome);
+            info.appendChild(sub);
+
+            var acoes = document.createElement('div');
+            acoes.style.display = 'flex';
+            acoes.style.gap = '6px';
+            acoes.style.flexShrink = '0';
+
+            var editarBtn = document.createElement('button');
+            editarBtn.innerText = '✏️';
+            editarBtn.className = 'problema-del-btn';
+            editarBtn.onclick = function (e) { e.stopPropagation(); abrirEditarSetorChecklist(setor.id); };
+            acoes.appendChild(editarBtn);
+
+            div.appendChild(icone);
+            div.appendChild(info);
+            div.appendChild(acoes);
+            lista.appendChild(div);
+        })(checklistSetores[i]);
+    }
+}
+
+function abrirEditarSetorChecklist(setorId) {
+    checklistSetorEditando = setorId || null;
+    var setor = setorId ? checklistSetorPorId(setorId) : null;
+    document.getElementById('checklistSetorNome').value = setor ? setor.nome : '';
+    document.getElementById('checklistSetorTituloTela').innerText = setor ? 'Editar setor' : 'Novo setor';
+    document.getElementById('checklistSetorExcluir').style.display = setor ? '' : 'none';
+    checklistSetorIconeEscolhido = setor ? (setor.icone || '📋') : '📋';
+    renderizarIconesSetorChecklist();
+    trocarTela('checklist-setor-edit-screen');
+}
+
+var checklistSetorIconeEscolhido = '📋';
+
+function renderizarIconesSetorChecklist() {
+    var caixa = document.getElementById('checklistSetorIcones');
+    if (!caixa) { return; }
+    caixa.innerHTML = '';
+    for (var i = 0; i < CHECKLIST_ICONES.length; i++) {
+        (function (ic) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.innerText = ic;
+            b.style.fontSize = '22px';
+            b.style.padding = '8px 10px';
+            b.style.borderRadius = '12px';
+            b.style.border = checklistSetorIconeEscolhido === ic ? '2px solid var(--accent, #5FB88A)' : '2px solid transparent';
+            b.style.background = 'var(--surface)';
+            b.style.cursor = 'pointer';
+            b.onclick = function () { checklistSetorIconeEscolhido = ic; renderizarIconesSetorChecklist(); };
+            caixa.appendChild(b);
+        })(CHECKLIST_ICONES[i]);
+    }
+}
+
+function salvarSetorChecklist() {
+    var nome = document.getElementById('checklistSetorNome').value.trim();
+    if (!nome) { alert('Dê um nome ao setor.'); return; }
+
+    if (checklistSetorEditando) {
+        var setor = checklistSetorPorId(checklistSetorEditando);
+        if (setor) { setor.nome = nome; setor.icone = checklistSetorIconeEscolhido; }
+        supabasePatch('checklist_setores', 'id=eq.' + encodeURIComponent(checklistSetorEditando),
+            { nome: nome, icone: checklistSetorIconeEscolhido }, function (err) {
+                if (err) { console.warn('checklist: setor salvo só no aparelho', err); }
+            });
+    } else {
+        var novo = { id: 'set_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), nome: nome,
+                     icone: checklistSetorIconeEscolhido, ordem: checklistSetores.length + 1 };
+        checklistSetores.push(novo);
+        supabasePost('checklist_setores', novo, function (err) {
+            if (err) { console.warn('checklist: setor salvo só no aparelho', err); }
+        });
+    }
+
+    checklistCacheGravar('checklistSetoresABS', checklistSetores);
+    trocarTela('checklistdiaria-screen');
+    renderizarSetoresChecklist();
+}
+
+function excluirSetorChecklist() {
+    if (!checklistSetorEditando) { return; }
+    var setor = checklistSetorPorId(checklistSetorEditando);
+    var itens = checklistItensDoSetor(checklistSetorEditando);
+    var aviso = 'Excluir o setor "' + (setor ? setor.nome : '') + '"?';
+    if (itens.length > 0) { aviso += '\n\nOs ' + itens.length + ' itens dele também saem da checklist. O histórico já registrado continua guardado.'; }
+    if (!confirm(aviso)) { return; }
+
+    for (var i = 0; i < itens.length; i++) {
+        supabaseDelete('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(itens[i].id), function () { });
+    }
+    itensChecklistDiaria = itensChecklistDiaria.filter(function (it) { return it.setor_id !== checklistSetorEditando; });
+    checklistSetores = checklistSetores.filter(function (s) { return s.id !== checklistSetorEditando; });
+    supabaseDelete('checklist_setores', 'id=eq.' + encodeURIComponent(checklistSetorEditando), function () { });
+
+    checklistCacheGravar('checklistSetoresABS', checklistSetores);
+    checklistCacheGravar('checklistDiariaItensABS', itensChecklistDiaria);
+    checklistSetorEditando = null;
+    trocarTela('checklistdiaria-screen');
+    renderizarSetoresChecklist();
+}
+
+// ---------- tela 2: os itens do setor ----------
+
+function abrirSetorChecklist(setorId) {
+    checklistSetorAtivo = setorId;
+    var setor = checklistSetorPorId(setorId);
+    document.getElementById('checklistSetorTitulo').innerText = (setor ? (setor.icone || '') + ' ' + setor.nome : 'Checklist');
+    trocarTela('checklist-setor-screen');
+    renderizarListaChecklistDiaria();
+    sincronizarChecklistDiariaSupabase();
+}
+
+function checklistForaFaixa(item, valor) {
+    if (valor === null || valor === undefined || valor === '') { return false; }
+    var v = Number(valor);
+    if (isNaN(v)) { return false; }
+    if (item.vmin !== null && item.vmin !== undefined && item.vmin !== '' && v < Number(item.vmin)) { return true; }
+    if (item.vmax !== null && item.vmax !== undefined && item.vmax !== '' && v > Number(item.vmax)) { return true; }
+    return false;
+}
+
+function checklistFaixaTexto(item) {
+    var temMin = item.vmin !== null && item.vmin !== undefined && item.vmin !== '';
+    var temMax = item.vmax !== null && item.vmax !== undefined && item.vmax !== '';
+    var u = item.unidade ? ' ' + item.unidade : '';
+    if (temMin && temMax) { return 'Aceitável: ' + item.vmin + u + ' a ' + item.vmax + u; }
+    if (temMin) { return 'Aceitável: a partir de ' + item.vmin + u; }
+    if (temMax) { return 'Aceitável: até ' + item.vmax + u; }
+    return '';
 }
 
 function renderizarListaChecklistDiaria() {
     var lista = document.getElementById('checklistDiariaLista');
-    lista.innerHTML = "";
+    if (!lista) { return; }
+    lista.innerHTML = '';
 
-    if (itensChecklistDiaria.length === 0) {
-        lista.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px;'>Nenhum item na checklist ainda. Toque em \"✏️ Editar itens\" pra montar a lista.</p>";
+    var itens = checklistItensDoSetor(checklistSetorAtivo);
+    if (itens.length === 0) {
+        lista.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px;'>Nenhum item neste setor. Toque em \"✏️ Editar itens\" pra montar a lista.</p>";
         return;
     }
 
-    for (var i = 0; i < itensChecklistDiaria.length; i++) {
-        var item = itensChecklistDiaria[i];
-        var marcado = !!marcacoesChecklistDiaria.marcados[item.id];
+    for (var i = 0; i < itens.length; i++) {
+        (function (item) {
+            var reg = checklistHoje[item.id];
+            var marcado = !!reg;
+            var alerta = marcado && reg.fora_faixa;
 
-        var div = document.createElement('div');
-        div.className = 'product-item' + (marcado ? ' selected' : '');
-        div.onclick = (function(id) { return function() { alternarMarcacaoChecklistDiaria(id); }; })(item.id);
+            var div = document.createElement('div');
+            div.className = 'product-item' + (marcado ? ' selected' : '');
+            if (alerta) { div.style.boxShadow = 'inset 0 0 0 1.5px #E8A33D'; }
 
-        var icone = document.createElement('div');
-        icone.className = 'product-icon';
-        icone.innerText = marcado ? '✅' : '⬜';
+            var icone = document.createElement('div');
+            icone.className = 'product-icon';
+            icone.innerText = alerta ? '⚠️' : (marcado ? '✅' : '⬜');
 
-        var info = document.createElement('div');
-        info.className = 'product-info';
-        var nome = document.createElement('div');
-        nome.className = 'product-name';
-        nome.innerText = item.texto;
-        info.appendChild(nome);
+            var info = document.createElement('div');
+            info.className = 'product-info';
+            var nome = document.createElement('div');
+            nome.className = 'product-name';
+            nome.innerText = item.texto;
+            info.appendChild(nome);
 
-        var acoes = document.createElement('div');
-        acoes.style.display = 'flex';
-        acoes.style.gap = '6px';
-        acoes.style.flexShrink = '0';
+            var sub = document.createElement('div');
+            sub.style.fontSize = '12px';
+            sub.style.color = alerta ? '#E8A33D' : 'var(--text-dim)';
+            sub.style.marginTop = '3px';
+            if (marcado) {
+                var partes = [];
+                if (reg.valor !== null && reg.valor !== undefined) { partes.push(reg.valor + (reg.unidade ? ' ' + reg.unidade : '')); }
+                if (reg.registrado_em) { partes.push(horaBrChecklist(reg.registrado_em)); }
+                if (reg.usuario) { partes.push(reg.usuario); }
+                sub.innerText = (alerta ? '⚠️ Fora da faixa · ' : '') + partes.join(' · ');
+            } else {
+                sub.innerText = item.tipo === 'numero' ? (checklistFaixaTexto(item) || 'Digite a medida ao lado') : 'Toque para marcar';
+            }
+            info.appendChild(sub);
 
-        var editarBtn = document.createElement('button');
-        editarBtn.innerText = '✏️';
-        editarBtn.className = 'problema-del-btn';
-        editarBtn.onclick = (function(id, texto) { return function(e) { e.stopPropagation(); editarItemChecklistDiaria(id, texto); }; })(item.id, item.texto);
-        acoes.appendChild(editarBtn);
+            var acoes = document.createElement('div');
+            acoes.style.display = 'flex';
+            acoes.style.gap = '6px';
+            acoes.style.alignItems = 'center';
+            acoes.style.flexShrink = '0';
 
-        var excluirBtn = document.createElement('button');
-        excluirBtn.innerText = '🗑️';
-        excluirBtn.className = 'problema-del-btn';
-        excluirBtn.onclick = (function(id) { return function(e) { e.stopPropagation(); excluirItemChecklistDiaria(id); }; })(item.id);
-        acoes.appendChild(excluirBtn);
+            if (item.tipo === 'numero') {
+                var campo = document.createElement('input');
+                campo.type = 'text';
+                campo.inputMode = 'decimal';
+                campo.value = (marcado && reg.valor !== null && reg.valor !== undefined) ? String(reg.valor) : '';
+                campo.placeholder = item.unidade || 'valor';
+                campo.style.width = '78px';
+                campo.style.padding = '10px 8px';
+                campo.style.textAlign = 'center';
+                campo.style.border = 'none';
+                campo.style.borderRadius = '12px';
+                campo.style.background = 'var(--surface)';
+                campo.style.color = alerta ? '#E8A33D' : 'var(--text)';
+                campo.style.fontFamily = "'Inter', sans-serif";
+                campo.style.fontSize = '15px';
+                campo.style.fontWeight = '700';
+                campo.style.outline = 'none';
+                campo.onclick = function (e) { e.stopPropagation(); };
+                campo.onchange = function () { checklistAnotarValor(item.id, campo.value); };
+                campo.onkeydown = function (e) { if (e.key === 'Enter') { campo.blur(); } };
+                acoes.appendChild(campo);
+            } else {
+                div.onclick = function () { checklistAlternar(item.id); };
+            }
 
-        div.appendChild(icone);
-        div.appendChild(info);
-        div.appendChild(acoes);
-        lista.appendChild(div);
+            div.appendChild(icone);
+            div.appendChild(info);
+            div.appendChild(acoes);
+            lista.appendChild(div);
+        })(itens[i]);
     }
 }
 
-function editarItemChecklistDiaria(itemId, textoAtual) {
-    var novoTexto = prompt('Editar item:', textoAtual);
-    if (novoTexto === null) { return; }
-    novoTexto = novoTexto.trim();
-    if (!novoTexto) { return; }
+function checklistAnotarValor(itemId, bruto) {
+    var item = checklistItemPorId(itemId);
+    if (!item) { return; }
+    var txt = String(bruto == null ? '' : bruto).replace(',', '.').trim();
+    if (txt === '') { checklistApagarRegistro(itemId); return; }
+    var v = Number(txt);
+    if (isNaN(v)) { alert('Digite só números. Ex: -17 ou 5,9'); renderizarListaChecklistDiaria(); return; }
+    checklistGravarRegistro(item, v);
+}
 
-    for (var i = 0; i < itensChecklistDiaria.length; i++) {
-        if (itensChecklistDiaria[i].id === itemId) { itensChecklistDiaria[i].texto = novoTexto; break; }
-    }
-    salvarItensChecklistDiariaSeguro(itensChecklistDiaria);
-    supabasePatch('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(itemId), { texto: novoTexto }, function(err) {
-        if (err) { console.warn('Não foi possível sincronizar edição do item (salvo localmente):', err); }
+function checklistAlternar(itemId) {
+    var item = checklistItemPorId(itemId);
+    if (!item) { return; }
+    if (checklistHoje[itemId]) { checklistApagarRegistro(itemId); } else { checklistGravarRegistro(item, null); }
+}
+
+function checklistGravarRegistro(item, valor) {
+    var dia = chaveDiaChecklist();
+    var setor = checklistSetorPorId(item.setor_id);
+    var reg = {
+        id: dia + '|' + item.id,
+        dia: dia,
+        item_id: item.id,
+        item_texto: item.texto,
+        setor_id: item.setor_id || null,
+        setor_nome: setor ? setor.nome : null,
+        valor: (valor === null || valor === undefined) ? null : valor,
+        unidade: item.unidade || null,
+        fora_faixa: checklistForaFaixa(item, valor),
+        usuario: usuarioAtual || null,
+        registrado_em: new Date().toISOString()
+    };
+    checklistHoje[item.id] = reg;
+    renderizarListaChecklistDiaria();
+    checklistUpsert(reg, function (err) {
+        if (err) { console.warn('checklist: conferência salva só no aparelho', err); }
     });
-    renderizarListaChecklistDiaria();
 }
 
-function excluirItemChecklistDiaria(itemId) {
-    itensChecklistDiaria = itensChecklistDiaria.filter(function(it) { return it.id !== itemId; });
-    salvarItensChecklistDiariaSeguro(itensChecklistDiaria);
-
-    delete marcacoesChecklistDiaria.marcados[itemId];
-    salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
-
-    supabaseDelete('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(itemId), function(err) {
-        if (err) { console.warn('Não foi possível sincronizar exclusão do item (removido localmente):', err); }
-    });
-    supabaseDelete('checklist_diaria_marcacoes', 'dia=eq.' + marcacoesChecklistDiaria.dia + '&item_id=eq.' + encodeURIComponent(itemId), function() {});
-
+function checklistApagarRegistro(itemId) {
+    delete checklistHoje[itemId];
     renderizarListaChecklistDiaria();
+    supabaseDelete('checklist_historico', 'id=eq.' + encodeURIComponent(chaveDiaChecklist() + '|' + itemId), function () { });
 }
 
-function alternarMarcacaoChecklistDiaria(itemId) {
-    var jaMarcado = !!marcacoesChecklistDiaria.marcados[itemId];
-    if (jaMarcado) {
-        delete marcacoesChecklistDiaria.marcados[itemId];
-        supabaseDelete('checklist_diaria_marcacoes', 'dia=eq.' + marcacoesChecklistDiaria.dia + '&item_id=eq.' + encodeURIComponent(itemId), function(err) {
-            if (err) { console.warn('Não foi possível sincronizar desmarcação (salvo localmente):', err); }
-        });
-    } else {
-        marcacoesChecklistDiaria.marcados[itemId] = true;
-        supabasePost('checklist_diaria_marcacoes', { dia: marcacoesChecklistDiaria.dia, item_id: itemId }, function(err) {
-            if (err) { console.warn('Não foi possível sincronizar marcação (salvo localmente):', err); }
-        });
-    }
-    salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
-    renderizarListaChecklistDiaria();
-}
+// ---------- editor dos itens do setor ----------
 
 function abrirGerenciarChecklistDiaria() {
-    montarCaixasItensChecklist(itensChecklistDiaria.length > 0 ? itensChecklistDiaria : [{ texto: '' }]);
+    if (!checklistSetorAtivo) { alert('Abra um setor primeiro.'); return; }
+    var itens = checklistItensDoSetor(checklistSetorAtivo);
+    montarCaixasItensChecklist(itens.length > 0 ? itens : [{ texto: '', tipo: 'ok' }]);
     trocarTela('checklistdiaria-gerenciar-screen');
 }
 
 function montarCaixasItensChecklist(itens) {
     var lista = document.getElementById('checklistDiariaItensLista');
-    lista.innerHTML = "";
-    for (var i = 0; i < itens.length; i++) {
-        criarCaixaItemChecklist(itens[i].texto || "", itens[i].id || "");
-    }
+    lista.innerHTML = '';
+    for (var i = 0; i < itens.length; i++) { criarCaixaItemChecklist(itens[i]); }
 }
 
-function criarCaixaItemChecklist(textoValor, idExistente) {
+function criarCaixaItemChecklist(item) {
+    item = item || {};
     var lista = document.getElementById('checklistDiariaItensLista');
+
     var bloco = document.createElement('div');
-    bloco.style.display = 'flex';
-    bloco.style.gap = '8px';
-    bloco.style.marginBottom = '8px';
-    bloco.style.alignItems = 'center';
+    bloco.className = 'checklist-item-bloco';
+    bloco.style.background = 'var(--surface)';
+    bloco.style.borderRadius = '14px';
+    bloco.style.padding = '12px';
+    bloco.style.marginBottom = '10px';
+
+    var linha1 = document.createElement('div');
+    linha1.style.display = 'flex';
+    linha1.style.gap = '8px';
+    linha1.style.alignItems = 'center';
 
     var input = document.createElement('input');
     input.type = 'text';
     input.className = 'checklist-item-texto';
-    input.setAttribute('data-item-id', idExistente || '');
-    input.value = textoValor;
-    input.placeholder = 'Ex: Gás verificado';
+    input.setAttribute('data-item-id', item.id || '');
+    input.value = item.texto || '';
+    input.placeholder = 'Ex: Geladeira congelados';
     input.style.flex = '1';
     input.style.padding = '12px 14px';
     input.style.border = 'none';
-    input.style.borderRadius = '14px';
-    input.style.background = 'var(--surface)';
+    input.style.borderRadius = '12px';
+    input.style.background = 'var(--bg, #0e1a12)';
     input.style.color = 'var(--text)';
     input.style.fontFamily = "'Inter', sans-serif";
     input.style.fontSize = '14px';
@@ -3064,102 +3374,179 @@ function criarCaixaItemChecklist(textoValor, idExistente) {
     removerBtn.type = 'button';
     removerBtn.innerText = '✕';
     removerBtn.className = 'problema-del-btn';
-    removerBtn.onclick = function() {
+    removerBtn.onclick = function () {
         var lst = document.getElementById('checklistDiariaItensLista');
         if (lst.children.length <= 1) { return; }
         bloco.remove();
     };
 
-    bloco.appendChild(input);
-    bloco.appendChild(removerBtn);
+    linha1.appendChild(input);
+    linha1.appendChild(removerBtn);
+    bloco.appendChild(linha1);
+
+    var linha2 = document.createElement('div');
+    linha2.style.display = 'flex';
+    linha2.style.gap = '8px';
+    linha2.style.marginTop = '8px';
+    linha2.style.flexWrap = 'wrap';
+    linha2.style.alignItems = 'center';
+
+    var tipo = document.createElement('select');
+    tipo.className = 'checklist-item-tipo';
+    tipo.innerHTML = '<option value="ok">Só marcar ✅</option><option value="numero">Pede uma medida</option>';
+    tipo.value = item.tipo || 'ok';
+    estilizarCampoChecklist(tipo, '150px');
+
+    var medidas = document.createElement('div');
+    medidas.style.display = (item.tipo === 'numero') ? 'flex' : 'none';
+    medidas.style.gap = '8px';
+    medidas.style.flexWrap = 'wrap';
+    medidas.style.alignItems = 'center';
+
+    var unidade = document.createElement('input');
+    unidade.type = 'text';
+    unidade.className = 'checklist-item-unidade';
+    unidade.value = item.unidade || '';
+    unidade.placeholder = 'un. (°C)';
+    estilizarCampoChecklist(unidade, '74px');
+
+    var vmin = document.createElement('input');
+    vmin.type = 'text';
+    vmin.inputMode = 'decimal';
+    vmin.className = 'checklist-item-vmin';
+    vmin.value = (item.vmin === null || item.vmin === undefined) ? '' : String(item.vmin);
+    vmin.placeholder = 'mín';
+    estilizarCampoChecklist(vmin, '66px');
+
+    var vmax = document.createElement('input');
+    vmax.type = 'text';
+    vmax.inputMode = 'decimal';
+    vmax.className = 'checklist-item-vmax';
+    vmax.value = (item.vmax === null || item.vmax === undefined) ? '' : String(item.vmax);
+    vmax.placeholder = 'máx';
+    estilizarCampoChecklist(vmax, '66px');
+
+    medidas.appendChild(unidade);
+    medidas.appendChild(vmin);
+    medidas.appendChild(vmax);
+
+    tipo.onchange = function () { medidas.style.display = tipo.value === 'numero' ? 'flex' : 'none'; };
+
+    linha2.appendChild(tipo);
+    linha2.appendChild(medidas);
+    bloco.appendChild(linha2);
+
     lista.appendChild(bloco);
 }
 
+function estilizarCampoChecklist(el, largura) {
+    el.style.width = largura;
+    el.style.padding = '10px 10px';
+    el.style.border = 'none';
+    el.style.borderRadius = '12px';
+    el.style.background = 'var(--bg, #0e1a12)';
+    el.style.color = 'var(--text)';
+    el.style.fontFamily = "'Inter', sans-serif";
+    el.style.fontSize = '13px';
+    el.style.outline = 'none';
+    el.style.boxSizing = 'border-box';
+}
+
 function adicionarCaixaItemChecklist() {
-    criarCaixaItemChecklist("", "");
+    criarCaixaItemChecklist({ texto: '', tipo: 'ok' });
+}
+
+function numeroOuNuloChecklist(txt) {
+    var t = String(txt == null ? '' : txt).replace(',', '.').trim();
+    if (t === '') { return null; }
+    var n = Number(t);
+    return isNaN(n) ? null : n;
 }
 
 function salvarItensChecklistDiaria() {
-    var inputs = document.querySelectorAll('#checklistDiariaItensLista .checklist-item-texto');
-    var textos = [];
-    for (var i = 0; i < inputs.length; i++) {
-        var v = inputs[i].value.trim();
-        if (v) { textos.push(v); }
-    }
-
-    if (textos.length === 0) {
-        alert('Adicione ao menos um item antes de salvar.');
-        return;
-    }
-
-    // Mantém o id dos itens que já existiam (mesmo se o texto mudou), pra não perder
-    // as marcações do dia nem quebrar a lista nos outros celulares.
+    var blocos = document.querySelectorAll('#checklistDiariaItensLista .checklist-item-bloco');
     var novaLista = [];
-    for (var k = 0; k < inputs.length; k++) {
-        var texto = inputs[k].value.trim();
+
+    for (var k = 0; k < blocos.length; k++) {
+        var bloco = blocos[k];
+        var texto = bloco.querySelector('.checklist-item-texto').value.trim();
         if (!texto) { continue; }
-        var idExistente = inputs[k].getAttribute('data-item-id');
+
+        var tipo = bloco.querySelector('.checklist-item-tipo').value;
+        var unidade = tipo === 'numero' ? bloco.querySelector('.checklist-item-unidade').value.trim() : '';
+        var vmin = tipo === 'numero' ? numeroOuNuloChecklist(bloco.querySelector('.checklist-item-vmin').value) : null;
+        var vmax = tipo === 'numero' ? numeroOuNuloChecklist(bloco.querySelector('.checklist-item-vmax').value) : null;
+        var idExistente = bloco.querySelector('.checklist-item-texto').getAttribute('data-item-id');
+
+        var registro = { texto: texto, setor_id: checklistSetorAtivo, tipo: tipo, unidade: unidade || null,
+                         vmin: vmin, vmax: vmax, ordem: k + 1 };
 
         if (idExistente) {
-            var textoAnterior = null;
-            for (var q = 0; q < itensChecklistDiaria.length; q++) {
-                if (itensChecklistDiaria[q].id === idExistente) { textoAnterior = itensChecklistDiaria[q].texto; break; }
-            }
-            if (textoAnterior !== null && textoAnterior !== texto) {
-                supabasePatch('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(idExistente), { texto: texto }, function(err) {
-                    if (err) { console.warn('Não foi possível sincronizar edição do item (salvo localmente):', err); }
-                });
-            }
-            novaLista.push({ id: idExistente, texto: texto });
+            novaLista.push({ id: idExistente, texto: texto, setor_id: checklistSetorAtivo, tipo: tipo,
+                             unidade: unidade, vmin: vmin, vmax: vmax, ordem: k + 1 });
+            supabasePatch('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(idExistente), registro, function (err) {
+                if (err) { console.warn('checklist: item salvo só no aparelho', err); }
+            });
         } else {
-            var novoItem = { id: gerarIdUnico(), texto: texto };
-            novaLista.push(novoItem);
-            supabasePost('checklist_diaria_itens', { id: novoItem.id, texto: novoItem.texto }, function(err) {
-                if (err) { console.warn('Não foi possível sincronizar item da checklist (salvo localmente):', err); }
+            var novoId = gerarIdUnico();
+            novaLista.push({ id: novoId, texto: texto, setor_id: checklistSetorAtivo, tipo: tipo,
+                             unidade: unidade, vmin: vmin, vmax: vmax, ordem: k + 1 });
+            var paraSalvar = Object.assign({ id: novoId }, registro);
+            supabasePost('checklist_diaria_itens', paraSalvar, function (err) {
+                if (err) { console.warn('checklist: item salvo só no aparelho', err); }
             });
         }
     }
 
-    // Apaga só os que realmente saíram da lista
+    if (novaLista.length === 0) {
+        alert('Escreva ao menos um item antes de salvar.');
+        return;
+    }
+
+    // apaga só os que realmente saíram deste setor
     var idsNovos = {};
     for (var n2 = 0; n2 < novaLista.length; n2++) { idsNovos[novaLista[n2].id] = true; }
-    for (var a = 0; a < itensChecklistDiaria.length; a++) {
-        var idAntigo = itensChecklistDiaria[a].id;
-        if (idAntigo && !idsNovos[idAntigo]) {
-            supabaseDelete('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(idAntigo), function() {});
-            supabaseDelete('checklist_diaria_marcacoes', 'dia=eq.' + marcacoesChecklistDiaria.dia + '&item_id=eq.' + encodeURIComponent(idAntigo), function() {});
-            delete marcacoesChecklistDiaria.marcados[idAntigo];
+    var antigos = checklistItensDoSetor(checklistSetorAtivo);
+    for (var a = 0; a < antigos.length; a++) {
+        if (!idsNovos[antigos[a].id]) {
+            supabaseDelete('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(antigos[a].id), function () { });
+            delete checklistHoje[antigos[a].id];
         }
     }
 
-    itensChecklistDiaria = novaLista;
-    salvarItensChecklistDiariaSeguro(itensChecklistDiaria);
-    salvarMarcacoesChecklistDiariaSeguro(marcacoesChecklistDiaria);
+    itensChecklistDiaria = itensChecklistDiaria.filter(function (it) { return (it.setor_id || '') !== (checklistSetorAtivo || ''); }).concat(novaLista);
+    checklistCacheGravar('checklistDiariaItensABS', itensChecklistDiaria);
 
     renderizarListaChecklistDiaria();
-    trocarTela('checklistdiaria-screen');
+    trocarTela('checklist-setor-screen');
 }
+
+// ---------- resumo pra mandar ----------
 
 function verResumoChecklistDiaria() {
     var lista = document.getElementById('checklistDiariaSummaryList');
-    lista.innerHTML = "";
+    lista.innerHTML = '';
 
-    if (itensChecklistDiaria.length === 0) {
-        lista.innerHTML = "<p style='text-align:center; color:#999; margin-top: 30px; font-family: Lato, sans-serif;'>Nenhum item na checklist.</p>";
+    var itens = checklistItensDoSetor(checklistSetorAtivo);
+    var setor = checklistSetorPorId(checklistSetorAtivo);
+
+    if (itens.length === 0) {
+        lista.innerHTML = "<p style='text-align:center; color:#999; margin-top: 30px; font-family: Lato, sans-serif;'>Nenhum item neste setor.</p>";
         trocarTela('checklistdiaria-summary-screen');
         return;
     }
 
-    var dataLocal = new Date();
-    var dataStr = dataLocal.toLocaleDateString('pt-BR');
-    var horaStr = dataLocal.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-    var texto = "*Checklist Diária - " + dataStr + " às " + horaStr + "*\n" + dadosFiscaisTexto() + "\n\n";
+    var agora = new Date();
+    var dataStr = agora.toLocaleDateString('pt-BR');
+    var horaStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    var texto = '*Checklist · ' + (setor ? setor.nome : '') + ' - ' + dataStr + ' às ' + horaStr + '*\n' + dadosFiscaisTexto() + '\n\n';
 
-    for (var i = 0; i < itensChecklistDiaria.length; i++) {
-        var item = itensChecklistDiaria[i];
-        var marcado = !!marcacoesChecklistDiaria.marcados[item.id];
-        var emoji = marcado ? '✅' : '⬜';
-        texto += emoji + ' ' + item.texto + "\n";
+    for (var i = 0; i < itens.length; i++) {
+        var item = itens[i];
+        var reg = checklistHoje[item.id];
+        var emoji = reg ? (reg.fora_faixa ? '⚠️' : '✅') : '⬜';
+        var medida = (reg && reg.valor !== null && reg.valor !== undefined) ? (' — ' + reg.valor + (reg.unidade ? ' ' + reg.unidade : '')) : '';
+        texto += emoji + ' ' + item.texto + medida + (reg && reg.fora_faixa ? ' (FORA DA FAIXA)' : '') + '\n';
 
         var div = document.createElement('div');
         div.className = 'summary-item';
@@ -3168,16 +3555,187 @@ function verResumoChecklistDiaria() {
         iconDiv.innerText = emoji;
         var infoDiv = document.createElement('div');
         infoDiv.className = 'summary-item-info';
-        infoDiv.innerHTML = '<span>' + item.texto + '</span>';
+        infoDiv.innerHTML = '<span>' + item.texto + medida + '</span>';
         div.appendChild(iconDiv);
         div.appendChild(infoDiv);
         lista.appendChild(div);
     }
 
+    if (usuarioAtual) { texto += '\nConferido por: ' + usuarioAtual; }
+
     document.getElementById('checklistDiariaBtnWhatsApp').href = linkWhatsApp(texto);
-    document.getElementById('checklistDiariaBtnEmail').href = linkEmail('Checklist Diária - ' + dataStr, texto);
+    document.getElementById('checklistDiariaBtnEmail').href = linkEmail('Checklist ' + (setor ? setor.nome : '') + ' - ' + dataStr, texto);
 
     trocarTela('checklistdiaria-summary-screen');
+}
+
+// ---------- histórico ----------
+
+function abrirHistoricoChecklist() {
+    trocarTela('checklist-historico-screen');
+    document.getElementById('checklistHistConteudo').innerHTML =
+        "<p style='text-align:center; color:var(--text-dim); margin-top:30px; font-family:Inter,sans-serif; font-size:14px;'>Carregando o histórico...</p>";
+    supabaseGet('checklist_historico', 'select=*&order=dia.desc,registrado_em.desc&limit=800', function (err, dados) {
+        if (err || !dados) {
+            document.getElementById('checklistHistConteudo').innerHTML =
+                "<p style='text-align:center; color:var(--text-dim); margin-top:30px; font-family:Inter,sans-serif; font-size:14px;'>Não consegui buscar o histórico agora. Confira a internet e tente de novo.</p>";
+            return;
+        }
+        checklistHistorico = dados.slice().sort(function (a, b) {
+            if (a.dia !== b.dia) { return a.dia < b.dia ? 1 : -1; }
+            return String(b.registrado_em || '').localeCompare(String(a.registrado_em || ''));
+        });
+        renderizarHistoricoChecklist();
+    });
+}
+
+function checklistHistTrocarVisao(v) {
+    checklistHistVisao = v;
+    renderizarHistoricoChecklist();
+}
+
+function renderizarHistoricoChecklist() {
+    var btnDia = document.getElementById('checklistHistBtnDia');
+    var btnItem = document.getElementById('checklistHistBtnItem');
+    if (btnDia && btnItem) {
+        btnDia.style.opacity = checklistHistVisao === 'dia' ? '1' : '0.55';
+        btnItem.style.opacity = checklistHistVisao === 'item' ? '1' : '0.55';
+    }
+
+    var alvo = document.getElementById('checklistHistConteudo');
+    alvo.innerHTML = '';
+
+    if (checklistHistorico.length === 0) {
+        alvo.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top:30px; font-family:Inter,sans-serif; font-size:14px;'>Nenhuma conferência registrada ainda.</p>";
+        return;
+    }
+
+    if (checklistHistVisao === 'dia') { renderizarHistoricoPorDia(alvo); } else { renderizarHistoricoPorItem(alvo); }
+}
+
+function renderizarHistoricoPorDia(alvo) {
+    var dias = [];
+    var porDia = {};
+    for (var i = 0; i < checklistHistorico.length; i++) {
+        var r = checklistHistorico[i];
+        if (!porDia[r.dia]) { porDia[r.dia] = []; dias.push(r.dia); }
+        porDia[r.dia].push(r);
+    }
+
+    for (var d = 0; d < dias.length; d++) {
+        var dia = dias[d];
+        var registros = porDia[dia];
+        var alertas = registros.filter(function (r) { return r.fora_faixa; }).length;
+
+        var cab = document.createElement('div');
+        cab.style.margin = '16px 0 8px';
+        cab.style.fontFamily = "'Inter', sans-serif";
+        cab.style.fontSize = '13px';
+        cab.style.fontWeight = '700';
+        cab.style.color = 'var(--text-dim)';
+        cab.style.letterSpacing = '0.4px';
+        cab.innerText = dataBrChecklist(dia) + ' · ' + registros.length + ' conferência' + (registros.length > 1 ? 's' : '') + (alertas > 0 ? ' · ⚠️ ' + alertas + ' fora da faixa' : '');
+        alvo.appendChild(cab);
+
+        for (var k = 0; k < registros.length; k++) { alvo.appendChild(linhaHistoricoChecklist(registros[k], true)); }
+    }
+}
+
+function renderizarHistoricoPorItem(alvo) {
+    var vistos = {};
+    var opcoes = [];
+    for (var i = 0; i < checklistHistorico.length; i++) {
+        var r = checklistHistorico[i];
+        if (!vistos[r.item_id]) {
+            vistos[r.item_id] = true;
+            opcoes.push({ id: r.item_id, texto: (r.setor_nome ? r.setor_nome + ' · ' : '') + r.item_texto });
+        }
+    }
+    if (!checklistHistItemId || !vistos[checklistHistItemId]) { checklistHistItemId = opcoes.length ? opcoes[0].id : ''; }
+
+    var sel = document.createElement('select');
+    estilizarCampoChecklist(sel, '100%');
+    sel.style.fontSize = '14px';
+    sel.style.padding = '12px 14px';
+    sel.style.marginBottom = '6px';
+    sel.style.background = 'var(--surface)';
+    for (var o = 0; o < opcoes.length; o++) {
+        var op = document.createElement('option');
+        op.value = opcoes[o].id;
+        op.innerText = opcoes[o].texto;
+        if (opcoes[o].id === checklistHistItemId) { op.selected = true; }
+        sel.appendChild(op);
+    }
+    sel.onchange = function () { checklistHistItemId = sel.value; renderizarHistoricoChecklist(); };
+    alvo.appendChild(sel);
+
+    var registros = checklistHistorico.filter(function (r) { return r.item_id === checklistHistItemId; });
+    var comValor = registros.filter(function (r) { return r.valor !== null && r.valor !== undefined; });
+
+    if (comValor.length > 0) {
+        var nums = comValor.map(function (r) { return Number(r.valor); });
+        var soma = 0;
+        for (var s = 0; s < nums.length; s++) { soma += nums[s]; }
+        var resumo = document.createElement('div');
+        resumo.style.margin = '10px 0 4px';
+        resumo.style.padding = '12px 14px';
+        resumo.style.background = 'var(--surface)';
+        resumo.style.borderRadius = '14px';
+        resumo.style.fontFamily = "'Inter', sans-serif";
+        resumo.style.fontSize = '13px';
+        resumo.style.color = 'var(--text-dim)';
+        resumo.style.lineHeight = '1.7';
+        var u = comValor[0].unidade ? ' ' + comValor[0].unidade : '';
+        resumo.innerHTML = '<b style="color:var(--text)">Últimas ' + comValor.length + ' medidas</b><br>' +
+            'Menor: ' + Math.min.apply(null, nums) + u + ' · Maior: ' + Math.max.apply(null, nums) + u +
+            ' · Média: ' + (Math.round((soma / nums.length) * 10) / 10) + u;
+        alvo.appendChild(resumo);
+    }
+
+    for (var k = 0; k < registros.length; k++) { alvo.appendChild(linhaHistoricoChecklist(registros[k], false)); }
+}
+
+function linhaHistoricoChecklist(r, mostrarItem) {
+    var div = document.createElement('div');
+    div.className = 'product-item';
+    if (r.fora_faixa) { div.style.boxShadow = 'inset 0 0 0 1.5px #E8A33D'; }
+
+    var icone = document.createElement('div');
+    icone.className = 'product-icon';
+    icone.innerText = r.fora_faixa ? '⚠️' : '✅';
+
+    var info = document.createElement('div');
+    info.className = 'product-info';
+    var nome = document.createElement('div');
+    nome.className = 'product-name';
+    nome.innerText = mostrarItem ? ((r.setor_nome ? r.setor_nome + ' · ' : '') + r.item_texto) : dataBrChecklist(r.dia);
+    info.appendChild(nome);
+
+    var sub = document.createElement('div');
+    sub.style.fontSize = '12px';
+    sub.style.color = r.fora_faixa ? '#E8A33D' : 'var(--text-dim)';
+    sub.style.marginTop = '3px';
+    var partes = [];
+    if (!mostrarItem) { partes.push(horaBrChecklist(r.registrado_em)); } else { partes.push(horaBrChecklist(r.registrado_em)); }
+    if (r.usuario) { partes.push(r.usuario); }
+    sub.innerText = partes.join(' · ');
+    info.appendChild(sub);
+
+    div.appendChild(icone);
+    div.appendChild(info);
+
+    if (r.valor !== null && r.valor !== undefined) {
+        var valor = document.createElement('div');
+        valor.style.flexShrink = '0';
+        valor.style.fontFamily = "'Inter', sans-serif";
+        valor.style.fontSize = '16px';
+        valor.style.fontWeight = '700';
+        valor.style.color = r.fora_faixa ? '#E8A33D' : 'var(--text)';
+        valor.innerText = r.valor + (r.unidade ? ' ' + r.unidade : '');
+        div.appendChild(valor);
+    }
+
+    return div;
 }
 
 // ======== COTAÇÃO DE EVENTOS ========
