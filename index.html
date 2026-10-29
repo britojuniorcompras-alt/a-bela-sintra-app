@@ -397,6 +397,22 @@
     .nf-badge-futuro { background: rgba(167,159,190,0.18); color: var(--text-dim); }
     .nf-badge-pago { background: rgba(95,184,138,0.22); color: #7FD6A6; }
     .nf-pagar-btn { border: none; background: rgba(95,184,138,0.2); color: #7FD6A6; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 12px; padding: 7px 12px; border-radius: 12px; cursor: pointer; }
+    .nf-filtros { background: var(--surface); border-radius: 16px; padding: 14px; margin: 10px 0 0 0; }
+    .nf-filtros .nf-f-bloco { margin-bottom: 14px; }
+    .nf-filtros .nf-f-bloco:last-child { margin-bottom: 0; }
+    .nf-filtros .nf-f-rot { display: block; font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 700; color: var(--text-dim); letter-spacing: 0.3px; margin: 0 0 7px 2px; text-transform: uppercase; }
+    .nf-filtros select, .nf-filtros input { width: 100%; padding: 11px 12px; border: none; border-radius: 12px; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13.5px; outline: none; box-sizing: border-box; }
+    .nf-f-linha { display: flex; gap: 8px; align-items: center; }
+    .nf-f-linha span { font-family: 'Inter', sans-serif; font-size: 12px; color: var(--text-dim); flex-shrink: 0; }
+    .nf-fchips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .nf-fchip { border: 1.5px solid rgba(var(--accent-rgb), 0.28); background: transparent; color: var(--text-dim); border-radius: 999px; padding: 7px 12px; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+    .nf-fchip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+    .nf-f-acoes { display: flex; gap: 8px; margin-top: 14px; }
+    .nf-f-acoes button { flex: 1; border: none; border-radius: 12px; padding: 11px 8px; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; background: var(--surface-2); color: var(--text); }
+    .nf-f-resumo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 0 0; font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-dim); }
+    .nf-f-resumo b { color: var(--text); }
+    .nf-f-exportar { display: flex; gap: 8px; margin: 10px 0 0 0; }
+    .nf-f-exportar button { flex: 1; border: none; border-radius: 12px; padding: 11px 8px; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; background: var(--surface); color: var(--text); }
     .nf-vazio { text-align: center; color: var(--text-dim); padding: 40px 20px; font-size: 14px; line-height: 1.5; }
     .nf-form { padding: 20px 20px 30px 20px; max-width: 520px; margin: 0 auto; }
     .nf-atalhos { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
@@ -1096,7 +1112,12 @@
         <div id="nfAvisoLeitor" class="nf-status" style="display:none; margin:0;"></div>
     </div>
     <div class="search-bar" style="position: static; padding: 12px 20px 0 20px;">
-        <input type="text" id="nfBusca" placeholder="🔍 Buscar nota de qualquer mês" oninput="nfRenderizarLista()">
+        <input type="text" id="nfBusca" placeholder="🔍 Nº da nota, razão social ou CNPJ" oninput="nfRenderizarLista()">
+    </div>
+    <div style="padding: 8px 20px 0 20px;">
+        <button class="nf-protocolos-btn" id="nfBtnFiltros" onclick="nfAlternarPainelFiltros()">⚙️ Filtros avançados</button>
+        <div id="nfFiltrosPainel" class="nf-filtros" style="display:none;"></div>
+        <div id="nfFiltrosResumo"></div>
     </div>
     <div class="product-list" id="nfLista"></div>
     <div class="bottom-bar">
@@ -10520,6 +10541,7 @@ function nfRenderizarLista() {
     var mes = nfHojeIso().substr(0, 7);
     var busca = (document.getElementById('nfBusca').value || '').trim();
     var cont = document.getElementById('nfLista');
+    var temFiltro = !!busca || !nfFiltrosLimpos();
 
     // Resumo do mês (protocolo, não pagamento)
     var doMes = notasCache.filter(function(n) { var d = nfDiaProtocolo(n); return d && d.substr(0, 7) === mes; });
@@ -10531,18 +10553,21 @@ function nfRenderizarLista() {
         '<div class="nf-resumo-card"><div class="nf-rc-label">Notas no mês</div><div class="nf-rc-num">' + doMes.length + '</div><div class="nf-rc-valor">protocoladas</div></div>' +
         '<div class="nf-resumo-card nf-rc-total" style="grid-column:1 / -1;"><div class="nf-rc-label">Valor protocolado em ' + nfNomeMes(mes) + '</div><div class="nf-rc-num">' + nfMoeda(nfSomar(doMes)) + '</div></div>';
 
-    // Com busca: mostra as notas encontradas. Sem busca: as pastas do mês.
-    if (busca) {
-        nfFiltro = 'todas';
-        var lista = nfListaFiltrada();
-        if (!lista.length) { cont.innerHTML = '<div class="nf-vazio">Nada encontrado para "' + nfEsc(busca) + '".</div>'; return; }
+    // Com busca ou filtro: mostra as notas encontradas. Sem nada: as pastas do mês.
+    if (temFiltro) {
+        var lista = nfFiltrarNotas().sort(function(a, b) { return String(nfDiaProtocolo(b) || '').localeCompare(String(nfDiaProtocolo(a) || '')); });
+        nfResultadoFiltro = lista;
+        nfRenderizarResumoFiltro(lista);
+        if (!lista.length) { cont.innerHTML = '<div class="nf-vazio">Nenhuma nota com esses filtros.<br>Toque em <b>limpar</b> para recomeçar.</div>'; return; }
         var parcelas = nfParcelas();
         cont.innerHTML = '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:#E86FA0;"></span><span>🔍 ' + lista.length + (lista.length === 1 ? ' nota encontrada' : ' notas encontradas') + '</span>' +
             '<span class="nf-gh-info">' + nfMoeda(nfSomar(lista)) + '</span></div>' +
-            lista.sort(function(a, b) { return String(nfDiaProtocolo(b) || '').localeCompare(String(nfDiaProtocolo(a) || '')); })
-                 .slice(0, 100).map(function(n) { return nfCardHtml(n, parcelas[n.id]); }).join('');
+            lista.slice(0, 300).map(function(n) { return nfCardHtml(n, parcelas[n.id]); }).join('') +
+            (lista.length > 300 ? '<div class="nf-vazio">Mostrando as 300 primeiras. Aperte mais o filtro — o Excel do resultado traz todas.</div>' : '');
         return;
     }
+    nfResultadoFiltro = [];
+    nfRenderizarResumoFiltro([]);
 
     var dias = nfDiasDeProtocolo().filter(function(g) { return g.dia.substr(0, 7) === mes; });
     if (!dias.length) {
@@ -10581,6 +10606,287 @@ function nfCardHtml(n, parcela) {
         '<button class="nf-icone-btn" onclick="event.stopPropagation(); nfAbrirNota(\'' + n.id + '\')" aria-label="Editar">✏️</button>' +
         '</span>' +
         '</div></div>';
+}
+
+// ============================================================
+// FILTRO AVANÇADO DAS NOTAS
+// ============================================================
+var nfFiltros = { campo: 'tudo', dataBase: 'vencimento', de: '', ate: '', setores: [], situacao: 'todas', tipo: 'todos', vmin: '', vmax: '' };
+var nfPainelFiltrosAberto = false;
+var nfResultadoFiltro = [];
+
+function nfFiltrosLimpos() {
+    return nfFiltros.campo === 'tudo' && !nfFiltros.de && !nfFiltros.ate && nfFiltros.setores.length === 0 &&
+           nfFiltros.situacao === 'todas' && nfFiltros.tipo === 'todos' && !nfFiltros.vmin && !nfFiltros.vmax;
+}
+
+function nfLimparFiltros() {
+    nfFiltros = { campo: 'tudo', dataBase: 'vencimento', de: '', ate: '', setores: [], situacao: 'todas', tipo: 'todos', vmin: '', vmax: '' };
+    var b = document.getElementById('nfBusca');
+    if (b) { b.value = ''; }
+    nfRenderizarPainelFiltros();
+    nfRenderizarLista();
+}
+
+function nfAlternarPainelFiltros() {
+    nfPainelFiltrosAberto = !nfPainelFiltrosAberto;
+    document.getElementById('nfFiltrosPainel').style.display = nfPainelFiltrosAberto ? '' : 'none';
+    document.getElementById('nfBtnFiltros').innerText = nfPainelFiltrosAberto ? '⚙️ Esconder filtros' : '⚙️ Filtros avançados';
+    if (nfPainelFiltrosAberto) { nfRenderizarPainelFiltros(); }
+}
+
+function nfFSet(chave, valor) {
+    nfFiltros[chave] = valor;
+    nfRenderizarPainelFiltros();
+    nfRenderizarLista();
+}
+
+function nfFSetorAlternar(id) {
+    var i = nfFiltros.setores.indexOf(id);
+    if (i >= 0) { nfFiltros.setores.splice(i, 1); } else { nfFiltros.setores.push(id); }
+    nfRenderizarPainelFiltros();
+    nfRenderizarLista();
+}
+
+function nfFSituacao(v) { nfFSet('situacao', v); }
+function nfFTipo(v) { nfFSet('tipo', v); }
+
+function nfRenderizarPainelFiltros() {
+    var caixa = document.getElementById('nfFiltrosPainel');
+    if (!caixa || !nfPainelFiltrosAberto) { return; }
+
+    function chips(rotulo, opcoes, atual, fn) {
+        return '<div class="nf-f-bloco"><span class="nf-f-rot">' + rotulo + '</span><div class="nf-fchips">' +
+            opcoes.map(function (o) {
+                return '<button class="nf-fchip' + (atual === o[0] ? ' on' : '') + '" onclick="' + fn + '(\'' + o[0] + '\')">' + o[1] + '</button>';
+            }).join('') + '</div></div>';
+    }
+
+    var setoresChips = '<div class="nf-f-bloco"><span class="nf-f-rot">Setor' +
+        (nfFiltros.setores.length ? ' · ' + nfFiltros.setores.length + ' marcado' + (nfFiltros.setores.length > 1 ? 's' : '') : ' · todos') +
+        '</span><div class="nf-fchips">' +
+        NF_ABAS.map(function (a) {
+            var on = nfFiltros.setores.indexOf(a.id) >= 0;
+            return '<button class="nf-fchip' + (on ? ' on' : '') + '" onclick="nfFSetorAlternar(\'' + a.id + '\')">' + a.icone + ' ' + nfEsc(a.nome) + '</button>';
+        }).join('') + '</div></div>';
+
+    caixa.innerHTML =
+        '<div class="nf-f-bloco"><span class="nf-f-rot">O texto da busca procura em</span>' +
+        '<select onchange="nfFSet(\'campo\', this.value)">' +
+        [['tudo', 'Tudo (nº, razão social, CNPJ, obs.)'], ['numero', 'Só no número da nota'], ['razao', 'Só na razão social'], ['cnpj', 'Só no CNPJ']]
+            .map(function (o) { return '<option value="' + o[0] + '"' + (nfFiltros.campo === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
+        '</select></div>' +
+
+        '<div class="nf-f-bloco"><span class="nf-f-rot">Período</span>' +
+        '<select onchange="nfFSet(\'dataBase\', this.value)" style="margin-bottom:8px;">' +
+        [['vencimento', 'Pela data de vencimento'], ['emissao', 'Pela data de emissão'], ['protocolo', 'Pela data do protocolo']]
+            .map(function (o) { return '<option value="' + o[0] + '"' + (nfFiltros.dataBase === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
+        '</select>' +
+        '<div class="nf-f-linha"><span>De</span><input type="date" value="' + nfEsc(nfFiltros.de) + '" onchange="nfFSet(\'de\', this.value)">' +
+        '<span>até</span><input type="date" value="' + nfEsc(nfFiltros.ate) + '" onchange="nfFSet(\'ate\', this.value)"></div></div>' +
+
+        setoresChips +
+
+        chips('Situação', [['todas', 'Todas'], ['pendentes', 'Pendentes'], ['pagas', 'Pagas'], ['vencidas', 'Vencidas']], nfFiltros.situacao, 'nfFSituacao') +
+        chips('Tipo de documento', [['todos', 'Todos'], ['nota', 'Nota fiscal'], ['recibo', 'Recibo'], ['bonificada', 'Bonificada']], nfFiltros.tipo, 'nfFTipo') +
+
+        '<div class="nf-f-bloco"><span class="nf-f-rot">Faixa de valor</span>' +
+        '<div class="nf-f-linha"><span>De R$</span><input type="text" inputmode="decimal" value="' + nfEsc(nfFiltros.vmin) + '" placeholder="0,00" onchange="nfFSet(\'vmin\', this.value)">' +
+        '<span>até R$</span><input type="text" inputmode="decimal" value="' + nfEsc(nfFiltros.vmax) + '" placeholder="0,00" onchange="nfFSet(\'vmax\', this.value)"></div></div>' +
+
+        '<div class="nf-f-acoes"><button onclick="nfLimparFiltros()">↩ Limpar tudo</button>' +
+        '<button onclick="nfAlternarPainelFiltros()">✓ Pronto</button></div>';
+}
+
+function nfNumeroBr(txt) {
+    var s = String(txt == null ? '' : txt).replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
+    if (s === '') { return null; }
+    var n = Number(s);
+    return isNaN(n) ? null : n;
+}
+
+function nfDataDaNota(n) {
+    if (nfFiltros.dataBase === 'emissao') { return n.data_emissao ? String(n.data_emissao).substr(0, 10) : null; }
+    if (nfFiltros.dataBase === 'protocolo') { return nfDiaProtocolo(n); }
+    return n.vencimento ? String(n.vencimento).substr(0, 10) : null;
+}
+
+// Lista da tela de Notas Fiscais: texto buscado + filtros avançados.
+function nfFiltrarNotas() {
+    var bruto = (document.getElementById('nfBusca').value || '').trim();
+    var busca = bruto.toLowerCase();
+    var buscaDig = nfSoDigitos(bruto);
+    var vmin = nfNumeroBr(nfFiltros.vmin);
+    var vmax = nfNumeroBr(nfFiltros.vmax);
+    var hoje = nfHojeIso();
+
+    return notasCache.filter(function (n) {
+        if (busca) {
+            var achou = false;
+            if (nfFiltros.campo === 'numero') {
+                achou = String(n.numero_nota || '').toLowerCase().indexOf(busca) >= 0 ||
+                        (buscaDig.length > 0 && String(n.numero_nota || '').indexOf(buscaDig) >= 0);
+            } else if (nfFiltros.campo === 'razao') {
+                achou = String(n.razao_social || '').toLowerCase().indexOf(busca) >= 0;
+            } else if (nfFiltros.campo === 'cnpj') {
+                achou = buscaDig.length >= 2 && String(n.cnpj || '').indexOf(buscaDig) >= 0;
+            } else {
+                var alvo = ((n.razao_social || '') + ' ' + (n.numero_nota || '') + ' ' + (n.observacao || '') + ' ' + nfInfoSetor(n.setor).nome).toLowerCase();
+                achou = alvo.indexOf(busca) >= 0 ||
+                        (buscaDig.length >= 3 && ((n.cnpj || '').indexOf(buscaDig) >= 0 || (n.numero_nota || '').indexOf(buscaDig) >= 0));
+            }
+            if (!achou) { return false; }
+        }
+
+        if (nfFiltros.de || nfFiltros.ate) {
+            var d = nfDataDaNota(n);
+            if (!d) { return false; }
+            if (nfFiltros.de && d < nfFiltros.de) { return false; }
+            if (nfFiltros.ate && d > nfFiltros.ate) { return false; }
+        }
+
+        if (nfFiltros.setores.length && nfFiltros.setores.indexOf(nfInfoSetor(n.setor).id) < 0) { return false; }
+
+        if (nfFiltros.situacao === 'pendentes' && n.status === 'pago') { return false; }
+        if (nfFiltros.situacao === 'pagas' && n.status !== 'pago') { return false; }
+        if (nfFiltros.situacao === 'vencidas') {
+            if (n.status === 'pago') { return false; }
+            if (!n.vencimento || String(n.vencimento).substr(0, 10) >= hoje) { return false; }
+        }
+
+        if (nfFiltros.tipo === 'recibo' && n.tipo_doc !== 'recibo') { return false; }
+        if (nfFiltros.tipo === 'nota' && n.tipo_doc === 'recibo') { return false; }
+        if (nfFiltros.tipo === 'bonificada' && nfInfoSetor(n.setor).id !== 'bonificada') { return false; }
+
+        var v = Number(n.valor) || 0;
+        if (vmin !== null && v < vmin) { return false; }
+        if (vmax !== null && v > vmax) { return false; }
+
+        return true;
+    });
+}
+
+function nfRenderizarResumoFiltro(lista) {
+    var caixa = document.getElementById('nfFiltrosResumo');
+    if (!caixa) { return; }
+    var busca = (document.getElementById('nfBusca').value || '').trim();
+    if (!busca && nfFiltrosLimpos()) { caixa.innerHTML = ''; return; }
+
+    var partes = [];
+    if (busca) {
+        var ondeTexto = { tudo: '', numero: ' no nº', razao: ' na razão social', cnpj: ' no CNPJ' }[nfFiltros.campo] || '';
+        partes.push('"' + busca + '"' + ondeTexto);
+    }
+    if (nfFiltros.de || nfFiltros.ate) {
+        var base = { vencimento: 'venc.', emissao: 'emissão', protocolo: 'protocolo' }[nfFiltros.dataBase];
+        partes.push(base + ' ' + (nfFiltros.de ? nfDataBR(nfFiltros.de, true) : '...') + ' a ' + (nfFiltros.ate ? nfDataBR(nfFiltros.ate, true) : '...'));
+    }
+    if (nfFiltros.setores.length) {
+        partes.push(nfFiltros.setores.map(function (s) { return nfInfoSetor(s).nome; }).join(', '));
+    }
+    if (nfFiltros.situacao !== 'todas') { partes.push(nfFiltros.situacao); }
+    if (nfFiltros.tipo !== 'todos') { partes.push(nfFiltros.tipo); }
+    if (nfFiltros.vmin || nfFiltros.vmax) {
+        partes.push('R$ ' + (nfFiltros.vmin || '0') + ' a ' + (nfFiltros.vmax || 'sem teto'));
+    }
+
+    caixa.innerHTML =
+        '<div class="nf-f-resumo"><b>' + lista.length + (lista.length === 1 ? ' nota' : ' notas') + '</b> · <b>' + nfMoeda(nfSomar(lista)) + '</b>' +
+        (partes.length ? '<span>· ' + nfEsc(partes.join(' · ')) + '</span>' : '') +
+        '<button class="nf-fchip" style="margin-left:auto" onclick="nfLimparFiltros()">✕ limpar</button></div>' +
+        (lista.length ? '<div class="nf-f-exportar">' +
+            '<button onclick="nfExportarFiltroExcel()">📊 Excel do resultado</button>' +
+            '<button onclick="nfExportarFiltroWhats()">📤 Mandar no WhatsApp</button></div>' +
+            '<div id="nfFiltroAviso" class="nf-dica" style="margin:8px 2px 0 2px;"></div>' : '');
+}
+
+function nfTextoDoFiltro() {
+    var lista = nfResultadoFiltro;
+    var agora = new Date();
+    var texto = '🧾 *NOTAS ENCONTRADAS* (' + lista.length + ')\n' +
+        'Gerado em ' + agora.toLocaleDateString('pt-BR') + ' às ' + nfPad(agora.getHours()) + ':' + nfPad(agora.getMinutes()) +
+        (usuarioAtual ? ' por ' + usuarioAtual : '') + '\n\n';
+    lista.forEach(function (n) {
+        var partes = [n.razao_social || 'Fornecedor'];
+        partes.push(nfRotuloDoc(n));
+        if (n.data_emissao) { partes.push('emissão ' + nfDataBR(n.data_emissao, true)); }
+        if (n.vencimento) { partes.push('venc. ' + nfDataBR(n.vencimento, true)); }
+        partes.push(nfMoeda(n.valor));
+        partes.push(nfInfoSetor(n.setor).nome);
+        if (n.status === 'pago') { partes.push('PAGO'); }
+        texto += '• ' + partes.join(' — ') + '\n';
+    });
+    texto += '\n*TOTAL: ' + nfMoeda(nfSomar(lista)) + '*\n\n' + dadosFiscaisTexto();
+    return texto;
+}
+
+function nfExportarFiltroWhats() {
+    if (!nfResultadoFiltro.length) { alert('Nenhuma nota no resultado.'); return; }
+    window.open(linkWhatsApp(nfTextoDoFiltro()), '_blank');
+}
+
+function nfExportarFiltroExcel() {
+    if (!nfResultadoFiltro.length) { alert('Nenhuma nota no resultado.'); return; }
+    var aviso = document.getElementById('nfFiltroAviso');
+    if (aviso) { aviso.innerText = 'Gerando a planilha...'; }
+    nfGarantirExcel(function (err) {
+        if (err || !window.ExcelJS) {
+            if (aviso) { aviso.innerText = 'Não consegui carregar o gerador de Excel (sem internet?). Tente de novo.'; }
+            return;
+        }
+        var MOEDA = '_-"R$"\\ * #,##0.00_-;\\-"R$"\\ * #,##0.00_-;_-"R$"\\ * "-"??_-;_-@_-';
+        var wb = new ExcelJS.Workbook();
+        wb.creator = 'A Bela Sintra';
+        var ws = wb.addWorksheet('Notas encontradas', {
+            pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+        });
+        ws.columns = [
+            { header: 'Protocolo', key: 'p', width: 13 },
+            { header: 'Emissão', key: 'e', width: 13 },
+            { header: 'Vencimento', key: 'v', width: 13 },
+            { header: 'Fornecedor', key: 'f', width: 46 },
+            { header: 'CNPJ', key: 'c', width: 20 },
+            { header: 'Documento', key: 'd', width: 16 },
+            { header: 'Setor', key: 's', width: 22 },
+            { header: 'Valor', key: 'val', width: 16 },
+            { header: 'Situação', key: 'st', width: 12 },
+            { header: 'Observação', key: 'o', width: 40 }
+        ];
+        ws.getRow(1).font = { bold: true };
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+        nfResultadoFiltro.forEach(function (n) {
+            var l = ws.addRow({
+                p: nfDataExcel(nfDiaProtocolo(n)), e: nfDataExcel(n.data_emissao), v: nfDataExcel(n.vencimento),
+                f: n.razao_social || '', c: n.cnpj || '', d: nfRotuloDoc(n), s: nfInfoSetor(n.setor).nome,
+                val: Number(n.valor) || 0, st: n.status === 'pago' ? 'Pago' : 'Pendente', o: n.observacao || ''
+            });
+            l.getCell('p').numFmt = 'dd/mm/yyyy';
+            l.getCell('e').numFmt = 'dd/mm/yyyy';
+            l.getCell('v').numFmt = 'dd/mm/yyyy';
+            l.getCell('val').numFmt = MOEDA;
+        });
+
+        var tot = ws.addRow({ f: 'TOTAL (' + nfResultadoFiltro.length + ' notas)', val: nfSomar(nfResultadoFiltro) });
+        tot.font = { bold: true };
+        tot.getCell('val').numFmt = MOEDA;
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 10 } };
+
+        wb.xlsx.writeBuffer().then(function (buf) {
+            var nome = 'notas-filtradas-' + nfHojeIso() + '.xlsx';
+            var tipo = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            var blob = new Blob([buf], { type: tipo });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = nome;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+            if (aviso) { aviso.innerText = '✅ Planilha baixada: ' + nome; }
+        }).catch(function () {
+            if (aviso) { aviso.innerText = 'Não consegui gerar a planilha. Tente de novo.'; }
+        });
+    });
 }
 
 function nfMudarFiltro(f) { nfFiltro = f; nfRenderizarLista(); }
