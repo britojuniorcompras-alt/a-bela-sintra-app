@@ -1514,6 +1514,7 @@
     </div>
     <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
         <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirGerenciarChecklistDiaria()">✏️ Editar itens</button>
+        <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirDocsSetor()">📂 Documentos</button>
         <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="verResumoChecklistDiaria()">Enviar resumo</button>
     </div>
     <div class="product-list" id="checklistDiariaLista"></div>
@@ -1558,6 +1559,23 @@
         <a id="checklistDiariaBtnWhatsApp" class="btn-whatsapp-link" href="#" target="_blank">Enviar via WhatsApp</a>
         <a id="checklistDiariaBtnEmail" class="btn-email-link" href="#">Enviar por E-mail</a>
     </div>
+</div>
+
+<input type="file" id="checklistArquivo" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx,image/*,application/pdf" style="display:none" onchange="checklistArquivoEscolhido(event)">
+
+<div id="checklist-docs-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('checklist-setor-screen')">←</button>
+        <h2 id="checklistDocsTitulo">Documentos</h2>
+    </div>
+    <div style="padding: 4px 20px 0 20px;">
+        <button type="button" class="ficha-add-ingrediente-btn" style="width:100%; box-sizing:border-box;"
+                onclick="checklistEscolherArquivo({ setor_id: checklistSetorAtivo })">📎 Guardar um documento neste setor</button>
+        <p style="font-family:'Inter',sans-serif; font-size:12px; color:var(--text-dim); line-height:1.5; margin:8px 2px 0;">
+            PDF, foto, Word ou Excel, até 25 MB. Os laudos de cada serviço ficam anexados ao próprio serviço — use o ✔ Refiz no item.
+        </p>
+    </div>
+    <div class="product-list" id="checklistDocsLista"></div>
 </div>
 
 <div id="fornecedores-screen" class="screen">
@@ -3047,7 +3065,7 @@ function checklistUpsert(registro, callback) {
 
 // ---------- abertura e sincronização ----------
 
-var CHECKLIST_VERSAO = '30/10/2026 b';
+var CHECKLIST_VERSAO = '30/10/2026 c';
 
 // Diagnóstico: bate em cada tabela e mostra o que o servidor respondeu,
 // com o código do erro. Serve para eu saber o que está acontecendo no aparelho.
@@ -3229,6 +3247,10 @@ function sincronizarChecklistDiariaSupabase() {
         itensSóAqui.forEach(function (i) { checklistReenviarItem(i); });
         checklistRedesenhar();
     });
+
+    if (!checklistDocsLidos) {
+        checklistCarregarDocs(function () { checklistRedesenhar(); renderizarListaChecklistDiaria(); });
+    }
 
     supabaseGet('checklist_historico', 'select=*&dia=eq.' + chaveDiaChecklist(), function (err, dados) {
         if (err || !dados) { return; }
@@ -3467,6 +3489,210 @@ function abrirSetorChecklist(setorId) {
     sincronizarChecklistDiariaSupabase();
 }
 
+// ============================================================
+// LAUDOS E DOCUMENTOS DA CHECKLIST
+// ============================================================
+// Cada execução de serviço (limpeza de coifa, recarga de extintor)
+// pode ter o laudo anexado. Cada setor também tem uma pasta para
+// documentos avulsos: contrato, projeto, manual.
+
+var checklistDocs = [];          // tudo que já foi carregado do servidor
+var checklistDocsLidos = false;
+var checklistDocAlvo = null;     // {setor_id, item_id, registro_id} do envio em curso
+
+var CHK_TIPOS_OK = '.pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx,image/*,application/pdf';
+var CHK_TAMANHO_MAX = 25 * 1024 * 1024;   // 25 MB
+
+function checklistIconeArquivo(nome, tipo) {
+    var n = String(nome || '').toLowerCase();
+    var t = String(tipo || '').toLowerCase();
+    if (t.indexOf('pdf') >= 0 || /\.pdf$/.test(n)) { return '📕'; }
+    if (t.indexOf('image') >= 0 || /\.(jpe?g|png|webp|heic|gif)$/.test(n)) { return '🖼️'; }
+    if (/\.(xls|xlsx|csv)$/.test(n)) { return '📗'; }
+    if (/\.(doc|docx)$/.test(n)) { return '📘'; }
+    return '📎';
+}
+
+function checklistTamanhoLegivel(bytes) {
+    var b = Number(bytes) || 0;
+    if (b < 1024) { return b + ' B'; }
+    if (b < 1024 * 1024) { return Math.round(b / 1024) + ' KB'; }
+    return (Math.round(b / (1024 * 1024) * 10) / 10) + ' MB';
+}
+
+function checklistCarregarDocs(cb) {
+    supabaseGet('checklist_documentos', 'select=*&order=criado_em.desc', function (err, dados) {
+        if (err || !dados) { if (cb) { cb(err); } return; }
+        checklistDocs = dados;
+        checklistDocsLidos = true;
+        if (cb) { cb(null); }
+    });
+}
+
+function checklistDocsDoItem(itemId) {
+    return checklistDocs.filter(function (d) { return d.item_id === itemId; });
+}
+
+function checklistDocsDoSetor(setorId) {
+    return checklistDocs.filter(function (d) {
+        return (d.setor_id || '') === (setorId || '') && !d.item_id;
+    });
+}
+
+function checklistDocDoRegistro(registroId) {
+    for (var i = 0; i < checklistDocs.length; i++) {
+        if (checklistDocs[i].registro_id === registroId) { return checklistDocs[i]; }
+    }
+    return null;
+}
+
+// Abre o seletor de arquivo já sabendo a que o documento pertence.
+function checklistEscolherArquivo(alvo) {
+    checklistDocAlvo = alvo || {};
+    var campo = document.getElementById('checklistArquivo');
+    if (!campo) { return; }
+    campo.value = '';
+    campo.click();
+}
+
+function checklistArquivoEscolhido(evento) {
+    var arquivo = evento && evento.target && evento.target.files ? evento.target.files[0] : null;
+    if (!arquivo) { return; }
+    if (arquivo.size > CHK_TAMANHO_MAX) {
+        alert('Esse arquivo tem ' + checklistTamanhoLegivel(arquivo.size) + '.\n\nO limite é 25 MB. Se for um PDF escaneado, peça para a empresa mandar em qualidade menor.');
+        return;
+    }
+    checklistEnviarArquivo(arquivo, checklistDocAlvo || {});
+}
+
+function checklistEnviarArquivo(arquivo, alvo) {
+    var limpo = String(arquivo.name || 'documento')
+        .replace(/[^A-Za-z0-9._-]+/g, '_').replace(/_+/g, '_').slice(-80);
+    var caminho = 'laudo_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '_' + limpo;
+
+    checklistDocEnviando = true;
+    checklistRedesenhar();
+    renderizarListaChecklistDiaria();
+
+    fetch(SUPABASE_URL + '/storage/v1/object/laudos/' + encodeURIComponent(caminho), {
+        method: 'POST',
+        headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_KEY,
+            'Content-Type': arquivo.type || 'application/octet-stream'
+        },
+        body: arquivo
+    }).then(function (r) {
+        if (!r.ok) { return r.text().then(function (c) { throw new Error('status ' + r.status + ' ' + c.slice(0, 120)); }); }
+        var registro = {
+            id: 'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            setor_id: alvo.setor_id || null,
+            item_id: alvo.item_id || null,
+            registro_id: alvo.registro_id || null,
+            nome: arquivo.name || limpo,
+            url: SUPABASE_URL + '/storage/v1/object/public/laudos/' + encodeURIComponent(caminho),
+            caminho: caminho,
+            tipo: arquivo.type || null,
+            tamanho: arquivo.size || null,
+            usuario: usuarioAtual || null,
+            criado_em: new Date().toISOString()
+        };
+        checklistDocs.unshift(registro);
+        supabasePost('checklist_documentos', registro, function (err) {
+            checklistDocEnviando = false;
+            if (err) { checklistAvisarFalha(err, 'o registro do documento "' + registro.nome + '"'); }
+            checklistRedesenhar();
+            renderizarListaChecklistDiaria();
+            if (checklistTelaAtiva('checklist-docs-screen')) { renderizarDocsSetor(); }
+        });
+    }).catch(function (e) {
+        checklistDocEnviando = false;
+        checklistAvisarFalha(e, 'o arquivo "' + (arquivo.name || '') + '"');
+        checklistRedesenhar();
+        renderizarListaChecklistDiaria();
+        if (checklistTelaAtiva('checklist-docs-screen')) { renderizarDocsSetor(); }
+    });
+}
+
+var checklistDocEnviando = false;
+
+function checklistAbrirDoc(url) {
+    try { window.open(url, '_blank'); } catch (e) { location.href = url; }
+}
+
+function checklistApagarDoc(id) {
+    var doc = null;
+    for (var i = 0; i < checklistDocs.length; i++) { if (checklistDocs[i].id === id) { doc = checklistDocs[i]; break; } }
+    if (!doc) { return; }
+    if (!confirm('Tirar "' + doc.nome + '" da lista?\n\nO arquivo deixa de aparecer no app.')) { return; }
+    checklistDocs = checklistDocs.filter(function (d) { return d.id !== id; });
+    supabaseDelete('checklist_documentos', 'id=eq.' + encodeURIComponent(id), function (err) {
+        if (err) { checklistAvisarFalha(err, 'a exclusão do documento'); }
+    });
+    renderizarListaChecklistDiaria();
+    if (checklistTelaAtiva('checklist-docs-screen')) { renderizarDocsSetor(); }
+}
+
+// ---------- pasta de documentos do setor ----------
+
+function abrirDocsSetor() {
+    if (checklistSetorAtivo === null || checklistSetorAtivo === undefined) { return; }
+    var setor = checklistSetorPorId(checklistSetorAtivo);
+    document.getElementById('checklistDocsTitulo').innerText =
+        (setor ? (setor.icone || '') + ' ' : '') + 'Documentos' + (setor ? ' · ' + setor.nome : '');
+    trocarTela('checklist-docs-screen');
+    renderizarDocsSetor();
+    checklistCarregarDocs(function () { if (checklistTelaAtiva('checklist-docs-screen')) { renderizarDocsSetor(); } });
+}
+
+function renderizarDocsSetor() {
+    var alvo = document.getElementById('checklistDocsLista');
+    if (!alvo) { return; }
+
+    var daPasta = checklistDocsDoSetor(checklistSetorAtivo);
+    var dosItens = checklistItensDoSetor(checklistSetorAtivo).map(function (it) {
+        return { item: it, docs: checklistDocsDoItem(it.id) };
+    }).filter(function (x) { return x.docs.length; });
+
+    var html = '';
+    if (checklistDocEnviando) {
+        html += '<div class="nf-vazio">Enviando o arquivo...</div>';
+    }
+
+    html += '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:#9B8FD1;"></span>' +
+        '<span>📂 Pasta do setor</span><span class="nf-gh-info">' + daPasta.length +
+        (daPasta.length === 1 ? ' arquivo' : ' arquivos') + '</span></div>';
+
+    html += daPasta.length
+        ? daPasta.map(linhaDocChecklist).join('')
+        : '<div class="nf-vazio" style="padding:18px 20px;">Nada aqui ainda. Use o botão abaixo para guardar contrato, projeto, manual — o que não pertence a um serviço específico.</div>';
+
+    if (dosItens.length) {
+        html += '<div class="nf-grupo-header" style="margin-top:22px;"><span class="nf-gh-bolinha" style="background:#7FD6A6;"></span>' +
+            '<span>📑 Laudos dos serviços</span></div>';
+        dosItens.forEach(function (x) {
+            html += '<div style="font-family:\'Inter\',sans-serif;font-size:12.5px;font-weight:700;color:var(--text-dim);margin:12px 2px 6px;">' +
+                cimEscSimples(x.item.texto) + '</div>' +
+                x.docs.map(linhaDocChecklist).join('');
+        });
+    }
+
+    alvo.innerHTML = html;
+}
+
+function linhaDocChecklist(d) {
+    var data = d.criado_em ? nfDataBR(String(d.criado_em).substr(0, 10)) : '';
+    return '<div class="fn-linha">' +
+        '<div style="font-size:22px;flex-shrink:0;">' + checklistIconeArquivo(d.nome, d.tipo) + '</div>' +
+        '<div class="fn-linha-info" onclick="checklistAbrirDoc(\'' + encodeURI(d.url) + '\')" style="cursor:pointer;">' +
+        '<b>' + cimEscSimples(d.nome) + '</b><small>' + data +
+        (d.tamanho ? ' · ' + checklistTamanhoLegivel(d.tamanho) : '') +
+        (d.usuario ? ' · ' + cimEscSimples(d.usuario) : '') + '</small></div>' +
+        '<button class="nf-icone-btn" title="Abrir" onclick="checklistAbrirDoc(\'' + encodeURI(d.url) + '\')">↗</button>' +
+        '<button class="nf-icone-btn" title="Tirar da lista" onclick="checklistApagarDoc(\'' + d.id + '\')">🗑️</button>' +
+        '</div>';
+}
+
 // ---------- itens de validade (extintor, coifa, filtro...) ----------
 
 function checklistSomarMeses(iso, meses) {
@@ -3551,14 +3777,19 @@ function checklistRefazerServico(itemId) {
 
     // guarda no histórico que o serviço foi refeito
     var setor = checklistSetorPorId(item.setor_id);
+    var idRegistro = isoFeito + '|' + item.id;
     checklistUpsert({
-        id: isoFeito + '|' + item.id,
+        id: idRegistro,
         dia: isoFeito, item_id: item.id, item_texto: item.texto,
         setor_id: item.setor_id || null, setor_nome: setor ? setor.nome : null,
         valor: null, unidade: null, fora_faixa: false,
         feito_em: isoFeito, vence_em: isoVence,
         usuario: usuarioAtual || null, registrado_em: new Date().toISOString()
     }, function () { });
+
+    if (confirm('Serviço registrado.\n\nQuer anexar o laudo agora?\n\nOK = escolher o arquivo (PDF, foto, Word, Excel)\nCancelar = anexar depois')) {
+        checklistEscolherArquivo({ setor_id: item.setor_id || null, item_id: item.id, registro_id: idRegistro });
+    }
 }
 
 function checklistDataDigitada(txt) {
@@ -3766,6 +3997,19 @@ function linhaValidadeChecklist(item) {
         feito.innerText = 'Último serviço: ' + nfDataBR(item.feito_em) +
             (item.periodicidade_meses ? ' · a cada ' + item.periodicidade_meses + (item.periodicidade_meses === 1 ? ' mês' : ' meses') : '');
         info.appendChild(feito);
+    }
+
+    var docs = checklistDocsDoItem(item.id);
+    if (docs.length) {
+        var laudo = document.createElement('div');
+        laudo.style.fontSize = '11.5px';
+        laudo.style.marginTop = '3px';
+        laudo.style.color = 'var(--accent)';
+        laudo.style.cursor = 'pointer';
+        laudo.innerText = checklistIconeArquivo(docs[0].nome, docs[0].tipo) + ' ' + docs[0].nome +
+            (docs.length > 1 ? '  (+' + (docs.length - 1) + ')' : '');
+        laudo.onclick = function (e) { e.stopPropagation(); checklistAbrirDoc(docs[0].url); };
+        info.appendChild(laudo);
     }
 
     var botao = document.createElement('button');
