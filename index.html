@@ -431,6 +431,7 @@
     .fn-linha-info b { display: block; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; word-break: break-word; }
     .fn-linha-info small { display: block; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); margin-top: 3px; }
     .fn-linha-valor { flex-shrink: 0; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; color: var(--text); }
+    .nf-badge-protocolo { background: rgba(232,111,160,0.18); color: #E86FA0; }
     .nf-vazio { text-align: center; color: var(--text-dim); padding: 40px 20px; font-size: 14px; line-height: 1.5; }
     .nf-form { padding: 20px 20px 30px 20px; max-width: 520px; margin: 0 auto; }
     .nf-atalhos { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
@@ -1227,6 +1228,9 @@
         <h2>Protocolos por dia</h2>
     </div>
     <div style="padding: 14px 20px 0 20px; font-size: 13px; color: var(--text-dim); line-height: 1.45;">Toque no dia para ver, editar ou excluir notas e gerar a planilha no formato de sempre (uma aba por setor).</div>
+    <div class="search-bar" style="position: static; padding: 12px 20px 0 20px;">
+        <input type="text" id="nfBuscaProtocolo" placeholder="🔍 Em qual protocolo está a nota? (nº, fornecedor ou CNPJ)" oninput="nfProtocoloBuscar(this.value)">
+    </div>
     <div class="product-list" id="nfDiasLista"></div>
 </div>
 
@@ -10665,6 +10669,7 @@ function nfCardHtml(n, parcela) {
     if (n.numero_nota || n.tipo_doc === 'recibo') meta.push(nfEsc(nfRotuloDoc(n)));
     if (parcela) meta.push('Parcela ' + parcela);
     if (n.data_emissao) meta.push('Emissão ' + nfDataBR(n.data_emissao, true));
+    if (nfDiaProtocolo(n)) meta.push('📅 Protocolo ' + nfDataBR(nfDiaProtocolo(n), true));
     if (nfVisao !== 'setor') meta.push(setor.icone + ' ' + nfEsc(setor.nome));
     if (n.foto_url) meta.push('📸');
     if (n.observacao) meta.push('💬 ' + nfEsc(n.observacao));
@@ -11361,9 +11366,61 @@ function nfCardProtocolo(g, icones, pend) {
         (pend ? ' · <span style="color:#F2C94C;">⚠️ ' + pend + ' para conferir</span>' : '') + '</div></div>';
 }
 
+var nfBuscaProtocoloTexto = '';
+
+function nfProtocoloBuscar(v) {
+    nfBuscaProtocoloTexto = v || '';
+    nfRenderizarProtocolos();
+}
+
+// Procura a nota e diz em qual protocolo ela foi entregue — serve para conferir
+// ou para achar uma nota que sumiu.
+function nfRenderizarBuscaProtocolo(cont, dias) {
+    var bruto = nfBuscaProtocoloTexto.trim();
+    var termo = bruto.toLowerCase();
+    var digitos = nfSoDigitos(bruto);
+
+    var achados = [];
+    dias.forEach(function(g) {
+        g.notas.forEach(function(n) {
+            var alvo = ((n.razao_social || '') + ' ' + (n.numero_nota || '') + ' ' + (n.observacao || '')).toLowerCase();
+            var bate = alvo.indexOf(termo) >= 0 ||
+                (digitos.length >= 2 && String(n.numero_nota || '').indexOf(digitos) >= 0) ||
+                (digitos.length >= 3 && String(n.cnpj || '').indexOf(digitos) >= 0);
+            if (bate) { achados.push({ nota: n, grupo: g }); }
+        });
+    });
+
+    if (!achados.length) {
+        cont.innerHTML = '<div class="nf-vazio">Nenhuma nota encontrada para "' + nfEsc(bruto) + '".<br><br>' +
+            'Se ela não aparece aqui, é porque <b>nunca foi protocolada</b> no app — pode ser esse o extravio.</div>';
+        return;
+    }
+
+    achados.sort(function(a, b) { return String(b.grupo.dia).localeCompare(String(a.grupo.dia)); });
+
+    cont.innerHTML = '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:#E86FA0;"></span>' +
+        '<span>🔍 ' + achados.length + (achados.length === 1 ? ' nota encontrada' : ' notas encontradas') + '</span>' +
+        '<span class="nf-gh-info">' + nfMoeda(nfSomar(achados.map(function(a) { return a.nota; }))) + '</span></div>' +
+        achados.slice(0, 120).map(function(a) {
+            var n = a.nota, g = a.grupo, s = nfInfoSetor(n.setor);
+            return '<div class="nf-card" style="--cor:' + s.cor + ';" onclick="nfAbrirDia(\'' + g.id + '\')">' +
+                '<div class="nf-card-topo"><div class="nf-card-nome">' + nfEsc(n.razao_social || 'Fornecedor sem nome') + '</div>' +
+                '<div class="nf-card-valor">' + nfMoeda(n.valor) + '</div></div>' +
+                '<div class="nf-card-meta">' + nfEsc(nfRotuloDoc(n)) + ' · ' + s.icone + ' ' + nfEsc(s.nome) +
+                (n.data_emissao ? ' · Emissão ' + nfDataBR(n.data_emissao, true) : '') +
+                (n.foto_url ? ' · 📸' : '') + '</div>' +
+                '<div class="nf-card-rodape"><span class="nf-badge nf-badge-protocolo">📅 Protocolo de ' +
+                nfDiaSemana(g.dia) + ', ' + nfDataBR(g.dia) + '</span>' +
+                '<span style="font-size:11.5px;color:var(--text-dim);">toque para abrir o dia →</span></div></div>';
+        }).join('') +
+        (achados.length > 120 ? '<div class="nf-vazio">Mostrando as 120 primeiras. Escreva mais para afinar.</div>' : '');
+}
+
 function nfRenderizarProtocolos() {
     var cont = document.getElementById('nfDiasLista');
     var dias = nfDiasDeProtocolo();
+    if (nfBuscaProtocoloTexto.trim()) { nfRenderizarBuscaProtocolo(cont, dias); return; }
     if (!dias.length) {
         cont.innerHTML = '<div class="nf-vazio">Nenhum protocolo ainda.<br>Use <b>📥 Importar planilhas antigas</b> para trazer o histórico.</div>';
         return;
@@ -11400,6 +11457,9 @@ function nfRenderizarProtocolos() {
 }
 
 function nfAbrirProtocolos() {
+    nfBuscaProtocoloTexto = '';
+    var campo = document.getElementById('nfBuscaProtocolo');
+    if (campo) { campo.value = ''; }
     var antes = nfDiasDeProtocolo().length;
     nfRenderizarProtocolos();
     trocarTela('protocolos-screen');
