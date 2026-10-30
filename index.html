@@ -12576,7 +12576,8 @@ var NF_BLOCOS = [
     { id: 'manut',      nome: 'Manutenção e Gráfica', col: 'F', valCol: 'H', linha0: 31, soma: false, icone: '🛠️' },
     { id: 'destilados', nome: 'Destilados',           col: 'K', valCol: 'M', linha0: 31, soma: true,  icone: '🥃' },
     { id: 'carnes',     nome: 'Carnes e aves',        col: 'P', valCol: 'R', linha0: 31, soma: true,  icone: '🥩' },
-    { id: 'aguas',      nome: 'Águas',                col: 'U', valCol: 'W', linha0: 31, soma: true,  icone: '💧' }
+    { id: 'aguas',      nome: 'Águas',                col: 'U', valCol: 'W', linha0: 31, soma: true,  icone: '💧' },
+    { id: 'batatas',    nome: 'Batatas',              col: 'A', valCol: 'C', linha0: 56, soma: true,  icone: '🥔' }
 ];
 var nfMesControle = nfHojeIso().substr(0, 7);
 var lancamentosCache = nfLerLancamentos();
@@ -12589,7 +12590,7 @@ function nfBlocoDaNota(n) {
     var s = nfInfoSetor(n.setor).id;
     if (s === 'peixes') return 'ceagesp';
     if (s === 'gerais') return 'secos';   // a aba GERAIS inteira entra em Estoque de secos
-    if (s === 'vinhos' || s === 'refri' || s === 'limpeza' || s === 'destilados' || s === 'carnes' || s === 'aguas') return s;
+    if (s === 'vinhos' || s === 'refri' || s === 'limpeza' || s === 'destilados' || s === 'carnes' || s === 'aguas' || s === 'batatas') return s;
     if (s === 'caixa') return 'caixa';
     if (s === 'manutencao' || s === 'grafica') return 'manut';
     if (s === 'azeite' || s === 'nenzao') return 'chegando';
@@ -12829,7 +12830,7 @@ function nfMontarAbaControle(ws, dados) {
     // ---- os dez blocos ----
     NF_BLOCOS.forEach(function(b) {
         var cD = ws.getColumn(b.col).number, cV = ws.getColumn(b.valCol).number;
-        var lTit = b.linha0 - 2, lCab = b.linha0 - 1, lTot = b.linha0 === 6 ? 26 : 51;
+        var lTit = b.linha0 - 2, lCab = b.linha0 - 1, lTot = b.linha0 + 20;   // 20 linhas de lançamento + a linha do total
         nfCxCaixa(ws, lTit, cD, cV + 1, b.nome, {
             font: { name: 'Baskerville Old Face', size: 12 }, border: nfCxBorda(), alignment: centro
         });
@@ -12887,7 +12888,11 @@ function nfMontarAbaControle(ws, dados) {
         font: { name: 'Calibri', size: 22 }, fill: nfCxFundo(NF_CX.LARANJA), border: nfCxBorda('medium'), alignment: centro, numFmt: NF_CX.MOEDA
     }, true);
     ws.mergeCells('J57:N58');
-    nfCxCaixa(ws, 57, 16, 19, { formula: 'C26+H26+M26+R26+W26+M51+R51+W51', result: dados.protocoladas }, {
+    // a soma dos blocos que entram no total, montada a partir do NF_BLOCOS —
+    // assim um bloco novo (ex: Batatas) já entra na fórmula sem precisar editar aqui
+    var celulasSoma = NF_BLOCOS.filter(function(b) { return b.soma; })
+        .map(function(b) { return b.valCol + (b.linha0 + 20); }).join('+');
+    nfCxCaixa(ws, 57, 16, 19, { formula: celulasSoma, result: dados.protocoladas }, {
         font: { name: 'Calibri', size: 22, color: { argb: NF_CX.VERMELHO } }, fill: nfCxFundo(NF_CX.AMARELO), border: nfCxBorda(), alignment: centro, numFmt: NF_CX.MOEDA
     }, true);
     ws.mergeCells('P57:S58');
