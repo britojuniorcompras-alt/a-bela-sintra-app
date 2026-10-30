@@ -1480,6 +1480,10 @@
         <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirHistoricoChecklist()">🕘 Histórico</button>
         <button type="button" class="ficha-add-ingrediente-btn" style="flex:0 0 auto;" title="Buscar de novo no servidor" onclick="checklistRecarregar()">🔄</button>
     </div>
+    <div style="padding: 8px 20px 0 20px;">
+        <button type="button" class="ficha-add-ingrediente-btn" style="width:100%; box-sizing:border-box;" onclick="checklistTestarConexao()">🧪 Testar conexão com o servidor</button>
+        <div id="checklistDiag"></div>
+    </div>
     <div id="checklistAvisos" style="padding: 10px 20px 0 20px;"></div>
     <div class="product-list" id="checklistSetoresLista"></div>
     <div id="checklistVersao" style="text-align:center; font-family:'Inter',sans-serif; font-size:11px; color:var(--text-dim); padding:4px 20px 20px;"></div>
@@ -3043,7 +3047,46 @@ function checklistUpsert(registro, callback) {
 
 // ---------- abertura e sincronização ----------
 
-var CHECKLIST_VERSAO = '30/10/2026';
+var CHECKLIST_VERSAO = '30/10/2026 b';
+
+// Diagnóstico: bate em cada tabela e mostra o que o servidor respondeu,
+// com o código do erro. Serve para eu saber o que está acontecendo no aparelho.
+function checklistTestarConexao() {
+    var alvo = document.getElementById('checklistDiag');
+    if (!alvo) { return; }
+    var tabelas = ['checklist_setores', 'checklist_diaria_itens', 'checklist_historico', 'notas_fiscais'];
+    var linhas = [];
+    alvo.innerHTML = '<div class="chk-avisos" style="margin-top:8px;"><div class="chk-avisos-tit">🧪 Testando...</div></div>';
+
+    function pintar() {
+        alvo.innerHTML = '<div class="chk-avisos" style="margin-top:8px;">' +
+            '<div class="chk-avisos-tit">🧪 Resultado do teste</div>' +
+            '<div style="font-family:monospace;font-size:11.5px;line-height:1.7;color:var(--text-dim);white-space:pre-wrap;word-break:break-word;">' +
+            linhas.map(cimEscSimples).join('\n') + '</div>' +
+            '<div style="font-size:12px;color:var(--text-dim);margin-top:8px;">Tire um print desta caixa e mande para quem cuida do app.</div></div>';
+    }
+
+    linhas.push('Aparelho: ' + (navigator.userAgent || '').substr(0, 60));
+    linhas.push('Versão: ' + CHECKLIST_VERSAO);
+    linhas.push('');
+
+    var pendente = tabelas.length;
+    tabelas.forEach(function (tab) {
+        var inicio = Date.now();
+        fetch(SUPABASE_URL + '/rest/v1/' + tab + '?select=*&limit=1', { headers: supabaseHeaders() })
+            .then(function (r) {
+                return r.text().then(function (corpo) {
+                    linhas.push(tab + ': HTTP ' + r.status + ' (' + (Date.now() - inicio) + 'ms)');
+                    if (!r.ok) { linhas.push('   ' + corpo.substr(0, 180)); }
+                    pendente--; if (!pendente) { pintar(); }
+                });
+            })
+            .catch(function (e) {
+                linhas.push(tab + ': FALHOU — ' + (e && e.message ? e.message : 'sem resposta'));
+                pendente--; if (!pendente) { pintar(); }
+            });
+    });
+}
 
 function checklistRecarregar() {
     checklistFalhouLer = false;
@@ -3059,6 +3102,8 @@ function checklistAtualizarApp() {
 }
 
 function abrirChecklistDireto() {
+    var diag = document.getElementById('checklistDiag');
+    if (diag) { diag.innerHTML = ''; }
     checklistSetorAtivo = null;
     trocarTela('checklistdiaria-screen');
     renderizarSetoresChecklist();
@@ -3129,7 +3174,12 @@ function checklistReenviarItem(i) {
 
 function sincronizarChecklistDiariaSupabase() {
     supabaseGet('checklist_setores', 'select=*&order=ordem.asc,criado_em.asc', function (err, dados) {
-        if (err || !dados) { checklistFalhouLer = true; checklistRedesenhar(); return; }
+        if (err || !dados) {
+            checklistFalhouLer = true;
+            checklistUltimoErro = 'ler os setores — ' + ((err && err.message) ? err.message : 'sem resposta');
+            checklistRedesenhar();
+            return;
+        }
         checklistFalhouLer = false;
         // O que foi criado neste aparelho e ainda não chegou ao servidor NÃO pode
         // ser apagado pela sincronização — tenta mandar de novo e mantém na tela.
@@ -3198,6 +3248,7 @@ function checklistRedesenhar() {
 function renderizarSetoresChecklist() {
     var lista = document.getElementById('checklistSetoresLista');
     if (!lista) { return; }
+    checklistPintarAvisos();
     lista.innerHTML = '';
 
     if (checklistSetores.length === 0 && !checklistItensDoSetor('').length) {
@@ -3207,7 +3258,6 @@ function renderizarSetoresChecklist() {
         return;
     }
 
-    checklistPintarAvisos();
     var paraMostrar = checklistSetores.slice();
     // item que ficou sem setor (criado numa versão antiga ou órfão) não pode sumir
     if (checklistItensDoSetor('').length) {
