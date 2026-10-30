@@ -413,6 +413,24 @@
     .nf-f-resumo b { color: var(--text); }
     .nf-f-exportar { display: flex; gap: 8px; margin: 10px 0 0 0; }
     .nf-f-exportar button { flex: 1; border: none; border-radius: 12px; padding: 11px 8px; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; background: var(--surface); color: var(--text); }
+    .fn-grupo { background: var(--surface); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+    .fn-grupo-topo { display: flex; align-items: baseline; gap: 8px; font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text); margin-bottom: 10px; }
+    .fn-grupo-topo span { margin-left: auto; font-size: 12px; color: var(--text-dim); }
+    .fn-rot { font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 7px; }
+    .fn-op { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px; border-radius: 12px; background: var(--bg); margin-bottom: 6px; cursor: pointer; }
+    .fn-op input { margin-top: 3px; flex-shrink: 0; accent-color: var(--accent); }
+    .fn-op b { display: block; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; word-break: break-word; }
+    .fn-op small { display: block; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); margin-top: 3px; }
+    .fn-dica { font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); margin: 2px 2px 10px 2px; line-height: 1.4; }
+    .fn-acoes { display: flex; gap: 8px; }
+    .fn-acoes button { flex: 1; border: none; border-radius: 12px; padding: 11px 8px; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+    .fn-btn-juntar { background: var(--accent); color: var(--accent-text); }
+    .fn-btn-ignorar { background: var(--surface-2); color: var(--text-dim); }
+    .fn-linha { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
+    .fn-linha-info { flex: 1; min-width: 0; }
+    .fn-linha-info b { display: block; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; word-break: break-word; }
+    .fn-linha-info small { display: block; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); margin-top: 3px; }
+    .fn-linha-valor { flex-shrink: 0; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; color: var(--text); }
     .nf-vazio { text-align: center; color: var(--text-dim); padding: 40px 20px; font-size: 14px; line-height: 1.5; }
     .nf-form { padding: 20px 20px 30px 20px; max-width: 520px; margin: 0 auto; }
     .nf-atalhos { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
@@ -1107,6 +1125,7 @@
         <button class="nf-protocolos-btn nf-controle-btn" onclick="nfAbrirControle()">📊 Controle mensal de compras</button>
         <button class="nf-protocolos-btn nf-gastos-btn" onclick="nfAbrirGastos()">📈 Painel de gastos</button>
         <button class="nf-protocolos-btn nf-confronto-btn" onclick="cfAbrir()">⚖️ Confronto do mês · Compra × Venda</button>
+        <button class="nf-protocolos-btn nf-forn-btn" onclick="fnAbrirFornecedores()">🏢 Fornecedores · juntar repetidos</button>
         <button class="nf-protocolos-btn nf-import-btn" onclick="nfAbrirImportar()">📥 Importar planilhas antigas</button>
         <button class="nf-protocolos-btn nf-leitor-btn" id="nfBtnLeitorUSB" onclick="nfAlternarLeitorUSB()">🔫 Leitor de código de barras (pistola): ligado</button>
         <div id="nfAvisoLeitor" class="nf-status" style="display:none; margin:0;"></div>
@@ -1523,6 +1542,21 @@
         <a id="checklistDiariaBtnWhatsApp" class="btn-whatsapp-link" href="#" target="_blank">Enviar via WhatsApp</a>
         <a id="checklistDiariaBtnEmail" class="btn-email-link" href="#">Enviar por E-mail</a>
     </div>
+</div>
+
+<div id="fornecedores-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('notas-screen')">←</button>
+        <h2>Fornecedores</h2>
+    </div>
+    <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
+        <button type="button" id="fnBtnSugestoes" class="nf-protocolos-btn" style="flex:1;" onclick="fnTrocarAba('sugestoes')">⚠️ Repetidos</button>
+        <button type="button" id="fnBtnTodos" class="nf-protocolos-btn" style="flex:1;" onclick="fnTrocarAba('todos')">🏢 Todos</button>
+    </div>
+    <div class="search-bar" style="position: static; padding: 10px 20px 0 20px;">
+        <input type="text" id="fnBusca" placeholder="🔍 Procurar fornecedor" oninput="fnBuscar(this.value)">
+    </div>
+    <div class="product-list" id="fnConteudo"></div>
 </div>
 
 <div id="ficha-edit-screen" class="screen">
@@ -9431,7 +9465,9 @@ function nfBuscarRazaoDoCampo() {
 function nfNomesConhecidos() {
     var por = {};
     function juntar(razao, cnpj, usos) {
-        var chave = nfSlugNome(razao);
+        // agrupa ignorando acento, pontuação e LTDA/S.A.: "FEED S.A" e "Feed s/a"
+        // são o MESMO fornecedor e não podem virar duas sugestões diferentes
+        var chave = nfTokensNome(razao).join(' ') || nfSlugNome(razao);
         if (!chave || chave.length < 3) return;
         var it = por[chave];
         if (!it) { it = por[chave] = { razao: razao, cnpj: null, usos: 0 }; }
@@ -10174,6 +10210,33 @@ function nfEscolherSetor(id) {
     nfRenderizarSetoresForm();
 }
 
+// Devolve o nome a usar: o mesmo que foi digitado, o de um fornecedor já
+// cadastrado que seja o mesmo, ou false quando o usuário desistiu de salvar.
+function nfSugerirNomeExistente(razao) {
+    if (!razao || razao.length < 4) { return razao; }
+    var conhecidos = nfNomesConhecidos();
+    var i;
+    // já existe exatamente assim: nada a fazer
+    for (i = 0; i < conhecidos.length; i++) {
+        if (conhecidos[i].razao === razao) { return razao; }
+    }
+    var parecido = null;
+    for (i = 0; i < conhecidos.length; i++) {
+        if (nfNomesCasam(conhecidos[i].razao, razao)) { parecido = conhecidos[i]; break; }
+    }
+    if (!parecido) { return razao; }
+
+    var resposta = confirm(
+        'Já existe um fornecedor parecido no app:\n\n' +
+        '   ' + parecido.razao + '\n\n' +
+        'Você digitou:\n\n' +
+        '   ' + razao + '\n\n' +
+        'OK = usar o nome que já existe (recomendado, mantém os gastos somados).\n' +
+        'Cancelar = guardar do jeito que você digitou.');
+
+    return resposta ? parecido.razao : razao;
+}
+
 function nfSalvarNota() {
     if (!nfForm) return;
     // pega valores digitados que ainda não dispararam "change"
@@ -10185,6 +10248,14 @@ function nfSalvarNota() {
     var obs = document.getElementById('nfObs').value.trim();
 
     if (!razao && !numero) { alert('Leia o código da nota ou preencha pelo menos a razão social e o número.'); return; }
+    // Evita criar um cadastro repetido do mesmo fornecedor por causa de uma letra
+    // ou de um "LTDA" a mais. Só pergunta quando o nome não é igual a nenhum conhecido.
+    var razaoCorrigida = nfSugerirNomeExistente(razao);
+    if (razaoCorrigida === false) { return; }
+    if (razaoCorrigida && razaoCorrigida !== razao) {
+        razao = razaoCorrigida;
+        document.getElementById('nfRazao').value = razao;
+    }
     if (!nfForm.setor) { alert('Escolha o setor da nota.'); return; }
     var ehBonificada = nfInfoSetor(nfForm.setor).id === 'bonificada';
     // Bonificada guarda o valor em "Valor total da nota", nao nas parcelas — a conferencia
@@ -10887,6 +10958,295 @@ function nfExportarFiltroExcel() {
             if (aviso) { aviso.innerText = 'Não consegui gerar a planilha. Tente de novo.'; }
         });
     });
+}
+
+// ============================================================
+// FORNECEDORES — lista única, junção de cadastros repetidos
+// ============================================================
+// O mesmo fornecedor costuma entrar com nomes diferentes (maiúscula,
+// acento, "LTDA", erro de digitação). Isso dilui os números do painel
+// de gastos. Aqui o app mostra os parecidos e deixa juntar num toque.
+
+var fnFornecedores = [];        // [{nome, cnpj, notas, total, ids:[]}]
+var fnSugestoes = [];           // grupos de parecidos
+var fnIgnorados = {};           // chaves que o usuário mandou não juntar
+var fnAba = 'sugestoes';
+var fnBusca = '';
+var fnCarregando = false;
+
+function fnNormalizar(txt) {
+    var s = String(txt == null ? '' : txt).toUpperCase();
+    var de = 'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ', para = 'AAAAAEEEEIIIIOOOOOUUUUC';
+    var fora = '';
+    for (var i = 0; i < s.length; i++) {
+        var p = de.indexOf(s.charAt(i));
+        fora += p >= 0 ? para.charAt(p) : s.charAt(i);
+    }
+    fora = fora.replace(/[^A-Z0-9 ]/g, ' ');
+    fora = fora.replace(/(^| )(LTDA|LTD|ME|EPP|EIRELI|SA|S A|CIA)( |$)/g, ' ');
+    fora = fora.replace(/(^| )(LTDA|LTD|ME|EPP|EIRELI|SA|S A|CIA)( |$)/g, ' ');
+    return fora.replace(/ +/g, ' ').trim();
+}
+
+// distância de edição simples, só para pegar erro de digitação
+function fnDistancia(a, b) {
+    if (a === b) { return 0; }
+    if (Math.abs(a.length - b.length) > 3) { return 99; }
+    var linha = [], i, j;
+    for (j = 0; j <= b.length; j++) { linha[j] = j; }
+    for (i = 1; i <= a.length; i++) {
+        var ant = linha[0];
+        linha[0] = i;
+        for (j = 1; j <= b.length; j++) {
+            var tmp = linha[j];
+            linha[j] = Math.min(linha[j] + 1, linha[j - 1] + 1, ant + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+            ant = tmp;
+        }
+    }
+    return linha[b.length];
+}
+
+function fnParecidos(a, b) {
+    if (a === b) { return true; }
+    if (!a || !b) { return false; }
+    // um começa com o outro (ex: "PEIXE VIVO" e "PEIXE VIVO BOLETO PENDENTE")
+    var curto = a.length < b.length ? a : b, longo = a.length < b.length ? b : a;
+    if (curto.length >= 6 && longo.indexOf(curto + ' ') === 0) { return true; }
+    // erro de digitação: até 2 letras de diferença em nomes de bom tamanho
+    if (curto.length >= 7) {
+        var d = fnDistancia(a, b);
+        if (d <= 2) { return true; }
+        if (d <= 3 && curto.length >= 14) { return true; }
+    }
+    return false;
+}
+
+function fnChaveDupla(n1, n2) {
+    return [fnNormalizar(n1), fnNormalizar(n2)].sort().join(' ~ ');
+}
+
+function fnAbrirFornecedores() {
+    trocarTela('fornecedores-screen');
+    fnCarregando = true;
+    fnRenderizar();
+    supabaseGet('fornecedores_nao_juntar', 'select=*', function (err, dados) {
+        fnIgnorados = {};
+        if (!err && dados) { dados.forEach(function (d) { fnIgnorados[d.chave] = true; }); }
+        nfBuscarTudo('notas_fiscais', 'select=id,razao_social,cnpj,valor&order=razao_social.asc', function (erro, notas) {
+            fnCarregando = false;
+            if (erro || !notas) {
+                document.getElementById('fnConteudo').innerHTML =
+                    '<div class="nf-vazio">Não consegui carregar as notas agora. Confira a internet e tente de novo.</div>';
+                return;
+            }
+            fnMontarLista(notas);
+            fnRenderizar();
+        });
+    });
+}
+
+function fnMontarLista(notas) {
+    var mapa = {};
+    notas.forEach(function (n) {
+        var nome = (n.razao_social || '').trim();
+        if (!nome) { return; }
+        if (!mapa[nome]) { mapa[nome] = { nome: nome, cnpj: null, notas: 0, total: 0, ids: [] }; }
+        var f = mapa[nome];
+        f.notas++;
+        f.total += Number(n.valor) || 0;
+        f.ids.push(n.id);
+        if (!f.cnpj && n.cnpj) { f.cnpj = n.cnpj; }
+    });
+
+    fnFornecedores = Object.keys(mapa).map(function (k) { return mapa[k]; })
+        .sort(function (a, b) { return b.total - a.total; });
+
+    // agrupa os parecidos
+    var usados = {};
+    fnSugestoes = [];
+    for (var i = 0; i < fnFornecedores.length; i++) {
+        if (usados[fnFornecedores[i].nome]) { continue; }
+        var grupo = [fnFornecedores[i]];
+        var ki = fnNormalizar(fnFornecedores[i].nome);
+        for (var j = i + 1; j < fnFornecedores.length; j++) {
+            if (usados[fnFornecedores[j].nome]) { continue; }
+            var kj = fnNormalizar(fnFornecedores[j].nome);
+            if (!fnParecidos(ki, kj)) { continue; }
+            if (fnIgnorados[fnChaveDupla(fnFornecedores[i].nome, fnFornecedores[j].nome)]) { continue; }
+            grupo.push(fnFornecedores[j]);
+            usados[fnFornecedores[j].nome] = true;
+        }
+        if (grupo.length > 1) {
+            usados[fnFornecedores[i].nome] = true;
+            grupo.sort(function (a, b) { return b.total - a.total; });
+            fnSugestoes.push(grupo);
+        }
+    }
+    fnSugestoes.sort(function (a, b) {
+        return b.reduce(function (s, f) { return s + f.total; }, 0) - a.reduce(function (s, f) { return s + f.total; }, 0);
+    });
+}
+
+function fnTrocarAba(a) { fnAba = a; fnRenderizar(); }
+function fnBuscar(v) { fnBusca = v; fnRenderizar(); }
+
+function fnRenderizar() {
+    var alvo = document.getElementById('fnConteudo');
+    if (!alvo) { return; }
+
+    var btnS = document.getElementById('fnBtnSugestoes'), btnT = document.getElementById('fnBtnTodos');
+    if (btnS && btnT) {
+        btnS.style.opacity = fnAba === 'sugestoes' ? '1' : '0.55';
+        btnT.style.opacity = fnAba === 'todos' ? '1' : '0.55';
+        btnS.innerText = '⚠️ Repetidos' + (fnSugestoes.length ? ' (' + fnSugestoes.length + ')' : '');
+    }
+
+    if (fnCarregando) {
+        alvo.innerHTML = '<div class="nf-vazio">Lendo todas as notas...</div>';
+        return;
+    }
+
+    if (fnAba === 'sugestoes') { fnRenderizarSugestoes(alvo); } else { fnRenderizarTodos(alvo); }
+}
+
+function fnRenderizarSugestoes(alvo) {
+    if (!fnSugestoes.length) {
+        alvo.innerHTML = '<div class="nf-vazio">✅ Nenhum cadastro repetido à vista.<br>São ' + fnFornecedores.length + ' fornecedores na lista.</div>';
+        return;
+    }
+
+    alvo.innerHTML = '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:#F2C94C;"></span>' +
+        '<span>' + fnSugestoes.length + (fnSugestoes.length === 1 ? ' possível repetido' : ' possíveis repetidos') + '</span></div>' +
+        fnSugestoes.map(function (g, idx) {
+            var total = g.reduce(function (s, f) { return s + f.total; }, 0);
+            var notas = g.reduce(function (s, f) { return s + f.notas; }, 0);
+            var comCnpj = g.filter(function (f) { return f.cnpj; });
+            return '<div class="fn-grupo">' +
+                '<div class="fn-grupo-topo"><b>' + notas + ' notas · ' + nfMoeda(total) + '</b>' +
+                '<span>' + g.length + ' cadastros</span></div>' +
+                '<div class="fn-rot">Qual nome fica valendo?</div>' +
+                g.map(function (f, k) {
+                    return '<label class="fn-op"><input type="radio" name="fn-g' + idx + '" value="' + k + '"' +
+                        (k === 0 ? ' checked' : '') + '>' +
+                        '<span><b>' + nfEsc(f.nome) + '</b>' +
+                        '<small>' + f.notas + (f.notas === 1 ? ' nota · ' : ' notas · ') + nfMoeda(f.total) +
+                        (f.cnpj ? ' · CNPJ ' + nfEsc(nfFormatarCnpj(f.cnpj)) : ' · sem CNPJ') + '</small></span></label>';
+                }).join('') +
+                (comCnpj.length ? '<div class="fn-dica">O CNPJ ' + nfEsc(nfFormatarCnpj(comCnpj[0].cnpj)) + ' vai para todas as notas do grupo.</div>' : '') +
+                '<div class="fn-acoes">' +
+                '<button class="fn-btn-juntar" onclick="fnJuntarGrupo(' + idx + ')">🔗 Juntar num só</button>' +
+                '<button class="fn-btn-ignorar" onclick="fnIgnorarGrupo(' + idx + ')">São diferentes</button>' +
+                '</div></div>';
+        }).join('');
+}
+
+function fnRenderizarTodos(alvo) {
+    var termo = fnNormalizar(fnBusca);
+    var lista = termo ? fnFornecedores.filter(function (f) { return fnNormalizar(f.nome).indexOf(termo) >= 0; }) : fnFornecedores;
+    if (!lista.length) {
+        alvo.innerHTML = '<div class="nf-vazio">Nenhum fornecedor com esse nome.</div>';
+        return;
+    }
+    var total = lista.reduce(function (s, f) { return s + f.total; }, 0);
+    alvo.innerHTML = '<div class="nf-grupo-header"><span class="nf-gh-bolinha" style="background:#E86FA0;"></span>' +
+        '<span>🏢 ' + lista.length + ' fornecedores</span><span class="nf-gh-info">' + nfMoeda(total) + '</span></div>' +
+        lista.slice(0, 400).map(function (f) {
+            return '<div class="fn-linha">' +
+                '<div class="fn-linha-info"><b>' + nfEsc(f.nome) + '</b>' +
+                '<small>' + f.notas + (f.notas === 1 ? ' nota' : ' notas') +
+                (f.cnpj ? ' · CNPJ ' + nfEsc(nfFormatarCnpj(f.cnpj)) : ' · sem CNPJ') + '</small></div>' +
+                '<div class="fn-linha-valor">' + nfMoeda(f.total) + '</div>' +
+                '<button class="nf-icone-btn" title="Corrigir o nome" onclick="fnRenomear(\'' + encodeURIComponent(f.nome) + '\')">✏️</button>' +
+                '</div>';
+        }).join('') +
+        (lista.length > 400 ? '<div class="nf-vazio">Mostrando os 400 maiores. Use a busca para achar os outros.</div>' : '');
+}
+
+function fnRenomear(nomeCodificado) {
+    var nome = decodeURIComponent(nomeCodificado);
+    var f = null;
+    for (var i = 0; i < fnFornecedores.length; i++) { if (fnFornecedores[i].nome === nome) { f = fnFornecedores[i]; break; } }
+    if (!f) { return; }
+    var novo = prompt('Nome do fornecedor (muda nas ' + f.notas + (f.notas === 1 ? ' nota' : ' notas') + '):', nome);
+    if (novo === null) { return; }
+    novo = novo.trim();
+    if (!novo || novo === nome) { return; }
+    fnAplicar([f], novo, f.cnpj, 'Nome corrigido em ' + f.notas + (f.notas === 1 ? ' nota.' : ' notas.'));
+}
+
+function fnJuntarGrupo(idx) {
+    var grupo = fnSugestoes[idx];
+    if (!grupo) { return; }
+    var escolhido = document.querySelector('input[name="fn-g' + idx + '"]:checked');
+    var k = escolhido ? Number(escolhido.value) : 0;
+    var oficial = grupo[k].nome;
+    var cnpj = null;
+    for (var i = 0; i < grupo.length; i++) { if (grupo[i].cnpj) { cnpj = grupo[i].cnpj; break; } }
+
+    var notas = grupo.reduce(function (s, f) { return s + f.notas; }, 0);
+    if (!confirm('Juntar ' + grupo.length + ' cadastros em "' + oficial + '"?\n\n' + notas + ' notas passam a ficar neste nome. Dá para corrigir depois pelo ✏️.')) { return; }
+
+    fnAplicar(grupo, oficial, cnpj, grupo.length + ' cadastros viraram um só: ' + oficial);
+}
+
+// Grava a mudança nas notas, em blocos, e atualiza a tela.
+function fnAplicar(grupo, oficial, cnpj, mensagem) {
+    var ids = [];
+    grupo.forEach(function (f) {
+        var precisa = f.nome !== oficial || (cnpj && !f.cnpj);
+        if (precisa) { ids = ids.concat(f.ids); }
+    });
+    if (!ids.length) { alert('Nada a mudar: já estavam todos iguais.'); return; }
+
+    var mudanca = { razao_social: oficial };
+    if (cnpj) { mudanca.cnpj = cnpj; }
+
+    var blocos = [];
+    for (var i = 0; i < ids.length; i += 60) { blocos.push(ids.slice(i, i + 60)); }
+
+    var feitos = 0, falhou = false;
+    var alvo = document.getElementById('fnConteudo');
+    if (alvo) { alvo.innerHTML = '<div class="nf-vazio">Gravando... (0 de ' + ids.length + ' notas)</div>'; }
+
+    function proximo() {
+        if (!blocos.length) {
+            // atualiza o que estiver no aparelho também
+            var dentro = {};
+            ids.forEach(function (id) { dentro[id] = true; });
+            (notasCache || []).forEach(function (n) {
+                if (dentro[n.id]) { n.razao_social = oficial; if (cnpj) { n.cnpj = cnpj; } }
+            });
+            try { nfSalvarNotasLocal(); } catch (e) { }
+            alert(falhou ? 'Gravei o que deu, mas algo falhou. Confira a internet.' : '✅ ' + mensagem);
+            fnAbrirFornecedores();
+            return;
+        }
+        var bloco = blocos.shift();
+        supabasePatch('notas_fiscais', 'id=in.(' + bloco.join(',') + ')', mudanca, function (err) {
+            if (err) { falhou = true; }
+            feitos += bloco.length;
+            if (alvo) { alvo.innerHTML = '<div class="nf-vazio">Gravando... (' + feitos + ' de ' + ids.length + ' notas)</div>'; }
+            proximo();
+        });
+    }
+    proximo();
+}
+
+function fnIgnorarGrupo(idx) {
+    var grupo = fnSugestoes[idx];
+    if (!grupo) { return; }
+    var registros = [];
+    for (var i = 0; i < grupo.length; i++) {
+        for (var j = i + 1; j < grupo.length; j++) {
+            var chave = fnChaveDupla(grupo[i].nome, grupo[j].nome);
+            fnIgnorados[chave] = true;
+            registros.push({ id: 'nj_' + Date.now() + '_' + i + '_' + j + '_' + Math.random().toString(36).slice(2, 6), chave: chave, usuario: usuarioAtual || null });
+        }
+    }
+    registros.forEach(function (r) { supabasePost('fornecedores_nao_juntar', r, function () { }); });
+    fnSugestoes.splice(idx, 1);
+    fnRenderizar();
+    alert('Ok, não sugiro mais juntar esses.');
 }
 
 function nfMudarFiltro(f) { nfFiltro = f; nfRenderizarLista(); }
