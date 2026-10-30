@@ -431,6 +431,9 @@
     .fn-linha-info b { display: block; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; word-break: break-word; }
     .fn-linha-info small { display: block; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); margin-top: 3px; }
     .fn-linha-valor { flex-shrink: 0; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; color: var(--text); }
+    .chk-refazer { flex-shrink: 0; border: none; border-radius: 12px; padding: 10px 12px; background: var(--surface-2); color: var(--text); font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+    .chk-avisos { background: var(--surface); border-radius: 14px; padding: 12px 14px; }
+    .chk-avisos-tit { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
     .chk-sinal { flex-shrink: 0; width: 38px; height: 40px; border: none; border-radius: 12px; background: var(--surface-2); color: var(--text); font-family: 'Inter', sans-serif; font-size: 19px; font-weight: 700; cursor: pointer; line-height: 1; }
     .chk-sinal:active { background: var(--accent); color: var(--accent-text); }
     .nf-badge-protocolo { background: rgba(232,111,160,0.18); color: #E86FA0; }
@@ -1477,6 +1480,7 @@
         <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirHistoricoChecklist()">🕘 Histórico</button>
         <button type="button" class="ficha-add-ingrediente-btn" style="flex:0 0 auto;" title="Buscar de novo no servidor" onclick="checklistRecarregar()">🔄</button>
     </div>
+    <div id="checklistAvisos" style="padding: 10px 20px 0 20px;"></div>
     <div class="product-list" id="checklistSetoresLista"></div>
     <div id="checklistVersao" style="text-align:center; font-family:'Inter',sans-serif; font-size:11px; color:var(--text-dim); padding:4px 20px 20px;"></div>
 </div>
@@ -3067,23 +3071,76 @@ function abrirChecklistDireto() {
 }
 
 var checklistFalhouLer = false;
+var checklistPendentes = {};     // o que ainda não subiu para o servidor
+var checklistAvisouErro = false; // só incomoda uma vez por sessão
+
+function checklistMarcarPendente(id, sim) {
+    if (sim) { checklistPendentes[id] = true; } else { delete checklistPendentes[id]; }
+}
+
+function checklistAvisarFalha(err, oque) {
+    var motivo = (err && err.message) ? err.message : 'sem resposta';
+    console.warn('checklist: ' + oque + ' não subiu (' + motivo + ')');
+    if (checklistAvisouErro) { return; }
+    checklistAvisouErro = true;
+    alert('⚠️ Não consegui salvar ' + oque + ' no servidor (' + motivo + ').\n\n' +
+          'Ficou guardado neste aparelho e vou tentar de novo sozinho toda vez que você abrir a checklist. ' +
+          'Enquanto isso, os outros celulares não vão ver.');
+}
+
+function checklistReenviarSetor(s) {
+    checklistMarcarPendente(s.id, true);
+    supabasePost('checklist_setores', { id: s.id, nome: s.nome, icone: s.icone, ordem: s.ordem || 0 }, function (err) {
+        if (err) { checklistAvisarFalha(err, 'o setor "' + s.nome + '"'); return; }
+        checklistMarcarPendente(s.id, false);
+        checklistRedesenhar();
+    });
+}
+
+function checklistReenviarItem(i) {
+    checklistMarcarPendente(i.id, true);
+    supabasePost('checklist_diaria_itens', {
+        id: i.id, texto: i.texto, setor_id: i.setor_id || null, tipo: i.tipo || 'ok',
+        unidade: i.unidade || null, vmin: i.vmin, vmax: i.vmax, ordem: i.ordem || 0,
+        feito_em: i.feito_em || null, vence_em: i.vence_em || null,
+        periodicidade_meses: i.periodicidade_meses || null, alerta_dias: i.alerta_dias
+    }, function (err) {
+        if (err) { checklistAvisarFalha(err, 'o item "' + i.texto + '"'); return; }
+        checklistMarcarPendente(i.id, false);
+        checklistRedesenhar();
+    });
+}
 
 function sincronizarChecklistDiariaSupabase() {
     supabaseGet('checklist_setores', 'select=*&order=ordem.asc,criado_em.asc', function (err, dados) {
         if (err || !dados) { checklistFalhouLer = true; checklistRedesenhar(); return; }
         checklistFalhouLer = false;
-        checklistSetores = dados;
+        // O que foi criado neste aparelho e ainda não chegou ao servidor NÃO pode
+        // ser apagado pela sincronização — tenta mandar de novo e mantém na tela.
+        var noServidor = {};
+        dados.forEach(function (d) { noServidor[d.id] = true; });
+        var sóAqui = checklistSetores.filter(function (s) { return s && s.id && !noServidor[s.id]; });
+        checklistSetores = dados.concat(sóAqui);
         checklistCacheGravar('checklistSetoresABS', checklistSetores);
+        sóAqui.forEach(function (s) { checklistReenviarSetor(s); });
         checklistRedesenhar();
     });
 
     supabaseGet('checklist_diaria_itens', 'select=*&order=ordem.asc,criado_em.asc', function (err, dados) {
         if (err || !dados) { return; }
-        itensChecklistDiaria = dados.map(function (d) {
+        var doServidor = dados.map(function (d) {
             return { id: d.id, texto: d.texto, setor_id: d.setor_id || '', tipo: d.tipo || 'ok',
-                     unidade: d.unidade || '', vmin: d.vmin, vmax: d.vmax, ordem: d.ordem || 0 };
+                     unidade: d.unidade || '', vmin: d.vmin, vmax: d.vmax, ordem: d.ordem || 0,
+                     feito_em: d.feito_em || null, vence_em: d.vence_em || null,
+                     periodicidade_meses: d.periodicidade_meses || null,
+                     alerta_dias: (d.alerta_dias === null || d.alerta_dias === undefined) ? 30 : d.alerta_dias };
         });
+        var tem = {};
+        doServidor.forEach(function (d) { tem[d.id] = true; });
+        var itensSóAqui = itensChecklistDiaria.filter(function (i) { return i && i.id && !tem[i.id]; });
+        itensChecklistDiaria = doServidor.concat(itensSóAqui);
         checklistCacheGravar('checklistDiariaItensABS', itensChecklistDiaria);
+        itensSóAqui.forEach(function (i) { checklistReenviarItem(i); });
         checklistRedesenhar();
     });
 
@@ -3114,6 +3171,7 @@ function renderizarSetoresChecklist() {
         return;
     }
 
+    checklistPintarAvisos();
     var paraMostrar = checklistSetores.slice();
     // item que ficou sem setor (criado numa versão antiga ou órfão) não pode sumir
     if (checklistItensDoSetor('').length) {
@@ -3123,11 +3181,18 @@ function renderizarSetoresChecklist() {
     for (var i = 0; i < paraMostrar.length; i++) {
         (function (setor) {
             var itens = checklistItensDoSetor(setor.id);
-            var feitos = 0, alertas = 0;
+            var feitos = 0, alertas = 0, vencidos = 0, perto = 0, deValidade = 0;
             for (var k = 0; k < itens.length; k++) {
+                if (itens[k].tipo === 'validade') {
+                    deValidade++;
+                    var est = checklistValidade(itens[k]).estado;
+                    if (est === 'vencido') { vencidos++; } else if (est === 'perto') { perto++; }
+                    continue;
+                }
                 var reg = checklistHoje[itens[k].id];
                 if (reg) { feitos++; if (reg.fora_faixa) { alertas++; } }
             }
+            var diarios = itens.length - deValidade;
 
             var div = document.createElement('div');
             div.className = 'product-item' + (itens.length > 0 && feitos === itens.length ? ' selected' : '');
@@ -3146,11 +3211,23 @@ function renderizarSetoresChecklist() {
             sub.style.fontSize = '12px';
             sub.style.color = 'var(--text-dim)';
             sub.style.marginTop = '3px';
+            var pendentes = (checklistPendentes[setor.id] ? 1 : 0) +
+                itens.filter(function (it) { return checklistPendentes[it.id]; }).length;
             if (itens.length === 0) {
                 sub.innerText = 'Sem itens ainda';
+            } else if (deValidade && !diarios) {
+                // setor de manutenção: o que importa é o que está vencendo
+                if (vencidos) { sub.innerText = '🔴 ' + vencidos + (vencidos === 1 ? ' vencido' : ' vencidos'); sub.style.color = '#E85D5D'; }
+                else if (perto) { sub.innerText = '🟡 ' + perto + (perto === 1 ? ' vencendo' : ' vencendo'); sub.style.color = '#E8A33D'; }
+                else { sub.innerText = '🟢 ' + deValidade + (deValidade === 1 ? ' item em dia' : ' itens em dia'); sub.style.color = '#7FD6A6'; }
             } else {
-                sub.innerText = feitos + ' de ' + itens.length + ' conferidos hoje' + (alertas > 0 ? ' · ⚠️ ' + alertas + ' fora da faixa' : '');
-                if (alertas > 0) { sub.style.color = '#E8A33D'; }
+                sub.innerText = feitos + ' de ' + diarios + ' conferidos hoje' + (alertas > 0 ? ' · ⚠️ ' + alertas + ' fora da faixa' : '');
+                if (deValidade) { sub.innerText += ' · ' + (vencidos ? '🔴 ' + vencidos + ' vencido' : (perto ? '🟡 ' + perto + ' vencendo' : '🟢 validades em dia')); }
+                if (alertas > 0 || vencidos > 0) { sub.style.color = '#E8A33D'; }
+            }
+            if (pendentes > 0) {
+                sub.innerText += ' · 📵 só neste aparelho';
+                sub.style.color = '#E8A33D';
             }
             info.appendChild(nome);
             info.appendChild(sub);
@@ -3172,6 +3249,35 @@ function renderizarSetoresChecklist() {
             lista.appendChild(div);
         })(paraMostrar[i]);
     }
+}
+
+// Faixa no alto da tela com tudo que está vencido ou para vencer.
+function checklistPintarAvisos() {
+    var caixa = document.getElementById('checklistAvisos');
+    if (!caixa) { return; }
+    var vencidos = [], perto = [];
+    itensChecklistDiaria.forEach(function (i) {
+        if (i.tipo !== 'validade') { return; }
+        var v = checklistValidade(i);
+        if (v.estado === 'vencido') { vencidos.push({ i: i, v: v }); }
+        else if (v.estado === 'perto') { perto.push({ i: i, v: v }); }
+    });
+    if (!vencidos.length && !perto.length) { caixa.innerHTML = ''; return; }
+
+    perto.sort(function (a, b) { return a.v.dias - b.v.dias; });
+    function linha(x, cor) {
+        return '<div style="display:flex;gap:8px;align-items:baseline;margin-top:4px;">' +
+            '<b style="color:' + cor + ';">' + cimEscSimples(x.i.texto) + '</b>' +
+            '<span style="font-size:12px;color:var(--text-dim);margin-left:auto;">' + cimEscSimples(x.v.texto) + '</span></div>';
+    }
+    caixa.innerHTML = '<div class="chk-avisos">' +
+        '<div class="chk-avisos-tit">' +
+        (vencidos.length ? '🔴 ' + vencidos.length + (vencidos.length === 1 ? ' serviço vencido' : ' serviços vencidos') : '') +
+        (vencidos.length && perto.length ? ' · ' : '') +
+        (perto.length ? '🟡 ' + perto.length + ' para vencer' : '') + '</div>' +
+        vencidos.map(function (x) { return linha(x, '#E85D5D'); }).join('') +
+        perto.map(function (x) { return linha(x, '#E8A33D'); }).join('') +
+        '</div>';
 }
 
 function abrirEditarSetorChecklist(setorId) {
@@ -3217,14 +3323,17 @@ function salvarSetorChecklist() {
         if (setor) { setor.nome = nome; setor.icone = checklistSetorIconeEscolhido; }
         supabasePatch('checklist_setores', 'id=eq.' + encodeURIComponent(checklistSetorEditando),
             { nome: nome, icone: checklistSetorIconeEscolhido }, function (err) {
-                if (err) { console.warn('checklist: setor salvo só no aparelho', err); }
+                if (err) { checklistAvisarFalha(err, 'o nome do setor'); }
             });
     } else {
         var novo = { id: 'set_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), nome: nome,
                      icone: checklistSetorIconeEscolhido, ordem: checklistSetores.length + 1 };
         checklistSetores.push(novo);
+        checklistMarcarPendente(novo.id, true);
         supabasePost('checklist_setores', novo, function (err) {
-            if (err) { console.warn('checklist: setor salvo só no aparelho', err); }
+            if (err) { checklistAvisarFalha(err, 'o setor "' + novo.nome + '"'); return; }
+            checklistMarcarPendente(novo.id, false);
+            checklistRedesenhar();
         });
     }
 
@@ -3266,6 +3375,115 @@ function abrirSetorChecklist(setorId) {
     sincronizarChecklistDiariaSupabase();
 }
 
+// ---------- itens de validade (extintor, coifa, filtro...) ----------
+
+function checklistSomarMeses(iso, meses) {
+    var p = String(iso).substr(0, 10).split('-');
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    var dia = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + Number(meses));
+    var ultimo = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(dia, ultimo));
+    return d.getFullYear() + '-' + (d.getMonth() + 1 < 10 ? '0' : '') + (d.getMonth() + 1) +
+           '-' + (d.getDate() < 10 ? '0' : '') + d.getDate();
+}
+
+// estado: 'sem' (ainda não preenchido), 'ok', 'perto' (dentro do aviso), 'vencido'
+function checklistValidade(item) {
+    if (!item.vence_em) { return { estado: 'sem', dias: null, texto: 'Sem data ainda — toque para preencher' }; }
+    var dias = nfDiasAte(item.vence_em);
+    var aviso = (item.alerta_dias === null || item.alerta_dias === undefined) ? 30 : Number(item.alerta_dias);
+    var quando = nfDataBR(item.vence_em);
+    if (dias < 0) {
+        return { estado: 'vencido', dias: dias, texto: 'VENCIDO há ' + Math.abs(dias) + (Math.abs(dias) === 1 ? ' dia' : ' dias') + ' · venceu ' + quando };
+    }
+    if (dias === 0) { return { estado: 'vencido', dias: 0, texto: 'VENCE HOJE · ' + quando }; }
+    if (dias <= aviso) {
+        return { estado: 'perto', dias: dias, texto: 'Vence em ' + dias + (dias === 1 ? ' dia' : ' dias') + ' · ' + quando };
+    }
+    return { estado: 'ok', dias: dias, texto: 'Em dia até ' + quando + ' · faltam ' + dias + ' dias' };
+}
+
+function checklistCorValidade(estado) {
+    if (estado === 'vencido') { return '#E85D5D'; }
+    if (estado === 'perto') { return '#E8A33D'; }
+    if (estado === 'sem') { return 'var(--text-dim)'; }
+    return '#7FD6A6';
+}
+
+function checklistIconeValidade(estado) {
+    if (estado === 'vencido') { return '🔴'; }
+    if (estado === 'perto') { return '🟡'; }
+    if (estado === 'sem') { return '⬜'; }
+    return '🟢';
+}
+
+// Registra que o serviço foi refeito: pergunta a data, recalcula o vencimento
+// pela periodicidade e guarda no histórico de manutenção.
+function checklistRefazerServico(itemId) {
+    var item = checklistItemPorId(itemId);
+    if (!item) { return; }
+
+    var hoje = chaveDiaChecklist();
+    var feito = prompt('Quando o serviço foi feito?\n\nEscreva no formato dia/mês/ano (ex: ' + nfDataBR(hoje) + ')', nfDataBR(hoje));
+    if (feito === null) { return; }
+    var isoFeito = checklistDataDigitada(feito);
+    if (!isoFeito) { alert('Data não entendida. Use dia/mês/ano, ex: 05/11/2026.'); return; }
+
+    var isoVence;
+    if (item.periodicidade_meses) {
+        isoVence = checklistSomarMeses(isoFeito, item.periodicidade_meses);
+        if (!confirm('Feito em ' + nfDataBR(isoFeito) + '.\n\nCom a periodicidade de ' + item.periodicidade_meses +
+                     (item.periodicidade_meses === 1 ? ' mês' : ' meses') + ', o próximo vencimento fica em ' + nfDataBR(isoVence) +
+                     '.\n\nOK = usar essa data\nCancelar = digitar outra')) {
+            isoVence = null;
+        }
+    }
+    if (!isoVence) {
+        var venc = prompt('Quando vence? (dia/mês/ano)', isoFeito ? nfDataBR(checklistSomarMeses(isoFeito, 12)) : '');
+        if (venc === null) { return; }
+        isoVence = checklistDataDigitada(venc);
+        if (!isoVence) { alert('Data não entendida. Use dia/mês/ano, ex: 05/11/2027.'); return; }
+    }
+
+    item.feito_em = isoFeito;
+    item.vence_em = isoVence;
+    checklistCacheGravar('checklistDiariaItensABS', itensChecklistDiaria);
+    renderizarListaChecklistDiaria();
+
+    supabasePatch('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(item.id),
+        { feito_em: isoFeito, vence_em: isoVence }, function (err) {
+            if (err) { checklistAvisarFalha(err, 'a data de "' + item.texto + '"'); }
+        });
+
+    // guarda no histórico que o serviço foi refeito
+    var setor = checklistSetorPorId(item.setor_id);
+    checklistUpsert({
+        id: isoFeito + '|' + item.id,
+        dia: isoFeito, item_id: item.id, item_texto: item.texto,
+        setor_id: item.setor_id || null, setor_nome: setor ? setor.nome : null,
+        valor: null, unidade: null, fora_faixa: false,
+        feito_em: isoFeito, vence_em: isoVence,
+        usuario: usuarioAtual || null, registrado_em: new Date().toISOString()
+    }, function () { });
+}
+
+function checklistDataDigitada(txt) {
+    var s = String(txt == null ? '' : txt).trim();
+    if (!s) { return null; }
+    var m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/.exec(s);
+    if (m) {
+        var ano = Number(m[3]);
+        if (ano < 100) { ano += 2000; }
+        var mes = Number(m[2]), dia = Number(m[1]);
+        if (mes < 1 || mes > 12 || dia < 1 || dia > 31) { return null; }
+        return ano + '-' + (mes < 10 ? '0' : '') + mes + '-' + (dia < 10 ? '0' : '') + dia;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { return s; }
+    return null;
+}
+
 function checklistForaFaixa(item, valor) {
     if (valor === null || valor === undefined || valor === '') { return false; }
     var v = Number(valor);
@@ -3298,6 +3516,7 @@ function renderizarListaChecklistDiaria() {
 
     for (var i = 0; i < itens.length; i++) {
         (function (item) {
+            if (item.tipo === 'validade') { lista.appendChild(linhaValidadeChecklist(item)); return; }
             var reg = checklistHoje[item.id];
             var marcado = !!reg;
             var alerta = marcado && reg.fora_faixa;
@@ -3420,6 +3639,55 @@ function checklistConferirSinal(item, v) {
     return resposta ? -v : v;
 }
 
+function linhaValidadeChecklist(item) {
+    var v = checklistValidade(item);
+    var cor = checklistCorValidade(v.estado);
+
+    var div = document.createElement('div');
+    div.className = 'product-item';
+    if (v.estado === 'vencido' || v.estado === 'perto') { div.style.boxShadow = 'inset 0 0 0 1.5px ' + cor; }
+
+    var icone = document.createElement('div');
+    icone.className = 'product-icon';
+    icone.innerText = checklistIconeValidade(v.estado);
+
+    var info = document.createElement('div');
+    info.className = 'product-info';
+    var nome = document.createElement('div');
+    nome.className = 'product-name';
+    nome.innerText = item.texto;
+    info.appendChild(nome);
+
+    var sub = document.createElement('div');
+    sub.style.fontSize = '12px';
+    sub.style.marginTop = '3px';
+    sub.style.color = cor;
+    sub.style.fontWeight = (v.estado === 'vencido' || v.estado === 'perto') ? '700' : '400';
+    sub.innerText = v.texto;
+    info.appendChild(sub);
+
+    if (item.feito_em) {
+        var feito = document.createElement('div');
+        feito.style.fontSize = '11.5px';
+        feito.style.color = 'var(--text-dim)';
+        feito.style.marginTop = '2px';
+        feito.innerText = 'Último serviço: ' + nfDataBR(item.feito_em) +
+            (item.periodicidade_meses ? ' · a cada ' + item.periodicidade_meses + (item.periodicidade_meses === 1 ? ' mês' : ' meses') : '');
+        info.appendChild(feito);
+    }
+
+    var botao = document.createElement('button');
+    botao.className = 'chk-refazer';
+    botao.innerText = item.vence_em ? '✔ Refiz' : '+ Datas';
+    botao.onclick = function (e) { e.stopPropagation(); checklistRefazerServico(item.id); };
+
+    div.onclick = function () { checklistRefazerServico(item.id); };
+    div.appendChild(icone);
+    div.appendChild(info);
+    div.appendChild(botao);
+    return div;
+}
+
 function checklistAnotarValor(itemId, bruto) {
     var item = checklistItemPorId(itemId);
     if (!item) { return; }
@@ -3536,7 +3804,9 @@ function criarCaixaItemChecklist(item) {
 
     var tipo = document.createElement('select');
     tipo.className = 'checklist-item-tipo';
-    tipo.innerHTML = '<option value="ok">Só marcar ✅</option><option value="numero">Pede uma medida</option>';
+    tipo.innerHTML = '<option value="ok">Só marcar ✅</option>' +
+                     '<option value="numero">Pede uma medida</option>' +
+                     '<option value="validade">Validade / vencimento</option>';
     tipo.value = item.tipo || 'ok';
     estilizarCampoChecklist(tipo, '150px');
 
@@ -3573,10 +3843,42 @@ function criarCaixaItemChecklist(item) {
     medidas.appendChild(vmin);
     medidas.appendChild(vmax);
 
-    tipo.onchange = function () { medidas.style.display = tipo.value === 'numero' ? 'flex' : 'none'; };
+    // campos só dos itens de validade: de quanto em quanto tempo e aviso prévio
+    var validade = document.createElement('div');
+    validade.style.display = (item.tipo === 'validade') ? 'flex' : 'none';
+    validade.style.gap = '8px';
+    validade.style.flexWrap = 'wrap';
+    validade.style.alignItems = 'center';
+
+    var periodo = document.createElement('select');
+    periodo.className = 'checklist-item-periodo';
+    periodo.innerHTML = '<option value="">Sem periodicidade fixa</option>' +
+        [[1, 'A cada mês'], [3, 'A cada 3 meses'], [6, 'A cada 6 meses'], [12, 'A cada 12 meses'], [24, 'A cada 2 anos'], [60, 'A cada 5 anos']]
+            .map(function (o) {
+                return '<option value="' + o[0] + '"' + (Number(item.periodicidade_meses) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+            }).join('');
+    estilizarCampoChecklist(periodo, '172px');
+
+    var aviso = document.createElement('select');
+    aviso.className = 'checklist-item-aviso';
+    aviso.innerHTML = [[7, 'Avisar 7 dias antes'], [15, 'Avisar 15 dias antes'], [30, 'Avisar 30 dias antes'], [60, 'Avisar 60 dias antes'], [90, 'Avisar 90 dias antes']]
+        .map(function (o) {
+            var atual = (item.alerta_dias === null || item.alerta_dias === undefined) ? 30 : Number(item.alerta_dias);
+            return '<option value="' + o[0] + '"' + (atual === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('');
+    estilizarCampoChecklist(aviso, '172px');
+
+    validade.appendChild(periodo);
+    validade.appendChild(aviso);
+
+    tipo.onchange = function () {
+        medidas.style.display = tipo.value === 'numero' ? 'flex' : 'none';
+        validade.style.display = tipo.value === 'validade' ? 'flex' : 'none';
+    };
 
     linha2.appendChild(tipo);
     linha2.appendChild(medidas);
+    linha2.appendChild(validade);
     bloco.appendChild(linha2);
 
     // permite mandar o item para outro setor sem precisar apagar e criar de novo
@@ -3657,23 +3959,34 @@ function salvarItensChecklistDiaria() {
 
         var destino = bloco.querySelector('.checklist-item-setor');
         var setorDoItem = destino ? (destino.value || null) : (checklistSetorAtivo || null);
+        var periodoMeses = tipo === 'validade' ? (Number(bloco.querySelector('.checklist-item-periodo').value) || null) : null;
+        var avisoDias = tipo === 'validade' ? (Number(bloco.querySelector('.checklist-item-aviso').value) || 30) : 30;
+        var anterior = checklistItemPorId(bloco.querySelector('.checklist-item-texto').getAttribute('data-item-id')) || {};
         var registro = { texto: texto, setor_id: setorDoItem, tipo: tipo, unidade: unidade || null,
-                         vmin: vmin, vmax: vmax, ordem: k + 1 };
+                         vmin: vmin, vmax: vmax, ordem: k + 1,
+                         periodicidade_meses: periodoMeses, alerta_dias: avisoDias,
+                         feito_em: anterior.feito_em || null, vence_em: anterior.vence_em || null };
 
         if (idExistente) {
-            novaLista.push({ id: idExistente, texto: texto, setor_id: setorDoItem || '', tipo: tipo,
-                             unidade: unidade, vmin: vmin, vmax: vmax, ordem: k + 1 });
-            supabasePatch('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(idExistente), registro, function (err) {
-                if (err) { console.warn('checklist: item salvo só no aparelho', err); }
-            });
+            novaLista.push(Object.assign({ id: idExistente }, registro, { setor_id: setorDoItem || '', unidade: unidade }));
+            (function (idDoItem, nomeDoItem) {
+                checklistMarcarPendente(idDoItem, true);
+                supabasePatch('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(idDoItem), registro, function (err) {
+                    if (err) { checklistAvisarFalha(err, 'o item "' + nomeDoItem + '"'); return; }
+                    checklistMarcarPendente(idDoItem, false);
+                });
+            })(idExistente, texto);
         } else {
             var novoId = gerarIdUnico();
-            novaLista.push({ id: novoId, texto: texto, setor_id: setorDoItem || '', tipo: tipo,
-                             unidade: unidade, vmin: vmin, vmax: vmax, ordem: k + 1 });
+            novaLista.push(Object.assign({ id: novoId }, registro, { setor_id: setorDoItem || '', unidade: unidade }));
             var paraSalvar = Object.assign({ id: novoId }, registro);
-            supabasePost('checklist_diaria_itens', paraSalvar, function (err) {
-                if (err) { console.warn('checklist: item salvo só no aparelho', err); }
-            });
+            (function (idDoItem, nomeDoItem) {
+                checklistMarcarPendente(idDoItem, true);
+                supabasePost('checklist_diaria_itens', paraSalvar, function (err) {
+                    if (err) { checklistAvisarFalha(err, 'o item "' + nomeDoItem + '"'); return; }
+                    checklistMarcarPendente(idDoItem, false);
+                });
+            })(novoId, texto);
         }
     }
 
@@ -3726,6 +4039,20 @@ function verResumoChecklistDiaria() {
 
     for (var i = 0; i < itens.length; i++) {
         var item = itens[i];
+        if (item.tipo === 'validade') {
+            var val = checklistValidade(item);
+            texto += checklistIconeValidade(val.estado) + ' ' + item.texto + ' — ' + val.texto + '\n';
+            var dv = document.createElement('div');
+            dv.className = 'summary-item';
+            var iv = document.createElement('div');
+            iv.className = 'summary-item-icon';
+            iv.innerText = checklistIconeValidade(val.estado);
+            var fv = document.createElement('div');
+            fv.className = 'summary-item-info';
+            fv.innerHTML = '<span>' + item.texto + ' — ' + val.texto + '</span>';
+            dv.appendChild(iv); dv.appendChild(fv); lista.appendChild(dv);
+            continue;
+        }
         var reg = checklistHoje[item.id];
         var emoji = reg ? (reg.fora_faixa ? '⚠️' : '✅') : '⬜';
         var medida = (reg && reg.valor !== null && reg.valor !== undefined) ? (' — ' + reg.valor + (reg.unidade ? ' ' + reg.unidade : '')) : '';
