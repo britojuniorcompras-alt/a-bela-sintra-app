@@ -431,6 +431,8 @@
     .fn-linha-info b { display: block; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; word-break: break-word; }
     .fn-linha-info small { display: block; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); margin-top: 3px; }
     .fn-linha-valor { flex-shrink: 0; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; color: var(--text); }
+    .chk-sinal { flex-shrink: 0; width: 38px; height: 40px; border: none; border-radius: 12px; background: var(--surface-2); color: var(--text); font-family: 'Inter', sans-serif; font-size: 19px; font-weight: 700; cursor: pointer; line-height: 1; }
+    .chk-sinal:active { background: var(--accent); color: var(--accent-text); }
     .nf-badge-protocolo { background: rgba(232,111,160,0.18); color: #E86FA0; }
     .nf-vazio { text-align: center; color: var(--text-dim); padding: 40px 20px; font-size: 14px; line-height: 1.5; }
     .nf-form { padding: 20px 20px 30px 20px; max-width: 520px; margin: 0 auto; }
@@ -1473,13 +1475,15 @@
     <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
         <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirEditarSetorChecklist(null)">➕ Novo setor</button>
         <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirHistoricoChecklist()">🕘 Histórico</button>
+        <button type="button" class="ficha-add-ingrediente-btn" style="flex:0 0 auto;" title="Buscar de novo no servidor" onclick="checklistRecarregar()">🔄</button>
     </div>
     <div class="product-list" id="checklistSetoresLista"></div>
+    <div id="checklistVersao" style="text-align:center; font-family:'Inter',sans-serif; font-size:11px; color:var(--text-dim); padding:4px 20px 20px;"></div>
 </div>
 
 <div id="checklist-setor-edit-screen" class="screen">
     <div class="screen-header">
-        <button class="back-btn" onclick="trocarTela('checklistdiaria-screen')">←</button>
+        <button class="back-btn" onclick="abrirChecklistDireto()">←</button>
         <h2 id="checklistSetorTituloTela">Novo setor</h2>
     </div>
     <div class="edit-container">
@@ -3035,16 +3039,39 @@ function checklistUpsert(registro, callback) {
 
 // ---------- abertura e sincronização ----------
 
+var CHECKLIST_VERSAO = '30/10/2026';
+
+function checklistRecarregar() {
+    checklistFalhouLer = false;
+    var lista = document.getElementById('checklistSetoresLista');
+    if (lista) { lista.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top:30px; font-family:Inter,sans-serif; font-size:14px;'>Buscando no servidor...</p>"; }
+    sincronizarChecklistDiariaSupabase();
+}
+
+// Se o aparelho estiver com uma versão velha guardada, este botão força baixar de novo.
+function checklistAtualizarApp() {
+    if (!confirm('Baixar de novo a versão mais nova do app?\n\nNada do que está salvo se perde — tudo fica no servidor.')) { return; }
+    try { location.replace(location.pathname + '?v=' + Date.now()); } catch (e) { location.reload(); }
+}
+
 function abrirChecklistDireto() {
     checklistSetorAtivo = null;
     trocarTela('checklistdiaria-screen');
     renderizarSetoresChecklist();
+    var v = document.getElementById('checklistVersao');
+    if (v) {
+        v.innerHTML = 'Versão da checklist: ' + CHECKLIST_VERSAO +
+            ' · <a href="#" onclick="checklistAtualizarApp();return false;" style="color:var(--accent);">atualizar o app</a>';
+    }
     sincronizarChecklistDiariaSupabase();
 }
 
+var checklistFalhouLer = false;
+
 function sincronizarChecklistDiariaSupabase() {
     supabaseGet('checklist_setores', 'select=*&order=ordem.asc,criado_em.asc', function (err, dados) {
-        if (err || !dados) { return; }
+        if (err || !dados) { checklistFalhouLer = true; checklistRedesenhar(); return; }
+        checklistFalhouLer = false;
         checklistSetores = dados;
         checklistCacheGravar('checklistSetoresABS', checklistSetores);
         checklistRedesenhar();
@@ -3080,12 +3107,20 @@ function renderizarSetoresChecklist() {
     if (!lista) { return; }
     lista.innerHTML = '';
 
-    if (checklistSetores.length === 0) {
-        lista.innerHTML = "<p style='text-align:center; color:var(--text-dim); margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px; line-height:1.6;'>Nenhum setor criado ainda.<br>Toque em <b>➕ Novo setor</b> pra começar — ex: Temperatura das geladeiras, Abertura do salão, Limpeza.</p>";
+    if (checklistSetores.length === 0 && !checklistItensDoSetor('').length) {
+        lista.innerHTML = checklistFalhouLer
+            ? "<p style='text-align:center; color:#E8A33D; margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px; line-height:1.6;'>⚠️ Não consegui falar com o servidor agora, então não dá para mostrar os setores.<br><br>Confira a internet e toque em <b>🔄 Recarregar</b> aqui em cima.</p>"
+            : "<p style='text-align:center; color:var(--text-dim); margin-top: 30px; font-family: Inter, sans-serif; font-size: 14px; line-height:1.6;'>Nenhum setor criado ainda.<br>Toque em <b>➕ Novo setor</b> pra começar — ex: Temperatura das geladeiras, Abertura do salão, Limpeza.</p>";
         return;
     }
 
-    for (var i = 0; i < checklistSetores.length; i++) {
+    var paraMostrar = checklistSetores.slice();
+    // item que ficou sem setor (criado numa versão antiga ou órfão) não pode sumir
+    if (checklistItensDoSetor('').length) {
+        paraMostrar.push({ id: '', nome: 'Sem setor', icone: '❔' });
+    }
+
+    for (var i = 0; i < paraMostrar.length; i++) {
         (function (setor) {
             var itens = checklistItensDoSetor(setor.id);
             var feitos = 0, alertas = 0;
@@ -3133,9 +3168,9 @@ function renderizarSetoresChecklist() {
 
             div.appendChild(icone);
             div.appendChild(info);
-            div.appendChild(acoes);
+            if (setor.id) { div.appendChild(acoes); }
             lista.appendChild(div);
-        })(checklistSetores[i]);
+        })(paraMostrar[i]);
     }
 }
 
@@ -3323,6 +3358,22 @@ function renderizarListaChecklistDiaria() {
                 campo.onclick = function (e) { e.stopPropagation(); };
                 campo.onchange = function () { checklistAnotarValor(item.id, campo.value); };
                 campo.onkeydown = function (e) { if (e.key === 'Enter') { campo.blur(); } };
+
+                // O teclado numérico do iPhone não tem o sinal de menos. Este botão
+                // vira o sinal do que está escrito — indispensável no congelados.
+                var sinal = document.createElement('button');
+                sinal.type = 'button';
+                sinal.className = 'chk-sinal';
+                sinal.innerText = '±';
+                sinal.title = 'Trocar entre positivo e negativo';
+                sinal.onclick = function (e) {
+                    e.stopPropagation();
+                    var txt = String(campo.value || '').trim();
+                    if (!txt) { campo.value = '-'; campo.focus(); return; }
+                    campo.value = txt.charAt(0) === '-' ? txt.slice(1) : '-' + txt;
+                    checklistAnotarValor(item.id, campo.value);
+                };
+                acoes.appendChild(sinal);
                 acoes.appendChild(campo);
             } else {
                 div.onclick = function () { checklistAlternar(item.id); };
@@ -3336,13 +3387,46 @@ function renderizarListaChecklistDiaria() {
     }
 }
 
+// Lê o que foi digitado aceitando os jeitos que aparecem na prática:
+// "-17", "17-", "menos 17", "−17" (traço do iPhone) e vírgula no lugar do ponto.
+function checklistLerNumero(bruto) {
+    var txt = String(bruto == null ? '' : bruto).trim().toLowerCase();
+    if (txt === '' || txt === '-') { return null; }
+    txt = txt.replace(/[\u2212\u2013\u2014]/g, '-');     // traços que não são o menos comum
+    var negativo = false;
+    if (/^menos\s+/.test(txt)) { negativo = true; txt = txt.replace(/^menos\s+/, ''); }
+    if (/-\s*$/.test(txt)) { negativo = true; txt = txt.replace(/-\s*$/, ''); }
+    if (/^-/.test(txt)) { negativo = true; txt = txt.replace(/^-/, ''); }
+    txt = txt.replace(',', '.').replace(/[^0-9.]/g, '');
+    if (txt === '') { return NaN; }
+    var v = Number(txt);
+    if (isNaN(v)) { return NaN; }
+    return negativo ? -v : v;
+}
+
+// O nome do item costuma trazer a temperatura esperada ("Camara congelados -18c°").
+// Se o alvo é negativo e veio um número positivo, pergunta antes de gravar —
+// foi exatamente assim que entrou um +17 num congelador.
+function checklistConferirSinal(item, v) {
+    if (v === null || v <= 0) { return v; }
+    var alvoNegativo = /-\s*\d/.test(String(item.texto || '')) ||
+        (item.vmax !== null && item.vmax !== undefined && item.vmax !== '' && Number(item.vmax) < 0);
+    if (!alvoNegativo) { return v; }
+    var resposta = confirm(
+        'Atenção: "' + item.texto + '" costuma ser temperatura negativa.\n\n' +
+        'Você digitou ' + v + (item.unidade ? ' ' + item.unidade : '') + ' (positivo).\n\n' +
+        'OK = gravar como -' + v + ' (negativo)\n' +
+        'Cancelar = gravar ' + v + ' mesmo assim');
+    return resposta ? -v : v;
+}
+
 function checklistAnotarValor(itemId, bruto) {
     var item = checklistItemPorId(itemId);
     if (!item) { return; }
-    var txt = String(bruto == null ? '' : bruto).replace(',', '.').trim();
-    if (txt === '') { checklistApagarRegistro(itemId); return; }
-    var v = Number(txt);
-    if (isNaN(v)) { alert('Digite só números. Ex: -17 ou 5,9'); renderizarListaChecklistDiaria(); return; }
+    var v = checklistLerNumero(bruto);
+    if (v === null) { checklistApagarRegistro(itemId); return; }
+    if (isNaN(v)) { alert('Digite só números. Ex: -17 ou 5,9\n\nNo iPhone, use o botão ± para o sinal de menos.'); renderizarListaChecklistDiaria(); return; }
+    v = checklistConferirSinal(item, v);
     checklistGravarRegistro(item, v);
 }
 
@@ -3384,7 +3468,7 @@ function checklistApagarRegistro(itemId) {
 // ---------- editor dos itens do setor ----------
 
 function abrirGerenciarChecklistDiaria() {
-    if (!checklistSetorAtivo) { alert('Abra um setor primeiro.'); return; }
+    if (checklistSetorAtivo === null || checklistSetorAtivo === undefined) { alert('Abra um setor primeiro.'); return; }
     var itens = checklistItensDoSetor(checklistSetorAtivo);
     montarCaixasItensChecklist(itens.length > 0 ? itens : [{ texto: '', tipo: 'ok' }]);
     trocarTela('checklistdiaria-gerenciar-screen');
@@ -3495,7 +3579,41 @@ function criarCaixaItemChecklist(item) {
     linha2.appendChild(medidas);
     bloco.appendChild(linha2);
 
+    // permite mandar o item para outro setor sem precisar apagar e criar de novo
+    if (checklistSetores.length) {
+        var linha3 = document.createElement('div');
+        linha3.style.display = 'flex';
+        linha3.style.gap = '8px';
+        linha3.style.marginTop = '8px';
+        linha3.style.alignItems = 'center';
+
+        var rot = document.createElement('span');
+        rot.innerText = 'Setor:';
+        rot.style.fontFamily = "'Inter', sans-serif";
+        rot.style.fontSize = '12px';
+        rot.style.color = 'var(--text-dim)';
+        rot.style.flexShrink = '0';
+
+        var destino = document.createElement('select');
+        destino.className = 'checklist-item-setor';
+        var atual = item.setor_id || checklistSetorAtivo || '';
+        destino.innerHTML = '<option value="">Sem setor</option>' +
+            checklistSetores.map(function (s) {
+                return '<option value="' + s.id + '"' + (s.id === atual ? ' selected' : '') + '>' +
+                    (s.icone || '') + ' ' + cimEscSimples(s.nome) + '</option>';
+            }).join('');
+        estilizarCampoChecklist(destino, '100%');
+
+        linha3.appendChild(rot);
+        linha3.appendChild(destino);
+        bloco.appendChild(linha3);
+    }
+
     lista.appendChild(bloco);
+}
+
+function cimEscSimples(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function estilizarCampoChecklist(el, largura) {
@@ -3537,18 +3655,20 @@ function salvarItensChecklistDiaria() {
         var vmax = tipo === 'numero' ? numeroOuNuloChecklist(bloco.querySelector('.checklist-item-vmax').value) : null;
         var idExistente = bloco.querySelector('.checklist-item-texto').getAttribute('data-item-id');
 
-        var registro = { texto: texto, setor_id: checklistSetorAtivo, tipo: tipo, unidade: unidade || null,
+        var destino = bloco.querySelector('.checklist-item-setor');
+        var setorDoItem = destino ? (destino.value || null) : (checklistSetorAtivo || null);
+        var registro = { texto: texto, setor_id: setorDoItem, tipo: tipo, unidade: unidade || null,
                          vmin: vmin, vmax: vmax, ordem: k + 1 };
 
         if (idExistente) {
-            novaLista.push({ id: idExistente, texto: texto, setor_id: checklistSetorAtivo, tipo: tipo,
+            novaLista.push({ id: idExistente, texto: texto, setor_id: setorDoItem || '', tipo: tipo,
                              unidade: unidade, vmin: vmin, vmax: vmax, ordem: k + 1 });
             supabasePatch('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(idExistente), registro, function (err) {
                 if (err) { console.warn('checklist: item salvo só no aparelho', err); }
             });
         } else {
             var novoId = gerarIdUnico();
-            novaLista.push({ id: novoId, texto: texto, setor_id: checklistSetorAtivo, tipo: tipo,
+            novaLista.push({ id: novoId, texto: texto, setor_id: setorDoItem || '', tipo: tipo,
                              unidade: unidade, vmin: vmin, vmax: vmax, ordem: k + 1 });
             var paraSalvar = Object.assign({ id: novoId }, registro);
             supabasePost('checklist_diaria_itens', paraSalvar, function (err) {
@@ -3573,7 +3693,11 @@ function salvarItensChecklistDiaria() {
         }
     }
 
-    itensChecklistDiaria = itensChecklistDiaria.filter(function (it) { return (it.setor_id || '') !== (checklistSetorAtivo || ''); }).concat(novaLista);
+    var idsDaTela = {};
+    novaLista.forEach(function (it) { idsDaTela[it.id] = true; });
+    itensChecklistDiaria = itensChecklistDiaria.filter(function (it) {
+        return (it.setor_id || '') !== (checklistSetorAtivo || '') && !idsDaTela[it.id];
+    }).concat(novaLista);
     checklistCacheGravar('checklistDiariaItensABS', itensChecklistDiaria);
 
     renderizarListaChecklistDiaria();
