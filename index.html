@@ -3074,13 +3074,29 @@ var checklistFalhouLer = false;
 var checklistPendentes = {};     // o que ainda não subiu para o servidor
 var checklistAvisouErro = false; // só incomoda uma vez por sessão
 
+// "Validade dos extintores :" e "Validade dos Extintores" são o mesmo setor
+function checklistChaveNome(nome) {
+    var s = String(nome == null ? '' : nome).toUpperCase();
+    var de = 'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ', para = 'AAAAAEEEEIIIIOOOOOUUUUC';
+    var fora = '';
+    for (var i = 0; i < s.length; i++) {
+        var p = de.indexOf(s.charAt(i));
+        fora += p >= 0 ? para.charAt(p) : s.charAt(i);
+    }
+    return fora.replace(/[^A-Z0-9 ]/g, ' ').replace(/ +/g, ' ').trim();
+}
+
 function checklistMarcarPendente(id, sim) {
     if (sim) { checklistPendentes[id] = true; } else { delete checklistPendentes[id]; }
 }
 
+var checklistUltimoErro = '';
+
 function checklistAvisarFalha(err, oque) {
     var motivo = (err && err.message) ? err.message : 'sem resposta';
+    checklistUltimoErro = oque + ' — ' + motivo;
     console.warn('checklist: ' + oque + ' não subiu (' + motivo + ')');
+    checklistRedesenhar();
     if (checklistAvisouErro) { return; }
     checklistAvisouErro = true;
     alert('⚠️ Não consegui salvar ' + oque + ' no servidor (' + motivo + ').\n\n' +
@@ -3120,9 +3136,29 @@ function sincronizarChecklistDiariaSupabase() {
         var noServidor = {};
         dados.forEach(function (d) { noServidor[d.id] = true; });
         var sóAqui = checklistSetores.filter(function (s) { return s && s.id && !noServidor[s.id]; });
-        checklistSetores = dados.concat(sóAqui);
+
+        // Se o servidor já tem um setor com o MESMO NOME, o local é a mesma coisa
+        // com outro id: aproveita o do servidor e leva os itens junto, em vez de duplicar.
+        var porNome = {};
+        dados.forEach(function (d) { porNome[checklistChaveNome(d.nome)] = d; });
+        var aindaFaltam = [];
+        sóAqui.forEach(function (s) {
+            var igual = porNome[checklistChaveNome(s.nome)];
+            if (!igual) { aindaFaltam.push(s); return; }
+            checklistMarcarPendente(s.id, false);
+            itensChecklistDiaria.forEach(function (i) {
+                if ((i.setor_id || '') === s.id) {
+                    i.setor_id = igual.id;
+                    checklistReenviarItem(i);
+                }
+            });
+            if (checklistSetorAtivo === s.id) { checklistSetorAtivo = igual.id; }
+        });
+
+        checklistSetores = dados.concat(aindaFaltam);
         checklistCacheGravar('checklistSetoresABS', checklistSetores);
-        sóAqui.forEach(function (s) { checklistReenviarSetor(s); });
+        checklistCacheGravar('checklistDiariaItensABS', itensChecklistDiaria);
+        aindaFaltam.forEach(function (s) { checklistReenviarSetor(s); });
         checklistRedesenhar();
     });
 
@@ -3262,7 +3298,13 @@ function checklistPintarAvisos() {
         if (v.estado === 'vencido') { vencidos.push({ i: i, v: v }); }
         else if (v.estado === 'perto') { perto.push({ i: i, v: v }); }
     });
-    if (!vencidos.length && !perto.length) { caixa.innerHTML = ''; return; }
+    var faixaErro = checklistUltimoErro
+        ? '<div class="chk-avisos" style="border:1.5px solid #E85D5D;margin-bottom:8px;">' +
+          '<div class="chk-avisos-tit" style="color:#E85D5D;">⚠️ Não subiu para o servidor</div>' +
+          '<div style="font-size:12px;color:var(--text-dim);line-height:1.5;">' + cimEscSimples(checklistUltimoErro) + '</div>' +
+          '<div style="font-size:12px;color:var(--text-dim);margin-top:6px;">Mostre esta mensagem para quem cuida do app.</div></div>'
+        : '';
+    if (!vencidos.length && !perto.length) { caixa.innerHTML = faixaErro; return; }
 
     perto.sort(function (a, b) { return a.v.dias - b.v.dias; });
     function linha(x, cor) {
@@ -3270,7 +3312,7 @@ function checklistPintarAvisos() {
             '<b style="color:' + cor + ';">' + cimEscSimples(x.i.texto) + '</b>' +
             '<span style="font-size:12px;color:var(--text-dim);margin-left:auto;">' + cimEscSimples(x.v.texto) + '</span></div>';
     }
-    caixa.innerHTML = '<div class="chk-avisos">' +
+    caixa.innerHTML = faixaErro + '<div class="chk-avisos">' +
         '<div class="chk-avisos-tit">' +
         (vencidos.length ? '🔴 ' + vencidos.length + (vencidos.length === 1 ? ' serviço vencido' : ' serviços vencidos') : '') +
         (vencidos.length && perto.length ? ' · ' : '') +
@@ -3786,8 +3828,7 @@ function criarCaixaItemChecklist(item) {
     removerBtn.innerText = '✕';
     removerBtn.className = 'problema-del-btn';
     removerBtn.onclick = function () {
-        var lst = document.getElementById('checklistDiariaItensLista');
-        if (lst.children.length <= 1) { return; }
+        if (!confirm('Tirar "' + (input.value.trim() || 'este item') + '" da checklist?\n\nO histórico de conferências dele continua guardado.')) { return; }
         bloco.remove();
     };
 
@@ -3991,7 +4032,22 @@ function salvarItensChecklistDiaria() {
     }
 
     if (novaLista.length === 0) {
-        alert('Escreva ao menos um item antes de salvar.');
+        var antesDeApagar = checklistItensDoSetor(checklistSetorAtivo);
+        if (!antesDeApagar.length) { trocarTela('checklist-setor-screen'); return; }
+        if (!confirm('Isso vai tirar os ' + antesDeApagar.length +
+                     (antesDeApagar.length === 1 ? ' item' : ' itens') + ' deste setor.\n\nO histórico continua guardado. Pode apagar?')) { return; }
+        antesDeApagar.forEach(function (it) {
+            supabaseDelete('checklist_diaria_itens', 'id=eq.' + encodeURIComponent(it.id), function (err) {
+                if (err) { checklistAvisarFalha(err, 'a exclusão de "' + it.texto + '"'); }
+            });
+            delete checklistHoje[it.id];
+        });
+        itensChecklistDiaria = itensChecklistDiaria.filter(function (it) {
+            return (it.setor_id || '') !== (checklistSetorAtivo || '');
+        });
+        checklistCacheGravar('checklistDiariaItensABS', itensChecklistDiaria);
+        renderizarListaChecklistDiaria();
+        trocarTela('checklist-setor-screen');
         return;
     }
 
