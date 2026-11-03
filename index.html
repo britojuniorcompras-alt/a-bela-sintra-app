@@ -154,7 +154,13 @@
     .ficha-ingrediente-linha input { padding: 10px 8px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 12.5px; font-family: 'Inter', sans-serif; color: var(--text); outline: none; width: 100%; }
     .ficha-remover-ingrediente { background: transparent; border: none; color: #E85D5D; font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0; }
     .ficha-add-ingrediente-btn { width: 100%; padding: 12px; margin-top: 4px; background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer;
-        white-space: normal; line-height: 1.3; min-width: 0; overflow-wrap: anywhere; box-sizing: border-box; }
+        white-space: normal; line-height: 1.3; min-width: 0; box-sizing: border-box; }
+
+    /* fileira de ações da checklist: botões com largura de verdade, que descem
+       para a linha de baixo quando não cabem — em vez de virarem tiras */
+    .chk-acoes { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; padding: 4px 20px 0 20px; }
+    .chk-acoes .ficha-add-ingrediente-btn { width: auto; flex: 1 1 110px; margin-top: 0; padding: 12px 10px; }
+    .chk-acoes .chk-acoes-icone { flex: 0 0 48px; width: 48px; padding: 12px 0; font-size: 15px; }
     .ficha-totais { background: var(--surface); border-radius: 14px; padding: 14px 16px; margin-top: 18px; }
     .ficha-totais-linha { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-dim); }
     .ficha-totais-linha strong { color: var(--accent); font-size: 15px; font-family: 'Space Grotesk', sans-serif; }
@@ -1511,10 +1517,10 @@
         <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
         <h2>Checklists</h2>
     </div>
-    <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
-        <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirEditarSetorChecklist(null)">➕ Novo setor</button>
-        <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirHistoricoChecklist()">🕘 Histórico</button>
-        <button type="button" class="ficha-add-ingrediente-btn" style="flex:0 0 auto;" title="Buscar de novo no servidor" onclick="checklistRecarregar()">🔄</button>
+    <div class="chk-acoes">
+        <button type="button" class="ficha-add-ingrediente-btn" onclick="abrirEditarSetorChecklist(null)">➕ Novo setor</button>
+        <button type="button" class="ficha-add-ingrediente-btn" onclick="abrirHistoricoChecklist()">🕘 Histórico</button>
+        <button type="button" class="ficha-add-ingrediente-btn chk-acoes-icone" title="Buscar de novo no servidor" onclick="checklistRecarregar()">🔄</button>
     </div>
     <div style="padding: 8px 20px 0 20px;">
         <button type="button" class="ficha-add-ingrediente-btn" style="width:100%; box-sizing:border-box;" onclick="checklistTestarConexao()">🧪 Testar conexão com o servidor</button>
@@ -1548,10 +1554,10 @@
         <button class="back-btn" onclick="abrirChecklistDireto()">←</button>
         <h2 id="checklistSetorTitulo">Checklist</h2>
     </div>
-    <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
-        <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirGerenciarChecklistDiaria()">✏️ Editar itens</button>
-        <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="abrirDocsSetor()">📂 Documentos</button>
-        <button type="button" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="verResumoChecklistDiaria()">Enviar resumo</button>
+    <div class="chk-acoes">
+        <button type="button" class="ficha-add-ingrediente-btn" onclick="abrirGerenciarChecklistDiaria()">✏️ Editar itens</button>
+        <button type="button" class="ficha-add-ingrediente-btn" onclick="abrirDocsSetor()">📂 Documentos</button>
+        <button type="button" class="ficha-add-ingrediente-btn" onclick="verResumoChecklistDiaria()">Enviar resumo</button>
     </div>
     <div class="product-list" id="checklistDiariaLista"></div>
 </div>
@@ -1578,10 +1584,10 @@
         <button class="back-btn" onclick="trocarTela('checklistdiaria-screen')">←</button>
         <h2>Histórico de conferências</h2>
     </div>
-    <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
-        <button type="button" id="checklistHistBtnCal" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="checklistHistTrocarVisao('calendario')">📆 Calendário</button>
-        <button type="button" id="checklistHistBtnDia" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="checklistHistTrocarVisao('dia')">📅 Por dia</button>
-        <button type="button" id="checklistHistBtnItem" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="checklistHistTrocarVisao('item')">📈 Por item</button>
+    <div class="chk-acoes">
+        <button type="button" id="checklistHistBtnCal" class="ficha-add-ingrediente-btn" onclick="checklistHistTrocarVisao('calendario')">📆 Calendário</button>
+        <button type="button" id="checklistHistBtnDia" class="ficha-add-ingrediente-btn" onclick="checklistHistTrocarVisao('dia')">📅 Por dia</button>
+        <button type="button" id="checklistHistBtnItem" class="ficha-add-ingrediente-btn" onclick="checklistHistTrocarVisao('item')">📈 Por item</button>
     </div>
     <div class="product-list" id="checklistHistConteudo"></div>
 </div>
@@ -3102,7 +3108,7 @@ function checklistUpsert(registro, callback) {
 
 // ---------- abertura e sincronização ----------
 
-var CHECKLIST_VERSAO = '30/10/2026 d';
+var CHECKLIST_VERSAO = '03/11/2026';
 
 // Diagnóstico: bate em cada tabela e mostra o que o servidor respondeu,
 // com o código do erro. Serve para eu saber o que está acontecendo no aparelho.
