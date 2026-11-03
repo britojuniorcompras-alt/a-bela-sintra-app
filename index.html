@@ -444,6 +444,26 @@
     .fn-linha-info b { display: block; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; word-break: break-word; }
     .fn-linha-info small { display: block; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); margin-top: 3px; }
     .fn-linha-valor { flex-shrink: 0; font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; color: var(--text); }
+    .chk-cal-topo { display: flex; align-items: center; gap: 8px; margin: 4px 0 12px; }
+    .chk-cal-seta { flex-shrink: 0; width: 38px; height: 38px; border: none; border-radius: 12px; background: var(--surface); color: var(--text); font-size: 20px; line-height: 1; cursor: pointer; }
+    .chk-cal-mes { flex: 1; text-align: center; min-width: 0; }
+    .chk-cal-mes b { display: block; font-family: 'Inter', sans-serif; font-size: 14.5px; color: var(--text); }
+    .chk-cal-mes small { display: block; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+    .chk-cal-grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+    .chk-cal-cab { text-align: center; font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 700; color: var(--text-dim); padding-bottom: 2px; }
+    .chk-cal-dia { position: relative; aspect-ratio: 1 / 1; min-width: 0; border: 1.5px solid transparent; border-radius: 11px; background: var(--surface); color: var(--text-dim); font-family: 'Inter', sans-serif; cursor: pointer; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+    .chk-cal-dia .n { font-size: 13px; font-weight: 600; line-height: 1; }
+    .chk-cal-dia .m { font-size: 10px; line-height: 1; height: 11px; }
+    .chk-cal-dia.feito { background: rgba(127,214,166,0.18); color: #7FD6A6; }
+    .chk-cal-dia.alerta { background: rgba(232,163,61,0.2); color: #E8A33D; }
+    .chk-cal-dia.hoje { border-color: var(--accent); }
+    .chk-cal-dia.aberto { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .chk-cal-legenda { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 12px; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); }
+    .chk-cal-legenda span { display: flex; align-items: center; gap: 5px; }
+    .chk-cal-legenda i { width: 11px; height: 11px; border-radius: 4px; display: inline-block; }
+    .chk-cal-legenda i.feito { background: rgba(127,214,166,0.55); }
+    .chk-cal-legenda i.alerta { background: rgba(232,163,61,0.6); }
+    .chk-cal-legenda i.vazio { background: var(--surface); border: 1px solid var(--line); }
     .chk-refazer { flex-shrink: 0; border: none; border-radius: 12px; padding: 10px 12px; background: var(--surface-2); color: var(--text); font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer; }
     .chk-avisos { background: var(--surface); border-radius: 14px; padding: 12px 14px; }
     .chk-avisos-tit { font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
@@ -1559,6 +1579,7 @@
         <h2>Histórico de conferências</h2>
     </div>
     <div style="padding: 4px 20px 0 20px; display:flex; gap:8px;">
+        <button type="button" id="checklistHistBtnCal" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="checklistHistTrocarVisao('calendario')">📆 Calendário</button>
         <button type="button" id="checklistHistBtnDia" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="checklistHistTrocarVisao('dia')">📅 Por dia</button>
         <button type="button" id="checklistHistBtnItem" class="ficha-add-ingrediente-btn" style="flex:1;" onclick="checklistHistTrocarVisao('item')">📈 Por item</button>
     </div>
@@ -3017,7 +3038,7 @@ var itensChecklistDiaria = [];
 var checklistHoje = {};            // item_id -> registro de hoje
 var checklistSetorAtivo = null;    // setor aberto no momento
 var checklistHistorico = [];
-var checklistHistVisao = 'dia';
+var checklistHistVisao = 'calendario';
 var checklistHistItemId = '';
 var checklistSetorEditando = null;
 
@@ -4465,15 +4486,127 @@ function abrirHistoricoChecklist() {
     });
 }
 
+// ---------- calendário das conferências ----------
+// Um mês por vez: cada dia mostra se a conferência foi feita e se algo
+// saiu da faixa. Serve de registro — a do dia some da lista de hoje e
+// fica marcada aqui para sempre.
+
+var checklistCalMes = null;      // 'AAAA-MM' do mês em exibição
+var checklistCalDia = null;      // dia aberto embaixo do calendário
+
+function checklistCalMesAtual() {
+    return checklistCalMes || chaveDiaChecklist().substr(0, 7);
+}
+
+function checklistCalAndar(passo) {
+    var p = checklistCalMesAtual().split('-');
+    var d = new Date(Number(p[0]), Number(p[1]) - 1 + passo, 1);
+    checklistCalMes = d.getFullYear() + '-' + (d.getMonth() + 1 < 10 ? '0' : '') + (d.getMonth() + 1);
+    checklistCalDia = null;
+    renderizarHistoricoChecklist();
+}
+
+function checklistCalAbrirDia(dia) {
+    checklistCalDia = (checklistCalDia === dia) ? null : dia;
+    renderizarHistoricoChecklist();
+}
+
+// Junta o que aconteceu em cada dia do mês
+function checklistCalResumoDoMes(mes) {
+    var porDia = {};
+    checklistHistorico.forEach(function (r) {
+        if (String(r.dia || '').substr(0, 7) !== mes) { return; }
+        var d = porDia[r.dia] || (porDia[r.dia] = { total: 0, fora: 0, medidas: 0, registros: [] });
+        d.total++;
+        if (r.fora_faixa) { d.fora++; }
+        if (r.valor !== null && r.valor !== undefined) { d.medidas++; }
+        d.registros.push(r);
+    });
+    return porDia;
+}
+
+function renderizarHistoricoCalendario(alvo) {
+    var mes = checklistCalMesAtual();
+    var porDia = checklistCalResumoDoMes(mes);
+    var hoje = chaveDiaChecklist();
+    // dia aberto só faz sentido dentro do mês que está na tela
+    if (checklistCalDia && String(checklistCalDia).substr(0, 7) !== mes) { checklistCalDia = null; }
+
+    var ano = Number(mes.split('-')[0]), m = Number(mes.split('-')[1]);
+    var primeiro = new Date(ano, m - 1, 1);
+    var diasNoMes = new Date(ano, m, 0).getDate();
+    var comecaEm = primeiro.getDay();          // 0 = domingo
+    var nomesDia = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+    var diasFeitos = Object.keys(porDia).length;
+    var diasComAlerta = Object.keys(porDia).filter(function (d) { return porDia[d].fora > 0; }).length;
+
+    var html = '<div class="chk-cal-topo">' +
+        '<button class="chk-cal-seta" onclick="checklistCalAndar(-1)">‹</button>' +
+        '<div class="chk-cal-mes"><b>' + nfNomeMes(mes) + '</b>' +
+        '<small>' + diasFeitos + (diasFeitos === 1 ? ' dia conferido' : ' dias conferidos') +
+        (diasComAlerta ? ' · ⚠️ ' + diasComAlerta + (diasComAlerta === 1 ? ' com alerta' : ' com alertas') : '') + '</small></div>' +
+        '<button class="chk-cal-seta" onclick="checklistCalAndar(1)">›</button></div>';
+
+    html += '<div class="chk-cal-grade">';
+    nomesDia.forEach(function (n) { html += '<div class="chk-cal-cab">' + n + '</div>'; });
+    for (var v = 0; v < comecaEm; v++) { html += '<div></div>'; }
+
+    for (var dia = 1; dia <= diasNoMes; dia++) {
+        var iso = mes + '-' + (dia < 10 ? '0' : '') + dia;
+        var info = porDia[iso];
+        var classe = 'chk-cal-dia';
+        if (info) { classe += info.fora ? ' alerta' : ' feito'; }
+        if (iso === hoje) { classe += ' hoje'; }
+        if (iso === checklistCalDia) { classe += ' aberto'; }
+        var marca = info ? (info.fora ? '⚠️' : '✓') : '';
+        html += '<button class="' + classe + '" onclick="checklistCalAbrirDia(\'' + iso + '\')">' +
+            '<span class="n">' + dia + '</span><span class="m">' + marca + '</span></button>';
+    }
+    html += '</div>';
+
+    html += '<div class="chk-cal-legenda">' +
+        '<span><i class="feito"></i> conferido</span>' +
+        '<span><i class="alerta"></i> fora da faixa</span>' +
+        '<span><i class="vazio"></i> sem conferência</span></div>';
+
+    alvo.innerHTML = html;
+
+    if (checklistCalDia) {
+        var cab = document.createElement('div');
+        cab.className = 'nf-grupo-header';
+        cab.style.marginTop = '18px';
+        var doDia = porDia[checklistCalDia];
+        cab.innerHTML = '<span class="nf-gh-bolinha" style="background:' +
+            (doDia && doDia.fora ? '#E8A33D' : '#7FD6A6') + ';"></span><span>' +
+            dataBrChecklist(checklistCalDia) + '</span><span class="nf-gh-info">' +
+            (doDia ? doDia.total + (doDia.total === 1 ? ' conferência' : ' conferências') : 'nada registrado') + '</span>';
+        alvo.appendChild(cab);
+
+        if (doDia) {
+            doDia.registros.slice().sort(function (a, b) {
+                return String(a.registrado_em || '').localeCompare(String(b.registrado_em || ''));
+            }).forEach(function (r) { alvo.appendChild(linhaHistoricoChecklist(r, true)); });
+        } else {
+            var vazio = document.createElement('div');
+            vazio.className = 'nf-vazio';
+            vazio.innerHTML = 'Nenhuma conferência neste dia.';
+            alvo.appendChild(vazio);
+        }
+    }
+}
+
 function checklistHistTrocarVisao(v) {
     checklistHistVisao = v;
     renderizarHistoricoChecklist();
 }
 
 function renderizarHistoricoChecklist() {
+    var btnCal = document.getElementById('checklistHistBtnCal');
     var btnDia = document.getElementById('checklistHistBtnDia');
     var btnItem = document.getElementById('checklistHistBtnItem');
     if (btnDia && btnItem) {
+        if (btnCal) { btnCal.style.opacity = checklistHistVisao === 'calendario' ? '1' : '0.55'; }
         btnDia.style.opacity = checklistHistVisao === 'dia' ? '1' : '0.55';
         btnItem.style.opacity = checklistHistVisao === 'item' ? '1' : '0.55';
     }
@@ -4486,7 +4619,9 @@ function renderizarHistoricoChecklist() {
         return;
     }
 
-    if (checklistHistVisao === 'dia') { renderizarHistoricoPorDia(alvo); } else { renderizarHistoricoPorItem(alvo); }
+    if (checklistHistVisao === 'calendario') { renderizarHistoricoCalendario(alvo); }
+    else if (checklistHistVisao === 'dia') { renderizarHistoricoPorDia(alvo); }
+    else { renderizarHistoricoPorItem(alvo); }
 }
 
 function renderizarHistoricoPorDia(alvo) {
