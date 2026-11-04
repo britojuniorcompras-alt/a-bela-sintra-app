@@ -15316,7 +15316,12 @@ function trRenderizarForm() {
         }).join('') + '</select></div></div>';
 
     html += '<datalist id="trListaProdutos">' +
-        trProdutos.map(function (p) { return '<option value="' + nfEsc(p.nome) + '">'; }).join('') + '</datalist>';
+        trProdutos.slice().sort(function (a, b) {
+            return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+        }).map(function (p) {
+            var dica = (p.unidade || '') + (trLerNumero(p.preco) ? ' · ' + nfMoeda(trLerNumero(p.preco)) : '');
+            return '<option value="' + nfEsc(p.nome) + '">' + nfEsc(dica) + '</option>';
+        }).join('') + '</datalist>';
 
     html += '<div class="tr-itens-cab"><span>Produto</span><span>Un.</span><span>Qtd</span><span>Preço</span><span>Total</span><span></span></div>';
 
