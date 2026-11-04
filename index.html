@@ -6214,12 +6214,41 @@ function avNumOuNulo(v) {
 }
 
 function avAjuste(mes, cod) {
+    var exato = null, herdado = null;
     for (var i = 0; i < avAjustes.length; i++) {
-        if (avAjustes[i].competencia === mes && String(avAjustes[i].codigo_produto) === String(cod)) {
-            return avAjustes[i];
+        var a = avAjustes[i];
+        if (String(a.codigo_produto) !== String(cod)) { continue; }
+        if (a.competencia === mes) { exato = a; continue; }
+        // ajuste marcado para repetir vale nos meses seguintes, até ser desligado
+        if (a.recorrente && a.competencia < mes) {
+            if (!herdado || a.competencia > herdado.competencia) { herdado = a; }
         }
     }
+    if (exato) { return exato.tipo === 'cancelado' ? null : exato; }
+    if (herdado) {
+        var copia = {};
+        for (var k in herdado) { if (Object.prototype.hasOwnProperty.call(herdado, k)) { copia[k] = herdado[k]; } }
+        copia.herdado_de = herdado.competencia;
+        copia.origem_id = herdado.id;
+        copia.competencia = mes;
+        return copia;
+    }
     return null;
+}
+
+// Ajustes que valem num mês (os do próprio mês + os repetidos de meses anteriores)
+function avAjustesEfetivos(mes) {
+    var vistos = {}, lista = [];
+    for (var i = 0; i < avVendas.length; i++) {
+        var v = avVendas[i];
+        if (v.competencia !== mes) { continue; }
+        var cod = String(v.codigo_produto || '');
+        if (vistos[cod]) { continue; }
+        vistos[cod] = 1;
+        var a = avAjuste(mes, cod);
+        if (a) { lista.push(a); }
+    }
+    return lista;
 }
 
 function avTemCorrecao(a) {
@@ -6240,6 +6269,13 @@ function avAjusteResumo(it) {
         html += '<div class="av-linha av-corrigido">✎ corrigido: ' + partes.join(' · ') +
             (orig.custo ? ' <span class="av-orig">(veio do sistema: custo ' + avMoeda(orig.custo) +
                 ' · venda ' + avMoeda(orig.preco) + ' · ' + orig.qtde + ' un)</span>' : '') + '</div>';
+    }
+    if (a.recorrente && !a.herdado_de) {
+        html += '<div class="av-linha" style="color:#8FD6A8;">🔁 marcado para repetir nos próximos meses</div>';
+    }
+    if (a.herdado_de) {
+        html += '<div class="av-linha" style="color:#8FD6A8;">🔁 repetindo o ajuste de ' +
+            escHtmlSeguro(avNomeMes(a.herdado_de)) + '</div>';
     }
     if (a.motivo) {
         html += '<div class="av-motivo">' + escHtmlSeguro(a.motivo) +
@@ -6302,10 +6338,17 @@ function avAbrirAjuste(cod) {
         preco_novo: (a && avNumOuNulo(a.preco_novo) !== null) ? a.preco_novo : '',
         qtde_nova: (a && avNumOuNulo(a.qtde_nova) !== null) ? a.qtde_nova : '',
         tirar: !!(a && a.justificado && avTemCorrecao(a)),
+        recorrente: !!(a && a.recorrente),
         motivo: a ? (a.motivo || '') : '',
         existe: !!a,
+        herdadoDe: (a && a.herdado_de) ? a.herdado_de : null,
+        origemId: (a && a.origem_id) ? a.origem_id : null,
         atual: info
     };
+    // ajuste que veio repetido de outro mês: salvar aqui cria um ajuste próprio deste mês
+    if (avAjusteForm.herdadoDe) {
+        avAjusteForm.id = 'vaj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    }
     avRenderizarAjuste();
     trocarTela('vinhos-ajuste-screen');
 }
@@ -6319,6 +6362,49 @@ function avAjusteTipo(tipo) {
     if (!avAjusteForm) { return; }
     avAjusteForm.tipo = tipo;
     avRenderizarAjuste();
+}
+
+function avAjusteRecorrente(marcado) {
+    if (!avAjusteForm) { return; }
+    avAjusteForm.recorrente = !!marcado;
+}
+
+// Bloqueia, só neste mês, um ajuste que vem se repetindo
+function avNaoAplicarNesteMes() {
+    if (!avAjusteForm) { return; }
+    var f = avAjusteForm;
+    if (!confirm('Não aplicar este ajuste em ' + avNomeMes(f.competencia) + '?\n\n' +
+                 'Ele continua valendo nos outros meses.')) { return; }
+    var reg = {
+        id: 'vaj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+        competencia: f.competencia, codigo_produto: f.codigo_produto, produto: f.produto,
+        tipo: 'cancelado', custo_novo: null, preco_novo: null, qtde_nova: null,
+        ignorar: false, justificado: false, recorrente: false,
+        motivo: 'Ajuste repetido desligado neste mês.',
+        original: null,
+        usuario: (typeof usuarioAtual !== 'undefined' && usuarioAtual) ? usuarioAtual : '',
+        criado_em: new Date().toISOString()
+    };
+    avAjustes = avAjustes.filter(function (a) {
+        return !(a.competencia === reg.competencia && String(a.codigo_produto) === reg.codigo_produto);
+    });
+    avAjustes.push(reg);
+    trGravar('vinhos_ajustes', reg, function () { });
+    trocarTela('vinhos-analise-screen');
+    renderizarAnaliseVinhos();
+}
+
+// Apaga o ajuste de origem: para de repetir em todos os meses
+function avPararDeRepetir() {
+    if (!avAjusteForm || !avAjusteForm.origemId) { return; }
+    var f = avAjusteForm;
+    if (!confirm('Apagar o ajuste de ' + avNomeMes(f.herdadoDe) + '?\n\n' +
+                 'Ele para de valer neste mês e nos próximos, e o alerta volta a contar.')) { return; }
+    var id = f.origemId;
+    avAjustes = avAjustes.filter(function (a) { return a.id !== id; });
+    supabaseDelete('vinhos_ajustes', 'id=eq.' + encodeURIComponent(id), function () { });
+    trocarTela('vinhos-analise-screen');
+    renderizarAnaliseVinhos();
 }
 
 function avAjusteTirar(marcado) {
@@ -6373,13 +6459,29 @@ function avRenderizarAjuste() {
             '“Ignorados no mês” com o motivo, e você pode voltar atrás quando quiser.</p>';
     }
 
+    if (f.herdadoDe) {
+        html += '<p class="avaj-nota" style="color:#8FD6A8;">🔁 Este ajuste vem repetido de ' +
+            escHtmlSeguro(avNomeMes(f.herdadoDe)) + '. Se você salvar, cria um ajuste próprio deste mês ' +
+            '(o de ' + escHtmlSeguro(avNomeMes(f.herdadoDe)) + ' continua como está).</p>';
+    }
+
+    html += '<label class="avaj-check"><input type="checkbox"' + (f.recorrente ? ' checked' : '') +
+        ' onchange="avAjusteRecorrente(this.checked)"> 🔁 Repetir nos próximos meses, até eu desligar</label>' +
+        '<p class="avaj-nota">Use quando o erro é de cadastro e vai se repetir todo mês. Sem isso, ' +
+        'o ajuste vale só neste mês — de propósito, para um erro antigo não esconder um novo.</p>';
+
     html += '<label class="ficha-label">Motivo (fica no histórico e no PDF do mês)</label>' +
         '<textarea class="ficha-input" rows="4" placeholder="Ex.: nota lançada em litro no lugar de garrafa — corrigido o custo."' +
         ' oninput="avAjusteCampo(\'motivo\', this.value)">' + escHtmlSeguro(f.motivo) + '</textarea>';
 
     html += '<button type="button" class="btn-confirm" style="width:100%; margin-top:16px;" ' +
         'onclick="avSalvarAjuste()">Salvar</button>';
-    if (f.existe) {
+    if (f.herdadoDe) {
+        html += '<button type="button" class="ficha-add-ingrediente-btn" style="margin-top:10px;" ' +
+            'onclick="avNaoAplicarNesteMes()">🚫 Não aplicar neste mês</button>' +
+            '<button type="button" class="ficha-add-ingrediente-btn" style="margin-top:10px;" ' +
+            'onclick="avPararDeRepetir()">🔁 Parar de repetir (apaga a origem)</button>';
+    } else if (f.existe) {
         html += '<button type="button" class="ficha-add-ingrediente-btn" style="margin-top:10px;" ' +
             'onclick="avRemoverAjuste()">🗑️ Remover este ajuste</button>';
     }
@@ -6406,6 +6508,7 @@ function avSalvarAjuste() {
         qtde_nova: corrige ? avNumOuNulo(f.qtde_nova) : null,
         ignorar: f.tipo === 'ignorar',
         justificado: f.tipo === 'justificar' || (corrige && !!f.tirar),
+        recorrente: !!f.recorrente,
         motivo: motivo,
         original: { custo: f.atual.custo, preco: f.atual.preco, qtde: f.atual.qtde },
         usuario: (typeof usuarioAtual !== 'undefined' && usuarioAtual) ? usuarioAtual : '',
@@ -6512,13 +6615,13 @@ function avCustoPorGarrafa(competencia) {
         m.variacao = m.min > 0 ? ((m.max / m.min - 1) * 100) : 0;
     }
     // correcoes de custo lancadas a mao substituem o custo medio do relatorio
-    for (var j = 0; j < avAjustes.length; j++) {
-        var a = avAjustes[j];
-        if (a.competencia !== competencia) continue;
-        var cn = avNumOuNulo(a.custo_novo);
-        if (cn === null || !(cn > 0)) continue;
-        var alvo = mapa[a.codigo_produto];
-        if (!alvo) { continue; }
+    for (var cod2 in mapa) {
+        if (!Object.prototype.hasOwnProperty.call(mapa, cod2)) { continue; }
+        var aj2 = avAjuste(competencia, cod2);
+        if (!aj2) { continue; }
+        var cn = avNumOuNulo(aj2.custo_novo);
+        if (cn === null || !(cn > 0)) { continue; }
+        var alvo = mapa[cod2];
         alvo.medio = cn; alvo.min = cn; alvo.max = cn; alvo.variacao = 0; alvo.corrigido = true;
     }
     return mapa;
@@ -7159,7 +7262,7 @@ function avGerarPdf(mes) {
     }
 
     // ---- justificativas e correções do mês ----
-    var ajMes = avAjustes.filter(function(a) { return a.competencia === mes; });
+    var ajMes = avAjustesEfetivos(mes);
     if (ajMes.length) {
         titulo('Justificativas e correções do mês');
         nota('Lançamentos revisados à mão. Os itens justificados e os ignorados não entram nos totais acima; ' +
@@ -7170,6 +7273,8 @@ function avGerarPdf(mes) {
             if (avNumOuNulo(a.preco_novo) !== null) { p.push('venda R$ ' + moeda(avNumOuNulo(a.preco_novo))); }
             if (avNumOuNulo(a.qtde_nova) !== null) { p.push('qtde ' + avNumOuNulo(a.qtde_nova)); }
             var tipo = a.ignorar ? 'ignorado no mês' : (p.length ? 'corrigido' : 'justificado');
+            if (a.herdado_de) { tipo += ', repetido de ' + avNomeMes(a.herdado_de); }
+            else if (a.recorrente) { tipo += ', repete nos próximos meses'; }
             espaco(16);
             doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(45, 45, 45);
             doc.text(String(a.produto || a.codigo_produto) + '  [' + tipo + ']', marg, y);
