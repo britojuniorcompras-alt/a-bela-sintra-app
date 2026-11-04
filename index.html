@@ -202,6 +202,20 @@
     .av-tag.ok { background: var(--surface-2); color: var(--text-dim); }
     .av-linha { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); }
     .av-linha b { font-family: 'Space Grotesk', sans-serif; color: var(--text); font-weight: 600; }
+    .av-tag.just { background: rgba(232,188,114,0.16); color: #E8BC72; }
+    .av-item.just { border-left-color: #E8BC72; }
+    .av-corrigido { color: #8FD6A8; }
+    .av-orig { color: var(--text-dim); font-size: 10.5px; }
+    .av-motivo { font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text); background: var(--surface-2); border-radius: 10px; padding: 7px 9px; margin-top: 7px; line-height: 1.45; }
+    .av-ajuste-btn { display: block; width: 100%; margin-top: 8px; background: none; border: 1px dashed var(--line); color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 600; padding: 7px 0; border-radius: 10px; cursor: pointer; }
+    .av-ajuste-btn:active { background: var(--surface-2); }
+    .avaj-atual { background: var(--surface); border-radius: 14px; padding: 11px 13px; margin-bottom: 14px; }
+    .avaj-tipos { display: flex; gap: 8px; margin-bottom: 14px; }
+    .avaj-tipo { flex: 1; background: var(--surface); border: 1px solid var(--line); color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 600; padding: 10px 4px; border-radius: 12px; cursor: pointer; }
+    .avaj-tipo.on { background: var(--accent, #7D1E2D); border-color: transparent; color: #fff; }
+    .avaj-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .avaj-nota { font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); line-height: 1.45; margin: 0 0 12px; }
+    .avaj-check { display: flex; align-items: center; gap: 8px; font-family: 'Inter', sans-serif; font-size: 12px; color: var(--text-dim); margin: 12px 0 4px; }
     .av-vazio { font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text-dim); text-align: center; padding: 30px 10px; line-height: 1.5; }
     .av-imp-nota { font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); line-height: 1.45; }
     .av-arq { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px dashed var(--line); border-radius: 12px;
@@ -1824,6 +1838,14 @@
         <button type="button" class="ficha-add-ingrediente-btn" onclick="avBaixarPdf()">⬇️ Baixar PDF</button>
     </div>
     <div style="height:40px;"></div>
+</div>
+
+<div id="vinhos-ajuste-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('vinhos-analise-screen')">←</button>
+        <h2>Justificar / corrigir</h2>
+    </div>
+    <div id="avAjusteCorpo" style="padding: 14px 20px 40px;"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -6176,6 +6198,248 @@ var AV_TACAS = {
 // Serviço puro, sem custo de produto
 var AV_SEM_CUSTO = { '101432': 1, '101999': 1 };
 
+// ============================================================
+// VINHOS — justificar ou corrigir os alertas do custo x venda
+// A correção é uma camada por cima: o relatório importado fica intacto.
+// ============================================================
+
+var avAjustes = [];
+var avAjusteForm = null;
+
+function avNumOuNulo(v) {
+    if (v === null || v === undefined || String(v).trim() === '') { return null; }
+    var n = Number(String(v).replace(/\./g, '').replace(',', '.'));
+    if (isNaN(n)) { n = Number(String(v).replace(',', '.')); }
+    return isNaN(n) ? null : n;
+}
+
+function avAjuste(mes, cod) {
+    for (var i = 0; i < avAjustes.length; i++) {
+        if (avAjustes[i].competencia === mes && String(avAjustes[i].codigo_produto) === String(cod)) {
+            return avAjustes[i];
+        }
+    }
+    return null;
+}
+
+function avTemCorrecao(a) {
+    return !!(a && (avNumOuNulo(a.custo_novo) !== null || avNumOuNulo(a.preco_novo) !== null ||
+                    avNumOuNulo(a.qtde_nova) !== null));
+}
+
+function avAjusteResumo(it) {
+    var a = it.ajuste;
+    if (!a) { return ''; }
+    var partes = [];
+    if (avNumOuNulo(a.custo_novo) !== null) { partes.push('custo ' + avMoeda(avNumOuNulo(a.custo_novo))); }
+    if (avNumOuNulo(a.preco_novo) !== null) { partes.push('venda ' + avMoeda(avNumOuNulo(a.preco_novo))); }
+    if (avNumOuNulo(a.qtde_nova) !== null) { partes.push('qtde ' + avNumOuNulo(a.qtde_nova)); }
+    var orig = a.original || {};
+    var html = '';
+    if (partes.length) {
+        html += '<div class="av-linha av-corrigido">✎ corrigido: ' + partes.join(' · ') +
+            (orig.custo ? ' <span class="av-orig">(veio do sistema: custo ' + avMoeda(orig.custo) +
+                ' · venda ' + avMoeda(orig.preco) + ' · ' + orig.qtde + ' un)</span>' : '') + '</div>';
+    }
+    if (a.motivo) {
+        html += '<div class="av-motivo">' + escHtmlSeguro(a.motivo) +
+            (a.usuario ? '<br><span class="av-orig">— ' + escHtmlSeguro(a.usuario) +
+                (a.criado_em ? ', ' + new Date(a.criado_em).toLocaleDateString('pt-BR') : '') + '</span>' : '') +
+            '</div>';
+    }
+    return html;
+}
+
+function avBotaoAjuste(it) {
+    return '<button type="button" class="av-ajuste-btn" onclick="avAbrirAjuste(\'' +
+        escHtmlSeguro(String(it.codigo || '')) + '\')">' +
+        (it.ajuste ? '⚖️ ver / alterar justificativa' : '⚖️ justificar ou corrigir') + '</button>';
+}
+
+function avItemAtual(mes, cod) {
+    var r = avCalcular(mes);
+    var achado = null;
+    r.garrafas.forEach(function (g) {
+        if (String(g.codigo) === String(cod)) {
+            achado = { produto: g.produto, custo: g.custo, preco: g.preco, qtde: g.qtde, onde: 'garrafa' };
+        }
+    });
+    if (achado) { return achado; }
+    r.tacas.forEach(function (t) {
+        if (String(t.codigo) === String(cod)) {
+            achado = { produto: t.produto, custo: t.custoDose, preco: t.preco, qtde: t.qtde, onde: 'taca' };
+        }
+    });
+    if (achado) { return achado; }
+    r.semCusto.forEach(function (s) {
+        if (String(s.codigo) === String(cod)) {
+            achado = { produto: s.produto, custo: null, preco: Number(s.preco_unit), qtde: Number(s.qtde), onde: 'semcusto' };
+        }
+    });
+    if (achado) { return achado; }
+    r.ignorados.forEach(function (s) {
+        if (String(s.codigo) === String(cod)) {
+            achado = { produto: s.produto, custo: null, preco: s.preco, qtde: s.qtde, onde: 'ignorado' };
+        }
+    });
+    return achado;
+}
+
+function avAbrirAjuste(cod) {
+    var sel = document.getElementById('avSelMes');
+    var mes = sel ? sel.value : '';
+    if (!mes) { return; }
+    var info = avItemAtual(mes, cod);
+    if (!info) { alert('Não encontrei esse item no mês selecionado.'); return; }
+    var a = avAjuste(mes, cod);
+    avAjusteForm = {
+        id: a ? a.id : ('vaj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),
+        competencia: mes,
+        codigo_produto: String(cod),
+        produto: info.produto,
+        tipo: a ? (a.ignorar ? 'ignorar' : (avTemCorrecao(a) ? 'corrigir' : 'justificar')) : 'justificar',
+        custo_novo: (a && avNumOuNulo(a.custo_novo) !== null) ? a.custo_novo : '',
+        preco_novo: (a && avNumOuNulo(a.preco_novo) !== null) ? a.preco_novo : '',
+        qtde_nova: (a && avNumOuNulo(a.qtde_nova) !== null) ? a.qtde_nova : '',
+        tirar: !!(a && a.justificado && avTemCorrecao(a)),
+        motivo: a ? (a.motivo || '') : '',
+        existe: !!a,
+        atual: info
+    };
+    avRenderizarAjuste();
+    trocarTela('vinhos-ajuste-screen');
+}
+
+function avAjusteCampo(campo, valor) {
+    if (!avAjusteForm) { return; }
+    avAjusteForm[campo] = valor;
+}
+
+function avAjusteTipo(tipo) {
+    if (!avAjusteForm) { return; }
+    avAjusteForm.tipo = tipo;
+    avRenderizarAjuste();
+}
+
+function avAjusteTirar(marcado) {
+    if (!avAjusteForm) { return; }
+    avAjusteForm.tirar = !!marcado;
+}
+
+function avRenderizarAjuste() {
+    var el = document.getElementById('avAjusteCorpo');
+    if (!el || !avAjusteForm) { return; }
+    var f = avAjusteForm, at = f.atual;
+
+    var html = '<div class="avaj-atual">' +
+        '<div class="av-nome" style="font-weight:600;">' + escHtmlSeguro(f.produto) + '</div>' +
+        '<div class="av-linha">' +
+        (at.custo !== null && at.custo !== undefined ? '<span>custo <b>' + avMoeda(at.custo) + '</b></span>' : '') +
+        '<span>venda <b>' + avMoeda(at.preco) + '</b></span>' +
+        '<span><b>' + at.qtde + '</b> un</span>' +
+        '<span>código ' + escHtmlSeguro(f.codigo_produto) + '</span>' +
+        '</div></div>';
+
+    html += '<div class="avaj-tipos">' +
+        '<button type="button" class="avaj-tipo' + (f.tipo === 'justificar' ? ' on' : '') + '" ' +
+            'onclick="avAjusteTipo(\'justificar\')">Só justificar</button>' +
+        '<button type="button" class="avaj-tipo' + (f.tipo === 'corrigir' ? ' on' : '') + '" ' +
+            'onclick="avAjusteTipo(\'corrigir\')">Corrigir valores</button>' +
+        '<button type="button" class="avaj-tipo' + (f.tipo === 'ignorar' ? ' on' : '') + '" ' +
+            'onclick="avAjusteTipo(\'ignorar\')">Ignorar no mês</button>' +
+        '</div>';
+
+    if (f.tipo === 'justificar') {
+        html += '<p class="avaj-nota">O item continua na tela com o selo ✓ justificado, mas sai da conta de ' +
+            '“fora da tabela” e de “deixou de entrar”.</p>';
+    } else if (f.tipo === 'corrigir') {
+        html += '<p class="avaj-nota">Preencha só o que foi lançado errado. O que ficar em branco continua ' +
+            'com o valor do relatório. A análise recalcula com o valor corrigido e o original fica guardado.</p>' +
+            '<label class="ficha-label">Custo da garrafa (R$)</label>' +
+            '<input type="text" inputmode="decimal" class="ficha-input" value="' + escHtmlSeguro(f.custo_novo) +
+                '" placeholder="' + (at.custo ? avMoeda(at.custo).replace('R$ ', '') : '—') +
+                '" oninput="avAjusteCampo(\'custo_novo\', this.value)">' +
+            '<label class="ficha-label">Preço de venda (R$)</label>' +
+            '<input type="text" inputmode="decimal" class="ficha-input" value="' + escHtmlSeguro(f.preco_novo) +
+                '" placeholder="' + avMoeda(at.preco).replace('R$ ', '') +
+                '" oninput="avAjusteCampo(\'preco_novo\', this.value)">' +
+            '<label class="ficha-label">Quantidade vendida</label>' +
+            '<input type="text" inputmode="decimal" class="ficha-input" value="' + escHtmlSeguro(f.qtde_nova) +
+                '" placeholder="' + at.qtde + '" oninput="avAjusteCampo(\'qtde_nova\', this.value)">' +
+            '<label class="avaj-check"><input type="checkbox"' + (f.tirar ? ' checked' : '') +
+                ' onchange="avAjusteTirar(this.checked)"> Mesmo corrigido, não contar nos totais do mês</label>';
+    } else {
+        html += '<p class="avaj-nota">O lançamento sai da análise e dos totais do mês. Ele fica listado em ' +
+            '“Ignorados no mês” com o motivo, e você pode voltar atrás quando quiser.</p>';
+    }
+
+    html += '<label class="ficha-label">Motivo (fica no histórico e no PDF do mês)</label>' +
+        '<textarea class="ficha-input" rows="4" placeholder="Ex.: nota lançada em litro no lugar de garrafa — corrigido o custo."' +
+        ' oninput="avAjusteCampo(\'motivo\', this.value)">' + escHtmlSeguro(f.motivo) + '</textarea>';
+
+    html += '<button type="button" class="btn-confirm" style="width:100%; margin-top:16px;" ' +
+        'onclick="avSalvarAjuste()">Salvar</button>';
+    if (f.existe) {
+        html += '<button type="button" class="ficha-add-ingrediente-btn" style="margin-top:10px;" ' +
+            'onclick="avRemoverAjuste()">🗑️ Remover este ajuste</button>';
+    }
+    el.innerHTML = html;
+}
+
+function avSalvarAjuste() {
+    if (!avAjusteForm) { return; }
+    var f = avAjusteForm;
+    var motivo = String(f.motivo || '').trim();
+    if (motivo.length < 3) {
+        alert('Escreva o motivo. Ele fica registrado no histórico e sai no PDF do mês.');
+        return;
+    }
+    var corrige = f.tipo === 'corrigir';
+    var reg = {
+        id: f.id,
+        competencia: f.competencia,
+        codigo_produto: f.codigo_produto,
+        produto: f.produto,
+        tipo: f.tipo,
+        custo_novo: corrige ? avNumOuNulo(f.custo_novo) : null,
+        preco_novo: corrige ? avNumOuNulo(f.preco_novo) : null,
+        qtde_nova: corrige ? avNumOuNulo(f.qtde_nova) : null,
+        ignorar: f.tipo === 'ignorar',
+        justificado: f.tipo === 'justificar' || (corrige && !!f.tirar),
+        motivo: motivo,
+        original: { custo: f.atual.custo, preco: f.atual.preco, qtde: f.atual.qtde },
+        usuario: (typeof usuarioAtual !== 'undefined' && usuarioAtual) ? usuarioAtual : '',
+        criado_em: new Date().toISOString()
+    };
+    if (corrige && reg.custo_novo === null && reg.preco_novo === null && reg.qtde_nova === null) {
+        alert('Preencha ao menos um valor corrigido, ou escolha "Só justificar".');
+        return;
+    }
+    avAjustes = avAjustes.filter(function (a) {
+        return !(a.competencia === reg.competencia && String(a.codigo_produto) === reg.codigo_produto);
+    });
+    avAjustes.push(reg);
+    trGravar('vinhos_ajustes', reg, function (err) {
+        if (err) {
+            alert('Guardei aqui no aparelho, mas não consegui gravar no servidor agora.\n' +
+                  'Quando a conexão voltar, abra o item e salve de novo para valer nos outros aparelhos.');
+        }
+    });
+    trocarTela('vinhos-analise-screen');
+    renderizarAnaliseVinhos();
+}
+
+function avRemoverAjuste() {
+    if (!avAjusteForm) { return; }
+    if (!avAjusteForm.existe) { trocarTela('vinhos-analise-screen'); return; }
+    if (!confirm('Remover este ajuste?\n\nO item volta com os valores do relatório e o alerta volta a contar nos totais.')) { return; }
+    var id = avAjusteForm.id;
+    avAjustes = avAjustes.filter(function (a) { return a.id !== id; });
+    supabaseDelete('vinhos_ajustes', 'id=eq.' + encodeURIComponent(id), function () { });
+    trocarTela('vinhos-analise-screen');
+    renderizarAnaliseVinhos();
+}
+
 function avMoeda(v) {
     if (v === null || v === undefined || isNaN(Number(v))) return '—';
     return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -6188,7 +6452,7 @@ function abrirAnaliseVinhos() {
 
     if (avCarregado) { avMontarSeletorMeses(); renderizarAnaliseVinhos(); return; }
 
-    var faltam = 2;
+    var faltam = 3;
     function pronto() {
         faltam--;
         if (faltam > 0) return;
@@ -6196,6 +6460,10 @@ function abrirAnaliseVinhos() {
         avMontarSeletorMeses();
         renderizarAnaliseVinhos();
     }
+    supabaseGet('vinhos_ajustes', 'select=*', function(err, dados) {
+        avAjustes = (!err && dados) ? dados : [];
+        pronto();
+    });
     supabaseGet('vinhos_compras', 'select=*', function(err, dados) {
         avCompras = (!err && dados) ? dados : [];
         pronto();
@@ -6243,6 +6511,16 @@ function avCustoPorGarrafa(competencia) {
         m.medio = m.gf > 0 ? (m.valor / m.gf) : null;
         m.variacao = m.min > 0 ? ((m.max / m.min - 1) * 100) : 0;
     }
+    // correcoes de custo lancadas a mao substituem o custo medio do relatorio
+    for (var j = 0; j < avAjustes.length; j++) {
+        var a = avAjustes[j];
+        if (a.competencia !== competencia) continue;
+        var cn = avNumOuNulo(a.custo_novo);
+        if (cn === null || !(cn > 0)) continue;
+        var alvo = mapa[a.codigo_produto];
+        if (!alvo) { continue; }
+        alvo.medio = cn; alvo.min = cn; alvo.max = cn; alvo.variacao = 0; alvo.corrigido = true;
+    }
     return mapa;
 }
 
@@ -6255,7 +6533,7 @@ function avMargemDaFaixa(custo) {
 
 function avCalcular(competencia) {
     var custos = avCustoPorGarrafa(competencia);
-    var garrafas = [], tacas = [], semCusto = [], servico = [];
+    var garrafas = [], tacas = [], semCusto = [], servico = [], ignorados = [];
 
     for (var i = 0; i < avVendas.length; i++) {
         var v = avVendas[i];
@@ -6264,56 +6542,85 @@ function avCalcular(competencia) {
 
         if (AV_SEM_CUSTO[cod]) { servico.push(v); continue; }
 
+        var aj = avAjuste(competencia, cod);
+        if (aj && aj.ignorar) {
+            ignorados.push({
+                codigo: cod, produto: v.produto, grupo: v.grupo,
+                preco: Number(v.preco_unit), qtde: Number(v.qtde), total: Number(v.total),
+                ajuste: aj
+            });
+            continue;
+        }
+        var precoV = (aj && avNumOuNulo(aj.preco_novo) !== null) ? avNumOuNulo(aj.preco_novo) : Number(v.preco_unit);
+        var qtdeV = (aj && avNumOuNulo(aj.qtde_nova) !== null) ? avNumOuNulo(aj.qtde_nova) : Number(v.qtde);
+        var justificado = !!(aj && aj.justificado);
+
         if (v.grupo === 'TACAS') {
             var t = AV_TACAS[cod];
             var cg = t ? custos[t.gf] : null;
             if (t && cg && cg.medio) {
                 var custoDose = cg.medio / t.doses;
                 tacas.push({
-                    produto: v.produto, qtde: Number(v.qtde), preco: Number(v.preco_unit),
+                    codigo: cod, produto: v.produto, qtde: qtdeV, preco: precoV,
                     doses: t.doses, custoGf: cg.medio, custoDose: custoDose,
-                    markup: (Number(v.preco_unit) / custoDose - 1) * 100,
-                    margem: (Number(v.preco_unit) - custoDose) * Number(v.qtde)
+                    markup: (precoV / custoDose - 1) * 100,
+                    margem: (precoV - custoDose) * qtdeV,
+                    justificado: justificado, ajuste: aj || null
                 });
-            } else { semCusto.push(v); }
+            } else {
+                semCusto.push({
+                    codigo: cod, produto: v.produto, grupo: v.grupo, preco_unit: precoV,
+                    qtde: qtdeV, total: precoV * qtdeV, justificado: justificado, ajuste: aj || null
+                });
+            }
             continue;
         }
 
         var c = custos[cod];
-        if (!c || !c.medio) { semCusto.push(v); continue; }
+        if (!c || !c.medio) {
+            semCusto.push({
+                codigo: cod, produto: v.produto, grupo: v.grupo, preco_unit: precoV,
+                qtde: qtdeV, total: precoV * qtdeV, justificado: justificado, ajuste: aj || null
+            });
+            continue;
+        }
         var margemFaixa = avMargemDaFaixa(c.medio);
         var precoTabela = c.medio * (1 + margemFaixa / 100);
         // arredonda antes de classificar, pra situação bater com o número que aparece na tela
-        var difPct = Math.round((Number(v.preco_unit) / precoTabela - 1) * 1000) / 10;
+        var difPct = Math.round((precoV / precoTabela - 1) * 1000) / 10;
         garrafas.push({
-            produto: v.produto, qtde: Number(v.qtde), preco: Number(v.preco_unit),
+            codigo: cod, produto: v.produto, qtde: qtdeV, preco: precoV,
             custo: c.medio, custoMin: c.min, custoMax: c.max, variacao: c.variacao,
+            custoCorrigido: !!c.corrigido,
             margemFaixa: margemFaixa, precoTabela: precoTabela, difPct: difPct,
-            markup: (Number(v.preco_unit) / c.medio - 1) * 100,
-            diferenca: (Number(v.preco_unit) - precoTabela) * Number(v.qtde),
-            situacao: difPct < -5 ? 'abaixo' : (difPct > 5 ? 'acima' : 'ok')
+            markup: (precoV / c.medio - 1) * 100,
+            diferenca: (precoV - precoTabela) * qtdeV,
+            situacao: difPct < -5 ? 'abaixo' : (difPct > 5 ? 'acima' : 'ok'),
+            justificado: justificado, ajuste: aj || null
         });
     }
-    return { garrafas: garrafas, tacas: tacas, semCusto: semCusto, servico: servico, custos: custos };
+    return { garrafas: garrafas, tacas: tacas, semCusto: semCusto, servico: servico,
+             ignorados: ignorados, custos: custos };
 }
 
 function avItemGarrafa(g) {
     var rot = g.situacao === 'abaixo' ? 'abaixo da tabela'
             : (g.situacao === 'acima' ? 'acima da tabela' : 'na faixa');
-    var alerta = g.variacao > 10
+    var alerta = (g.variacao > 10 && !g.custoCorrigido)
         ? '<div class="av-linha" style="color:#E8BC72;">⚠️ entrou com preços diferentes no mês: ' +
           avMoeda(g.custoMin) + ' a ' + avMoeda(g.custoMax) + '</div>'
         : '';
-    return '<div class="av-item ' + g.situacao + '">' +
+    var selo = g.justificado ? '<span class="av-tag just">✓ justificado</span>' : '';
+    return '<div class="av-item ' + (g.justificado ? 'just' : g.situacao) + '">' +
         '<div class="av-item-topo"><span class="av-nome">' + escHtmlSeguro(g.produto) + '</span>' +
-        '<span class="av-tag ' + g.situacao + '">' + (g.difPct >= 0 ? '+' : '') + g.difPct.toFixed(0) + '% ' + rot + '</span></div>' +
+        selo + '<span class="av-tag ' + g.situacao + '">' + (g.difPct >= 0 ? '+' : '') + g.difPct.toFixed(0) + '% ' + rot + '</span></div>' +
         '<div class="av-linha"><span>custo <b>' + avMoeda(g.custo) + '</b></span>' +
         '<span>vende <b>' + avMoeda(g.preco) + '</b></span>' +
         '<span>tabela <b>' + avMoeda(g.precoTabela) + '</b></span>' +
         '<span>markup <b>' + g.markup.toFixed(0) + '%</b></span>' +
         '<span>' + g.qtde + ' un</span>' +
         (g.situacao === 'abaixo' ? '<span style="color:#FF8A98;">deixou de entrar <b style="color:#FF8A98;">' + avMoeda(Math.abs(g.diferenca)) + '</b></span>' : '') +
-        '</div>' + alerta + '</div>';
+        '</div>' + alerta + avAjusteResumo(g) + avBotaoAjuste(g) + '</div>';
 }
 
 function escHtmlSeguro(s) {
@@ -6747,11 +7054,13 @@ function avGerarPdf(mes) {
     }
 
     var r = avCalcular(mes);
-    var abaixo = r.garrafas.filter(function(g) { return g.situacao === 'abaixo'; })
+    var ativos = r.garrafas.filter(function(g) { return !g.justificado; });
+    var justificados = r.garrafas.filter(function(g) { return g.justificado; });
+    var abaixo = ativos.filter(function(g) { return g.situacao === 'abaixo'; })
                            .sort(function(a, b) { return a.diferenca - b.diferenca; });
-    var acima = r.garrafas.filter(function(g) { return g.situacao === 'acima'; })
+    var acima = ativos.filter(function(g) { return g.situacao === 'acima'; })
                           .sort(function(a, b) { return b.diferenca - a.diferenca; });
-    var naFaixa = r.garrafas.filter(function(g) { return g.situacao === 'ok'; });
+    var naFaixa = ativos.filter(function(g) { return g.situacao === 'ok'; });
     var recG = 0, custoG = 0, recT = 0, custoT = 0, perdido = 0;
     r.garrafas.forEach(function(g) { recG += g.preco * g.qtde; custoG += g.custo * g.qtde; });
     r.tacas.forEach(function(t) { recT += t.preco * t.qtde; custoT += t.custoDose * t.qtde; });
@@ -6777,7 +7086,7 @@ function avGerarPdf(mes) {
     var resumo = [
         ['Markup médio das garrafas', (custoG > 0 ? (recG / custoG - 1) * 100 : 0).toFixed(0) + '%'],
         ['Markup médio das taças', (custoT > 0 ? (recT / custoT - 1) * 100 : 0).toFixed(0) + '%'],
-        ['Rótulos abaixo da tabela', String(abaixo.length) + ' de ' + r.garrafas.length],
+        ['Rótulos abaixo da tabela', String(abaixo.length) + ' de ' + ativos.length],
         ['Deixou de entrar no mês', 'R$ ' + moeda(perdido)]
     ];
     resumo.forEach(function(l) {
@@ -6847,6 +7156,38 @@ function avGerarPdf(mes) {
         ], r.semCusto.slice().sort(function(a, b) { return Number(b.total) - Number(a.total); }).map(function(s) {
             return [s.produto, String(s.grupo || '').toLowerCase(), moeda(s.preco_unit), String(s.qtde), moeda(s.total)];
         }));
+    }
+
+    // ---- justificativas e correções do mês ----
+    var ajMes = avAjustes.filter(function(a) { return a.competencia === mes; });
+    if (ajMes.length) {
+        titulo('Justificativas e correções do mês');
+        nota('Lançamentos revisados à mão. Os itens justificados e os ignorados não entram nos totais acima; ' +
+             'os corrigidos entram já com o valor certo. O relatório importado do sistema não foi alterado.');
+        ajMes.forEach(function(a) {
+            var p = [];
+            if (avNumOuNulo(a.custo_novo) !== null) { p.push('custo R$ ' + moeda(avNumOuNulo(a.custo_novo))); }
+            if (avNumOuNulo(a.preco_novo) !== null) { p.push('venda R$ ' + moeda(avNumOuNulo(a.preco_novo))); }
+            if (avNumOuNulo(a.qtde_nova) !== null) { p.push('qtde ' + avNumOuNulo(a.qtde_nova)); }
+            var tipo = a.ignorar ? 'ignorado no mês' : (p.length ? 'corrigido' : 'justificado');
+            espaco(16);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(45, 45, 45);
+            doc.text(String(a.produto || a.codigo_produto) + '  [' + tipo + ']', marg, y);
+            y += 4;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(105, 105, 105);
+            var orig = a.original || {};
+            var det = (p.length ? 'Corrigido para ' + p.join(' / ') + '. ' : '');
+            if (p.length && orig.preco !== null && orig.preco !== undefined) {
+                det += 'Veio do sistema como venda R$ ' + moeda(orig.preco) +
+                       (orig.custo ? ', custo R$ ' + moeda(orig.custo) : '') +
+                       (orig.qtde !== null && orig.qtde !== undefined ? ', ' + orig.qtde + ' un' : '') + '. ';
+            }
+            det += String(a.motivo || '');
+            if (a.usuario) { det += '  (' + a.usuario + (a.criado_em ? ', ' + new Date(a.criado_em).toLocaleDateString('pt-BR') : '') + ')'; }
+            var ls = doc.splitTextToSize(det, base - marg);
+            ls.forEach(function(l) { espaco(5); doc.text(l, marg, y); y += 3.6; });
+            y += 2.5;
+        });
     }
 
     // rodapé em todas as páginas
@@ -6920,11 +7261,13 @@ function renderizarAnaliseVinhos() {
         return;
     }
 
-    var abaixo = r.garrafas.filter(function(g) { return g.situacao === 'abaixo'; })
+    var ativos = r.garrafas.filter(function(g) { return !g.justificado; });
+    var justificados = r.garrafas.filter(function(g) { return g.justificado; });
+    var abaixo = ativos.filter(function(g) { return g.situacao === 'abaixo'; })
                            .sort(function(a, b) { return a.diferenca - b.diferenca; });
-    var acima = r.garrafas.filter(function(g) { return g.situacao === 'acima'; })
+    var acima = ativos.filter(function(g) { return g.situacao === 'acima'; })
                           .sort(function(a, b) { return b.diferenca - a.diferenca; });
-    var naFaixa = r.garrafas.filter(function(g) { return g.situacao === 'ok'; });
+    var naFaixa = ativos.filter(function(g) { return g.situacao === 'ok'; });
 
     var recG = 0, custoG = 0;
     r.garrafas.forEach(function(g) { recG += g.preco * g.qtde; custoG += g.custo * g.qtde; });
@@ -6944,10 +7287,12 @@ function renderizarAnaliseVinhos() {
             avMoeda(perdido) + '</div><div class="det">no mês</div></div>' +
         '</div>';
 
-    html += '<div class="av-resumo">De <b>' + r.garrafas.length + '</b> rótulos vendidos em garrafa que também ' +
+    html += '<div class="av-resumo">De <b>' + ativos.length + '</b> rótulos vendidos em garrafa que também ' +
         'foram comprados no mês, <b>' + abaixo.length + '</b> estão abaixo da tabela, <b>' + naFaixa.length +
         '</b> na faixa e <b>' + acima.length + '</b> acima.' +
         (r.semCusto.length ? ' Outros <b>' + r.semCusto.length + '</b> venderam de estoque anterior, sem custo deste mês para comparar.' : '') +
+        (justificados.length ? ' <b>' + justificados.length + '</b> já justificado(s), fora da conta.' : '') +
+        (r.ignorados.length ? ' <b>' + r.ignorados.length + '</b> ignorado(s) no mês.' : '') +
         '</div>';
 
     if (abaixo.length) {
@@ -6966,7 +7311,8 @@ function renderizarAnaliseVinhos() {
                     '<span>dose <b>' + avMoeda(t.custoDose) + '</b></span>' +
                     '<span>vende <b>' + avMoeda(t.preco) + '</b></span>' +
                     '<span>' + t.qtde + ' taças</span>' +
-                    '<span>margem <b>' + avMoeda(t.margem) + '</b></span></div></div>';
+                    '<span>margem <b>' + avMoeda(t.margem) + '</b></span></div>' +
+                    avAjusteResumo(t) + avBotaoAjuste(t) + '</div>';
             }).join('');
     }
     if (acima.length) {
@@ -6977,6 +7323,23 @@ function renderizarAnaliseVinhos() {
     if (naFaixa.length) {
         html += '<div class="av-sec">Dentro da faixa</div>' + naFaixa.map(avItemGarrafa).join('');
     }
+    if (justificados.length) {
+        html += '<div class="av-sec">Justificados</div>' +
+            '<div class="av-sec-nota">Alertas que você já explicou ou corrigiu. Ficam aqui para consulta e não contam nos totais do mês.</div>' +
+            justificados.map(avItemGarrafa).join('');
+    }
+    if (r.ignorados.length) {
+        html += '<div class="av-sec">Ignorados no mês</div>' +
+            '<div class="av-sec-nota">Lançamentos equivocados, fora da análise e dos totais.</div>' +
+            r.ignorados.map(function(s) {
+                return '<div class="av-item just"><div class="av-item-topo">' +
+                    '<span class="av-nome">' + escHtmlSeguro(s.produto) + '</span>' +
+                    '<span class="av-tag just">ignorado</span></div>' +
+                    '<div class="av-linha"><span>vinha como <b>' + avMoeda(s.preco) + '</b></span>' +
+                    '<span>' + s.qtde + ' un</span></div>' +
+                    avAjusteResumo(s) + avBotaoAjuste(s) + '</div>';
+            }).join('');
+    }
     if (r.semCusto.length) {
         html += '<div class="av-sec">Vendidos sem compra no mês</div>' +
             '<div class="av-sec-nota">Saíram de estoque anterior. Entram na análise quando as compras desses meses forem carregadas.</div>';
@@ -6985,7 +7348,8 @@ function renderizarAnaliseVinhos() {
                 '<span class="av-nome">' + escHtmlSeguro(s.produto) + '</span>' +
                 '<span class="av-tag ok">' + avMoeda(s.total) + '</span></div>' +
                 '<div class="av-linha"><span>vende <b>' + avMoeda(s.preco_unit) + '</b></span>' +
-                '<span>' + s.qtde + ' un</span></div></div>';
+                '<span>' + s.qtde + ' un</span></div>' +
+                avAjusteResumo(s) + avBotaoAjuste(s) + '</div>';
         }).join('');
     }
 
