@@ -401,6 +401,12 @@
     .voz-btn { flex: 0 0 auto; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
     .voz-btn.on { background: var(--accent); color: var(--accent-text, #fff); border-color: transparent; }
     .voz-escolhida { flex: 0 0 auto; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+    .voz-nome { flex-direction: column; align-items: stretch; gap: 8px; }
+    .voz-nome-linha { display: flex; align-items: center; gap: 10px; }
+    .voz-nome-linha span { flex: 1; }
+    .voz-nome .ficha-input { margin: 0; }
+    .voz-nome-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text); }
+    .voz-nome-check input { width: 18px; height: 18px; accent-color: var(--accent); }
     .voz-fonte { cursor: pointer; }
     .voz-fonte input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--accent); }
     .voz-fonte span { flex: 1; min-width: 0; }
@@ -3208,7 +3214,7 @@ function checklistUpsert(registro, callback) {
 
 // ---------- abertura e sincronização ----------
 
-var CHECKLIST_VERSAO = '04/11/2026 · v4';
+var CHECKLIST_VERSAO = '04/11/2026 · v5';
 
 // Diagnóstico: bate em cada tabela e mostra o que o servidor respondeu,
 // com o código do erro. Serve para eu saber o que está acontecendo no aparelho.
@@ -10280,6 +10286,39 @@ function vozDuracao(ms) {
     return txt;
 }
 
+// Nome de quem está logado neste aparelho (ou o apelido que a pessoa escolheu)
+function vozNomeOperador() {
+    var u = String((typeof usuarioAtual !== 'undefined' && usuarioAtual) || '').trim();
+    if (!u) { return ''; }
+    var ap = vozLer('vozApelidosABS', {}) || {};
+    if (ap[u] && String(ap[u]).trim()) { return String(ap[u]).trim(); }
+    return vozLimparNome(u.split(/\s+/)[0]);
+}
+
+function vozChamarPeloNome() { return vozLer('vozChamarNomeABS', true) !== false; }
+
+function vozChamada() {
+    var n = vozNomeOperador();
+    if (!n || !vozChamarPeloNome()) { return ''; }
+    return vozSortear([n + ', olha só. ', 'Ei, ' + n + '! ', n + ', um aviso pra você. ', 'Psiu, ' + n + '. ']);
+}
+
+function vozApelidoMudou(valor) {
+    var u = String((typeof usuarioAtual !== 'undefined' && usuarioAtual) || '').trim();
+    if (!u) { return; }
+    var ap = vozLer('vozApelidosABS', {}) || {};
+    ap[u] = String(valor || '').trim();
+    vozGravar('vozApelidosABS', ap);
+}
+
+function vozChamarNomeAlternar(ligado) { vozGravar('vozChamarNomeABS', ligado ? 'true' : 'false'); }
+
+function vozOuvirNome() {
+    window.speechSynthesis.cancel();
+    var n = vozNomeOperador();
+    vozFalar(n ? 'Ei, ' + n + '! É assim que eu vou te chamar nos avisos.' : 'Ninguém está logado neste aparelho.');
+}
+
 function vozDias(n) { n = Math.abs(n); return n + (n === 1 ? ' dia' : ' dias'); }
 
 // ---------- dados de checklist e agenda (leitura leve, para todos os aparelhos) ----------
@@ -10456,7 +10495,7 @@ function vozVerificarFornecedores() {   // nome antigo mantido: agora verifica t
     }
 
     // só marca como falado quando a voz começou de verdade
-    vozFalar(vozMontarFala(falar), function () {
+    vozFalar(vozChamada() + vozMontarFala(falar), function () {
         var m = vozLerFalados(), t = Date.now();
         falar.forEach(function (a) { m[a.chave] = { t: t, dia: hoje }; });
         vozSalvarFalados(m);
@@ -10485,6 +10524,23 @@ function vozRenderizarAjustes() {
         '<div><b>' + (ligada ? '🔊 Aviso por voz ligado' : '🔇 Aviso por voz desligado') + '</b>' +
         '<small>vale só para este aparelho · fala entre ' + VOZ_HORA_INICIO + 'h e ' + VOZ_HORA_FIM + 'h</small></div>' +
         '<button type="button" class="voz-btn' + (ligada ? '' : ' on') + '" onclick="vozAlternar()">' + (ligada ? 'Desligar' : 'Ligar') + '</button></div>';
+
+    var opNome = String((typeof usuarioAtual !== 'undefined' && usuarioAtual) || '').trim();
+    var apelidos = vozLer('vozApelidosABS', {}) || {};
+    html += '<div class="voz-sec">Como a voz te chama</div>';
+    if (opNome) {
+        html += '<div class="voz-bloco voz-nome">' +
+            '<div class="voz-nome-linha"><span>Logado: <b>' + escHtmlSeguro(opNome) + '</b></span>' +
+            '<button type="button" class="voz-play" onclick="vozOuvirNome()">▶</button></div>' +
+            '<input type="text" class="ficha-input" maxlength="30" value="' + escHtmlSeguro(apelidos[opNome] || '') + '" ' +
+            'placeholder="' + escHtmlSeguro(vozLimparNome(opNome.split(/\s+/)[0])) + '" oninput="vozApelidoMudou(this.value)">' +
+            '<small>Deixe em branco para usar o primeiro nome. Se a voz pronunciar errado, escreva do jeito que se fala ' +
+            '(ex.: <i>Caíque</i>).</small>' +
+            '<label class="voz-nome-check"><input type="checkbox"' + (vozChamarPeloNome() ? ' checked' : '') +
+            ' onchange="vozChamarNomeAlternar(this.checked)"> Chamar pelo nome nos avisos</label></div>';
+    } else {
+        html += '<div class="voz-nota">Ninguém está logado neste aparelho. Faça o login para a voz chamar a pessoa pelo nome.</div>';
+    }
 
     html += '<div class="voz-sec">Escolha a voz</div><div class="voz-nota">Toque em ▶ para ouvir e em <b>Usar</b> para escolher. As vozes vêm do próprio aparelho, então a lista muda de um celular para outro.</div>';
     var jaTitulou = false;
@@ -10520,7 +10576,7 @@ function vozOuvir(i) {
     if (!op) { return; }
     window.speechSynthesis.cancel();
     vozFalar((op.divertida ? '' : 'Olá, esta é a voz ' + (i + 1) + ', ' + vozLimparNome(op.nome) + '. ') +
-        'Atenção: entrega atrasada. Piramides Distribuidora, atrasado há 40 minutos.', null, op);
+        vozChamada() + 'Atenção: entrega atrasada. Piramides Distribuidora, atrasado há 40 minutos.', null, op);
 }
 
 function vozUsar(i) {
@@ -10528,7 +10584,8 @@ function vozUsar(i) {
     if (!op) { return; }
     vozGravar('vozEscolhidaABS', JSON.stringify(op.id));
     window.speechSynthesis.cancel();
-    vozFalar('Pronto. Vou usar esta voz neste aparelho.', null, op);
+    var nUsar = vozNomeOperador();
+    vozFalar('Pronto' + (nUsar && vozChamarPeloNome() ? ', ' + nUsar : '') + '. Vou usar esta voz neste aparelho.', null, op);
     vozRenderizarAjustes();
 }
 
@@ -10557,7 +10614,7 @@ function vozTestar() {
     vozAtualizarDados(true);
     setTimeout(function () {
         var avisos = vozColetar(Date.now());
-        vozFalar(avisos.length ? vozMontarFala(avisos) : 'Tudo em dia. Nenhum aviso pendente agora.');
+        vozFalar(vozChamada() + (avisos.length ? vozMontarFala(avisos) : 'Tudo em dia. Nenhum aviso pendente agora.'));
     }, 900);
 }
 
