@@ -402,6 +402,10 @@
     .voz-btn.on { background: var(--accent); color: var(--accent-text, #fff); border-color: transparent; }
     .voz-escolhida { flex: 0 0 auto; font-size: 11.5px; font-weight: 700; color: var(--accent); }
     .voz-nome { flex-direction: column; align-items: stretch; gap: 8px; }
+    .voz-velocidade { flex-direction: column; align-items: stretch; gap: 6px; }
+    .voz-vel-linha { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-dim); }
+    .voz-vel-linha b { color: var(--text); }
+    .voz-velocidade input[type="range"] { width: 100%; accent-color: var(--accent); }
     .voz-nome-linha { display: flex; align-items: center; gap: 10px; }
     .voz-nome-linha span { flex: 1; }
     .voz-nome .ficha-input { margin: 0; }
@@ -10097,6 +10101,31 @@ function vozFonteLigada(id) {
     var m = vozLer('vozFontesABS', {});
     return !(m && m[id] === false);
 }
+// Velocidade geral da fala neste aparelho — igual um "volume", mas de ritmo:
+// 0.7 = bem calma, 1.4 = bem agitada. Multiplica o rate de qualquer voz (local, premium ou divertida).
+function vozVelocidade() {
+    var v = Number(vozLer('vozVelocidadeABS', 1));
+    if (!v || isNaN(v)) { v = 1; }
+    return Math.max(0.7, Math.min(1.4, v));
+}
+function vozVelocidadeRotulo(v) {
+    if (v <= 0.78) { return 'Bem calma'; }
+    if (v <= 0.92) { return 'Calma'; }
+    if (v <= 1.08) { return 'Normal'; }
+    if (v <= 1.25) { return 'Agitada'; }
+    return 'Bem agitada';
+}
+function vozVelocidadeMudou(v) {
+    v = Math.max(0.7, Math.min(1.4, Number(v) || 1));
+    vozGravar('vozVelocidadeABS', v);
+    var r = document.getElementById('vozVelocidadeRotulo');
+    if (r) { r.innerText = vozVelocidadeRotulo(v); }
+}
+function vozVelocidadeTestar() {
+    window.speechSynthesis.cancel();
+    if (vozAudio) { try { vozAudio.pause(); } catch (e) { } }
+    vozFalar('Assim fica a velocidade da fala agora.', null, vozOpcaoEscolhida(), true);
+}
 function vozLerFalados() {
     var d = vozLer('vozFaladosABS', {});
     return (d && typeof d === 'object') ? d : {};
@@ -10213,7 +10242,7 @@ function vozMelhorLocal() {
 function vozFalarNuvem(texto, aoComecar, op) {
     fetch(SUPABASE_URL + '/functions/v1/tts', {
         method: 'POST', headers: supabaseHeaders(),
-        body: JSON.stringify({ texto: texto, voz: op.nuvem, ritmo: op.rate || 1 })
+        body: JSON.stringify({ texto: texto, voz: op.nuvem, ritmo: Math.max(0.5, Math.min(2, (op.rate || 1) * vozVelocidade())) })
     }).then(function (r) {
         return r.json().then(function (d) { return { ok: r.ok, d: d }; });
     }).then(function (x) {
@@ -10271,7 +10300,22 @@ var VOZ_PERSONAGENS = [
       fecha: ['Fim da mensagem intergaláctica.', 'Leve-me ao seu gerente.', 'Voltando para a nave.'] },
     { id: 'radio', nome: '🎙️ Locutor de rádio', desc: 'voz de plantão de notícias', rate: 1.05, pitch: 0.75, efeito: 'vinheta',
       abre: ['Bom dia, almoxarifado! Plantão de avisos:', 'Interrompemos a programação para um aviso:', 'Atenção, ouvintes da Bela Sintra:'],
-      fecha: ['Voltamos já com mais avisos.', 'Fique ligado na nossa frequência.', 'Esse foi o plantão. Até a próxima.'] }
+      fecha: ['Voltamos já com mais avisos.', 'Fique ligado na nossa frequência.', 'Esse foi o plantão. Até a próxima.'] },
+    { id: 'sargento', nome: '🫡 Sargento', desc: 'grita rápido e sem paciência', rate: 1.32, pitch: 0.55,
+      abre: ['Atenção, pelotão!', 'Formar, formar! Escutem bem!', 'Prestem atenção, agora!'],
+      fecha: ['Isso é tudo! Dispersar!', 'Cumpram a missão!', 'Sem desculpa, vai lá resolver!'] },
+    { id: 'zen', nome: '🧘 Monge zen', desc: 'bem calma e bem devagar', rate: 0.68, pitch: 0.95,
+      abre: ['Respire fundo.', 'Com calma, ouça este aviso.', 'Que a paz esteja com o estoque.'],
+      fecha: ['Namastê.', 'Siga em frente com serenidade.', 'E assim se encerra este momento.'] },
+    { id: 'dj', nome: '🎉 DJ de festa', desc: 'animado, estilo balada', rate: 1.22, pitch: 1.3, efeito: 'vinheta',
+      abre: ['Eeeaa, galera, segura esse som!', 'Vem comigo que o aviso chegou!', 'Levanta a mão quem tá ouvindo!'],
+      fecha: ['Mandou bem quem resolver isso!', 'Bora, bora, bora!', 'E o som não pode parar!'] },
+    { id: 'surfista', nome: '🏄 Surfista', desc: 'de boa, no seu tempo', rate: 0.92, pitch: 1.05,
+      abre: ['E aí, parça, suave?', 'Ó só, mano, chegou onda.', 'Relaxa, mas escuta aqui.'],
+      fecha: ['Tamo junto, flow.', 'Depois me conta como foi, surfista.', 'Fica na paz.'] },
+    { id: 'opera', nome: '🎭 Cantor de ópera', desc: 'dramático, voz de teatro', rate: 0.9, pitch: 1.5,
+      abre: ['Ouçam, ó bravos guerreiros do estoque!', 'Eis que o destino anuncia um aviso!', 'Que comece o grande ato!'],
+      fecha: ['E assim cai o pano deste ato!', 'Bravo! Agora, à cena seguinte!', 'Fim do dramático anúncio!'] }
 ];
 
 function vozSortear(lista) { return lista[Math.floor(Math.random() * lista.length)]; }
@@ -10335,7 +10379,7 @@ function vozFalar(texto, aoComecar, opcao, semPersonagem) {
         var u = new SpeechSynthesisUtterance(pedaco);
         u.lang = 'pt-BR';
         if (vozDoAparelho) { u.voice = vozDoAparelho; u.lang = vozDoAparelho.lang; }
-        u.rate = op ? op.rate : 1;
+        u.rate = Math.max(0.3, Math.min(2.5, (op ? op.rate : 1) * vozVelocidade()));
         u.pitch = op ? op.pitch : 1;
         u.volume = 1;
         u.onstart = function () {
@@ -10621,6 +10665,15 @@ function vozRenderizarAjustes() {
         '<div><b>' + (ligada ? '🔊 Aviso por voz ligado' : '🔇 Aviso por voz desligado') + '</b>' +
         '<small>vale só para este aparelho · fala entre ' + VOZ_HORA_INICIO + 'h e ' + VOZ_HORA_FIM + 'h</small></div>' +
         '<button type="button" class="voz-btn' + (ligada ? '' : ' on') + '" onclick="vozAlternar()">' + (ligada ? 'Desligar' : 'Ligar') + '</button></div>';
+
+    var velAtual = vozVelocidade();
+    html += '<div class="voz-sec">Velocidade da fala</div>' +
+        '<div class="voz-bloco voz-velocidade">' +
+        '<div class="voz-vel-linha"><span>🐢 Calma</span><span id="vozVelocidadeRotulo"><b>' + vozVelocidadeRotulo(velAtual) + '</b></span><span>Agitada 🐇</span></div>' +
+        '<input type="range" min="0.7" max="1.4" step="0.05" value="' + velAtual + '" ' +
+        'oninput="vozVelocidadeMudou(this.value)" onchange="vozVelocidadeTestar()">' +
+        '<small>Vale para qualquer voz escolhida abaixo (grátis, premium ou divertida) — é só o ritmo, como um volume.</small>' +
+        '<button type="button" class="voz-btn" style="margin-top:8px;" onclick="vozVelocidadeTestar()">▶ Testar velocidade</button></div>';
 
     var opNome = String((typeof usuarioAtual !== 'undefined' && usuarioAtual) || '').trim();
     var apelidos = vozLer('vozApelidosABS', {}) || {};
