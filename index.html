@@ -3158,7 +3158,16 @@ function checklistItemPorId(id) {
 }
 
 function checklistItensDoSetor(setorId) {
-    return itensChecklistDiaria.filter(function (it) { return (it.setor_id || '') === (setorId || ''); });
+    // item cujo setor foi apagado (ou juntado com outro) não pode ficar invisível:
+    // ele aparece em "Sem setor" para ser movido ou apagado
+    var existe = {};
+    checklistSetores.forEach(function (s) { existe[s.id] = true; });
+    var temSetores = checklistSetores.length > 0;   // se os setores não carregaram, não reclassifica nada
+    return itensChecklistDiaria.filter(function (it) {
+        var sid = it.setor_id || '';
+        if (sid && temSetores && !existe[sid]) { sid = ''; }
+        return sid === (setorId || '');
+    });
 }
 
 function checklistUpsert(registro, callback) {
@@ -3173,7 +3182,7 @@ function checklistUpsert(registro, callback) {
 
 // ---------- abertura e sincronização ----------
 
-var CHECKLIST_VERSAO = '04/11/2026';
+var CHECKLIST_VERSAO = '04/11/2026 · v2';
 
 // Diagnóstico: bate em cada tabela e mostra o que o servidor respondeu,
 // com o código do erro. Serve para eu saber o que está acontecendo no aparelho.
@@ -4444,9 +4453,9 @@ function salvarItensChecklistDiaria() {
             });
             delete checklistHoje[it.id];
         });
-        itensChecklistDiaria = itensChecklistDiaria.filter(function (it) {
-            return (it.setor_id || '') !== (checklistSetorAtivo || '');
-        });
+        var idsApagados = {};
+        antesDeApagar.forEach(function (it) { idsApagados[it.id] = true; });
+        itensChecklistDiaria = itensChecklistDiaria.filter(function (it) { return !idsApagados[it.id]; });
         checklistCacheGravar('checklistDiariaItensABS', itensChecklistDiaria);
         renderizarListaChecklistDiaria();
         trocarTela('checklist-setor-screen');
@@ -4464,10 +4473,13 @@ function salvarItensChecklistDiaria() {
         }
     }
 
-    var idsDaTela = {};
+    var idsDaTela = {}, idsDoSetor = {};
     novaLista.forEach(function (it) { idsDaTela[it.id] = true; });
+    // usa a mesma regra da tela (inclui os itens órfãos que aparecem em "Sem setor"),
+    // senão um item apagado ficava na memória e voltava para o servidor na próxima sincronização
+    antigos.forEach(function (it) { idsDoSetor[it.id] = true; });
     itensChecklistDiaria = itensChecklistDiaria.filter(function (it) {
-        return (it.setor_id || '') !== (checklistSetorAtivo || '') && !idsDaTela[it.id];
+        return !idsDoSetor[it.id] && !idsDaTela[it.id];
     }).concat(novaLista);
     checklistCacheGravar('checklistDiariaItensABS', itensChecklistDiaria);
 
@@ -8388,8 +8400,9 @@ function textoDoHistorico(entry) {
     if (entry.tipo === 'checklist') { titulo = "Fornecedores confirmados"; }
     else if (entry.tipo === 'manutencao') { titulo = "Resumo de Manutenção"; }
     else if (entry.tipo === 'notas') { titulo = "Notas Fiscais"; }
+    else if (entry.tipo === 'peixes') { titulo = "Recebimento de peixes"; }
     else { titulo = "Pedido " + entry.setor; }
-    return "*" + titulo + " - " + entry.data + "*\n\n" + entry.itens.join("\n");;
+    return "*" + titulo + " - " + entry.data + "*\n\n" + (entry.itens || []).join("\n");
 }
 
 function verResumo() {
@@ -9572,18 +9585,22 @@ function renderizarListaHistorico(historico) {
                 var item = document.createElement('div');
                 item.className = 'history-item';
 
-                if (pedidoHist.tipo === 'checklist' || pedidoHist.tipo === 'manutencao') {
+                var brutoItem = String(pedidoHist.itens[i] == null ? '' : pedidoHist.itens[i]).replace(/^[-▪]\s*/, "");
+                // só pedido de compra tem o formato "quantidade - produto"; registros de notas,
+                // recebimento de peixes, checklist e manutenção são texto corrido
+                var ehPedido = (!pedidoHist.tipo || pedidoHist.tipo === 'pedido') && brutoItem.indexOf(' - ') !== -1;
+                if (!ehPedido) {
                     var spanTexto = document.createElement('span');
-                    var textoLimpo = pedidoHist.itens[i].replace(/^[-▪]\s*/, "");
+                    var textoLimpo = brutoItem;
                     var escapado = textoLimpo.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                     spanTexto.innerHTML = escapado.replace(/\n\s*/g, '<br><span class="product-qty-obs">') + (textoLimpo.indexOf('\n') !== -1 ? '</span>' : '');
                     item.appendChild(spanTexto);
                 } else {
-                    var partes = pedidoHist.itens[i].replace(/^[-▪]\s*/, "").split(" - ");
+                    var partes = brutoItem.split(" - ");
                     var spanQtd = document.createElement('strong');
                     spanQtd.innerText = partes[0];
                     var spanNome = document.createElement('span');
-                    spanNome.innerText = partes[1];
+                    spanNome.innerText = partes.slice(1).join(" - ");
                     
                     item.appendChild(spanNome);
                     item.appendChild(spanQtd);
@@ -9598,6 +9615,8 @@ function renderizarListaHistorico(historico) {
             var titulo;
             if (pedidoHist.tipo === 'checklist') { titulo = "Fornecedores confirmados"; }
             else if (pedidoHist.tipo === 'manutencao') { titulo = "Resumo de Manutenção"; }
+            else if (pedidoHist.tipo === 'notas') { titulo = "Notas Fiscais"; }
+            else if (pedidoHist.tipo === 'peixes') { titulo = "Recebimento de peixes"; }
             else { titulo = "Pedido " + pedidoHist.setor; }
             var textoCompleto = textoDoHistorico(pedidoHist);
 
@@ -14671,19 +14690,31 @@ function nfIndicePorNumero() {
 }
 
 // Procura outra nota do mesmo fornecedor com o mesmo número
-function nfNotaRepetida(dados, ignorarId) {
+function nfNotaRepetida(dados, ignorarId, boletos) {
     var num = nfNormalizar(dados.numero_nota);
     if (!num) return null;
     var cnpj = nfLimpaCnpj(dados.cnpj), razao = nfNormalizar(dados.razao_social);
+    var parcelas = (boletos && boletos.length) ? boletos
+        : [{ valor: dados.valor, vencimento: dados.vencimento, cartao: dados.forma_pagto === 'cartao' }];
+    // mesma nota lançada duas vezes: mesmo valor e mesmo vencimento (parcelas de verdade têm vencimentos diferentes)
+    function mesmaParcela(n) {
+        return parcelas.some(function(b) {
+            var v1 = Math.round((Number(b.valor) || 0) * 100), v2 = Math.round((Number(n.valor) || 0) * 100);
+            if (!v1 || v1 !== v2) return false;
+            if (b.cartao && n.forma_pagto === 'cartao') return false;   // parcelas iguais no cartão são normais
+            return String(b.vencimento || '').substr(0, 10) === String(n.vencimento || '').substr(0, 10);
+        });
+    }
     var candidatos = nfIndicePorNumero()[num] || [];
     for (var i = 0; i < candidatos.length; i++) {
         var n = candidatos[i];
         if (n.id === ignorarId) continue;
         var mesmo = (cnpj && n.cnpj === cnpj) || (!cnpj && razao && nfNormalizar(n.razao_social) === razao);
         if (!mesmo) continue;
-        // parcelas da mesma nota não são repetição
-        if (dados.chave_acesso && n.chave_acesso && dados.chave_acesso === n.chave_acesso) continue;
-        if (!dados.chave_acesso && dados.protocolo_data && n.protocolo_data === dados.protocolo_data) continue;
+        // parcelas da mesma nota não são repetição — a não ser que sejam idênticas (mesmo valor e vencimento)
+        var parcelaDaMesmaNota = (dados.chave_acesso && n.chave_acesso && dados.chave_acesso === n.chave_acesso) ||
+            (!dados.chave_acesso && dados.protocolo_data && n.protocolo_data === dados.protocolo_data);
+        if (parcelaDaMesmaNota && !mesmaParcela(n)) continue;
         return n;
     }
     return null;
@@ -14729,12 +14760,25 @@ function nfConferirAntesDeSalvar(base, boletos) {
     soma = Math.round(soma * 100) / 100;
     var valorNota = nfParseValor(document.getElementById('nfValorNota').value);
 
-    if (nfInfoSetor(base.setor).id === 'bonificada') return true;   // bonificada: sem boleto, nada a conferir
+    // datas digitadas com o ano errado (ex.: 4150, 2029, 1900) bagunçam o painel de gastos
+    var hojeIso = nfHojeIso();
+    if (base.data_emissao) {
+        var dEmis = nfDiasEntre(hojeIso, base.data_emissao);
+        if (dEmis > 1) {
+            problemas.push('• A data de emissão (' + nfDataBR(base.data_emissao) + ') está no futuro. Confira o dia e o ano.');
+        } else if (dEmis < -400) {
+            problemas.push('• A data de emissão (' + nfDataBR(base.data_emissao) + ') tem mais de um ano. Confira o ano.');
+        }
+    }
+    if (nfInfoSetor(base.setor).id === 'bonificada') {   // bonificada: sem boleto, só confere as datas
+        if (!problemas.length) return true;
+        return confirm('⚠️ Confira antes de salvar:\n\n' + problemas.join('\n') + '\n\nSalvar mesmo assim?');
+    }
     if (valorNota && Math.abs(valorNota - soma) >= 0.02) {
         problemas.push('• As parcelas somam ' + nfMoeda(soma) + ', mas o valor da nota é ' + nfMoeda(valorNota) +
             ' (diferença de ' + nfMoeda(Math.abs(valorNota - soma)) + ').');
     }
-    var rep = nfNotaRepetida(base, nfForm.editandoId);
+    var rep = nfNotaRepetida(base, nfForm.editandoId, boletos);
     if (rep) {
         problemas.push('• Já existe ' + nfRotuloDoc(rep) + ' de ' + (rep.razao_social || 'mesmo fornecedor') +
             ' — ' + nfMoeda(rep.valor) + (rep.protocolo_data ? ', protocolada em ' + nfDataBR(rep.protocolo_data) : '') + '.');
@@ -14747,6 +14791,9 @@ function nfConferirAntesDeSalvar(base, boletos) {
         var ref = base.protocolo_data || base.data_emissao;
         if (b.vencimento && ref && nfDiasEntre(ref, b.vencimento) > 180) {
             problemas.push('• ' + qual + 'vencimento muito longe: ' + nfDataBR(b.vencimento) + '. Confira o ano.');
+        }
+        if (b.vencimento && nfDiasEntre(hojeIso, b.vencimento) < -400) {
+            problemas.push('• ' + qual + 'vencimento muito antigo: ' + nfDataBR(b.vencimento) + '. Confira o ano.');
         }
         if (b.valor && b.valor > 100000) {
             problemas.push('• ' + qual + 'valor alto (' + nfMoeda(b.valor) + '). Confira se não sobrou um zero.');
