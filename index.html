@@ -390,6 +390,20 @@
     .voz-controle { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 14px; padding: 10px 12px; margin: 0 0 10px; font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text); }
     .voz-controle span { flex: 1; min-width: 0; line-height: 1.35; }
     .voz-controle small { display: block; font-size: 11px; color: var(--text-dim); }
+    .voz-sec { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-dim); margin: 20px 0 6px; }
+    .voz-nota { font-family: 'Inter', sans-serif; font-size: 12px; color: var(--text-dim); line-height: 1.45; margin: 0 0 10px; }
+    .voz-bloco { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 14px; padding: 11px 12px; margin-bottom: 8px; font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text); border: 1.5px solid transparent; }
+    .voz-bloco small { display: block; font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+    .voz-topo > div { flex: 1; min-width: 0; }
+    .voz-opcao.sel { border-color: var(--accent); }
+    .voz-opcao-txt { flex: 1; min-width: 0; }
+    .voz-play { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--accent); color: var(--accent-text, #fff); font-size: 15px; cursor: pointer; }
+    .voz-btn { flex: 0 0 auto; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .voz-btn.on { background: var(--accent); color: var(--accent-text, #fff); border-color: transparent; }
+    .voz-escolhida { flex: 0 0 auto; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+    .voz-fonte { cursor: pointer; }
+    .voz-fonte input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--accent); }
+    .voz-fonte span { flex: 1; min-width: 0; }
     .voz-controle button { flex: 0 0 auto; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
     .history-item { font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text-dim); padding: 6px 0; border-bottom: 1px dashed var(--line); display: flex; justify-content: space-between;}
     .history-item:last-child { border-bottom: none; }
@@ -1852,6 +1866,14 @@
     <div id="avAjusteCorpo" style="padding: 14px 20px 40px;"></div>
 </div>
 
+<div id="voz-screen" class="screen">
+    <div class="screen-header">
+        <button class="back-btn" onclick="trocarTela('main-screen')">←</button>
+        <h2>Aviso por voz</h2>
+    </div>
+    <div id="vozCorpo" style="padding: 14px 20px 40px;"></div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 // ============================================================
@@ -3186,7 +3208,7 @@ function checklistUpsert(registro, callback) {
 
 // ---------- abertura e sincronização ----------
 
-var CHECKLIST_VERSAO = '04/11/2026 · v2';
+var CHECKLIST_VERSAO = '04/11/2026 · v3';
 
 // Diagnóstico: bate em cada tabela e mostra o que o servidor respondeu,
 // com o código do erro. Serve para eu saber o que está acontecendo no aparelho.
@@ -7777,12 +7799,12 @@ function montarListaInicial() {
     var grupoAtualInfo = null;
 
     if (setor.id === 'fornecedores') {
+        if (vozDisponivel()) { lista.appendChild(vozLinhaControle()); }
         if (pendentesFornecedor.length > 0) {
             var tituloPendentes = document.createElement('div');
             tituloPendentes.className = 'lista-secao-titulo';
             tituloPendentes.innerText = 'Aguardando entrega';
             lista.appendChild(tituloPendentes);
-            if (vozDisponivel()) { lista.appendChild(vozLinhaControle()); }
 
             for (var pf = 0; pf < pendentesFornecedor.length; pf++) {
                 var pend = pendentesFornecedor[pf];
@@ -8655,6 +8677,7 @@ function statusPrazoMaisUrgenteArea(areaId) {
 function montarListaManutencao() {
     var lista = document.getElementById('productList');
     lista.innerHTML = "";
+    if (vozDisponivel()) { lista.appendChild(vozLinhaControle()); }
 
     for (var i = 0; i < areasManutencao.length; i++) {
         var area = areasManutencao[i];
@@ -10020,82 +10043,133 @@ function salvarAlertadosSeguro(mapa) {
 }
 
 // ============================================================
-// AVISO POR VOZ — lê em voz alta os fornecedores atrasados e os que estão chegando.
-// Usa a voz em português que já vem no celular/PC (não precisa de internet nem de conta).
-// Atrasado: fala quando atrasa e repete a cada 30 min até dar baixa.
-// Chegando (menos de 2 h para o prazo): fala uma vez.
+// AVISO POR VOZ — lê em voz alta os lembretes do app.
+// Usa as vozes em português que já vêm no celular/PC (sem internet, sem conta).
+//  • Fornecedor atrasado: na hora e a cada 30 min · chegando (2 h antes): 1 vez
+//  • Manutenção vencida: na hora e a cada 2 h · perto do prazo: 1 vez
+//  • Validades do checklist (vencida ou no período de alerta): 1 vez por dia
+//  • Medições do dia não feitas até as 10h: a cada 30 min até alguém registrar
+//  • Agenda: 15 min antes de cada compromisso com horário
+// Só fala entre 7h e 23h. Cada aparelho escolhe a sua voz.
 // ============================================================
 var VOZ_REPETIR_MIN = 30;
+var VOZ_MANUT_REPETIR_MIN = 120;
+var VOZ_HORA_GELADEIRAS = 10;
+var VOZ_AGENDA_ANTES_MIN = 15;
+var VOZ_HORA_INICIO = 7, VOZ_HORA_FIM = 23;
+var VOZ_FONTES = [
+    { id: 'fornecedores', icone: '🚚', nome: 'Fornecedores', desc: 'atrasado a cada 30 min · chegando 1 vez' },
+    { id: 'manutencao',   icone: '🛠️', nome: 'Manutenção',   desc: 'vencido a cada 2 h · perto do prazo 1 vez' },
+    { id: 'validades',    icone: '🧯', nome: 'Validades do checklist', desc: 'extintores, coifas, filtros… 1 vez por dia' },
+    { id: 'geladeiras',   icone: '🌡️', nome: 'Medições do dia', desc: 'se até as 10h ninguém registrou, a cada 30 min' },
+    { id: 'agenda',       icone: '📅', nome: 'Agenda', desc: '15 min antes de cada compromisso' }
+];
 var vozLiberada = false;
+var vozChk = { itens: null, setores: null, feitos: null, dia: null, lidoEm: 0 };
+var vozAgendaHoje = null, vozAgendaDia = null;
 
 function vozDisponivel() {
     return ('speechSynthesis' in window) && typeof SpeechSynthesisUtterance !== 'undefined';
 }
-
+function vozLer(chave, padrao) {
+    try { var d = JSON.parse(localStorage.getItem(chave) || 'null'); return (d === null || d === undefined) ? padrao : d; }
+    catch (e) { return padrao; }
+}
+function vozGravar(chave, valor) {
+    try { localStorage.setItem(chave, typeof valor === 'string' ? valor : JSON.stringify(valor)); } catch (e) { }
+}
 function vozLigada() {
     try { return localStorage.getItem('vozAvisosABS') !== 'off'; } catch (e) { return true; }
 }
-
+function vozFonteLigada(id) {
+    var m = vozLer('vozFontesABS', {});
+    return !(m && m[id] === false);
+}
 function vozLerFalados() {
-    try {
-        var d = JSON.parse(localStorage.getItem('vozFaladosABS') || '{}');
-        return (d && typeof d === 'object') ? d : {};
-    } catch (e) { return {}; }
+    var d = vozLer('vozFaladosABS', {});
+    return (d && typeof d === 'object') ? d : {};
+}
+function vozSalvarFalados(m) { vozGravar('vozFaladosABS', m); }
+function vozHojeIso() {
+    var h = new Date();
+    return h.getFullYear() + '-' + (h.getMonth() < 9 ? '0' : '') + (h.getMonth() + 1) + '-' + (h.getDate() < 10 ? '0' : '') + h.getDate();
 }
 
-function vozSalvarFalados(m) {
-    try { localStorage.setItem('vozFaladosABS', JSON.stringify(m)); } catch (e) { }
-}
+// ---------- vozes disponíveis (pelo menos 6 opções) ----------
 
-function vozEscolher() {
-    if (!vozDisponivel()) { return null; }
+function vozListaPt() {
+    if (!vozDisponivel()) { return []; }
     var vs = window.speechSynthesis.getVoices() || [];
-    var br = vs.filter(function (v) { return /^pt[-_]BR/i.test(v.lang); });
-    if (!br.length) { br = vs.filter(function (v) { return /^pt/i.test(v.lang); }); }
-    if (!br.length) { return null; }
-    // prefere as vozes "naturais"/do Google, que soam melhor
-    var boa = br.filter(function (v) { return /google|natural|luciana|francisca|thalita|neural/i.test(v.name); })[0];
-    return boa || br[0];
+    var pt = vs.filter(function (v) { return /^pt/i.test(v.lang); });
+    // Brasil primeiro, depois as "naturais"/Google, que soam melhor
+    pt.sort(function (a, b) {
+        var pa = (/BR/i.test(a.lang) ? 0 : 2) + (/google|natural|neural|online/i.test(a.name) ? 0 : 1);
+        var pb = (/BR/i.test(b.lang) ? 0 : 2) + (/google|natural|neural|online/i.test(b.name) ? 0 : 1);
+        return pa - pb;
+    });
+    return pt;
 }
 
-// "PIRAMIDES DISTRIBUIDORA LTDA" -> "Piramides Distribuidora" (lido como palavra, não soletrado)
-function vozLimparNome(nome) {
-    var t = String(nome || '').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, ' ');
-    t = t.replace(/\b(LTDA|EIRELI|ME|EPP|S\/?A|S\.A\.?|CIA)\b\.?/gi, ' ').replace(/[&]/g, ' e ');
-    t = t.replace(/\s+/g, ' ').trim();
-    if (t === t.toUpperCase()) {
-        t = t.toLowerCase().replace(/(^|\s)(\S)/g, function (m, a, b) { return a + b.toUpperCase(); });
-        t = t.replace(/\b(De|Da|Do|Das|Dos|E)\b/g, function (m) { return m.toLowerCase(); });
+function vozNomeAmigavel(v) {
+    var n = String(v.name || 'Voz').replace(/Microsoft\s*/i, '').replace(/\s*Online\s*\(Natural\)/i, ' natural')
+        .replace(/\s*-\s*Portuguese.*$/i, '').replace(/\(.*?\)/g, '').replace(/Google\s+português\s+do\s+Brasil/i, 'Google Brasil')
+        .replace(/Google\s+português/i, 'Google Portugal').trim();
+    return n || 'Voz';
+}
+
+function vozOpcoes() {
+    var pt = vozListaPt();
+    var ops = [];
+    pt.forEach(function (v) {
+        ops.push({ id: 'v:' + v.name, nome: vozNomeAmigavel(v),
+                   desc: /BR/i.test(v.lang) ? 'Português do Brasil' : 'Português de Portugal',
+                   voz: v.name, rate: 0.95, pitch: 1 });
+    });
+    // completa até 6 com variações de tom e ritmo da melhor voz do aparelho
+    var base = pt[0] ? pt[0].name : null;
+    var baseNome = pt[0] ? vozNomeAmigavel(pt[0]) : 'voz do aparelho';
+    var variacoes = [
+        { id: 'grave',  nome: 'Grave',          desc: 'tom mais baixo · ' + baseNome, rate: 0.92, pitch: 0.7 },
+        { id: 'aguda',  nome: 'Aguda',          desc: 'tom mais alto · ' + baseNome, rate: 0.98, pitch: 1.35 },
+        { id: 'calma',  nome: 'Calma',          desc: 'mais devagar · ' + baseNome, rate: 0.8, pitch: 1 },
+        { id: 'rapida', nome: 'Rápida',         desc: 'mais ligeira · ' + baseNome, rate: 1.18, pitch: 1.05 },
+        { id: 'firme',  nome: 'Firme',          desc: 'tom firme, ritmo normal · ' + baseNome, rate: 1.02, pitch: 0.85 },
+        { id: 'suave',  nome: 'Suave',          desc: 'tom leve e pausado · ' + baseNome, rate: 0.88, pitch: 1.15 }
+    ];
+    if (!ops.length) {
+        ops.push({ id: 'padrao', nome: 'Padrão', desc: 'voz do aparelho', voz: null, rate: 0.95, pitch: 1 });
     }
-    return t || 'fornecedor';
-}
-
-function vozDuracao(ms) {
-    var min = Math.max(1, Math.round(Math.abs(ms) / 60000));
-    if (min < 60) { return min + (min === 1 ? ' minuto' : ' minutos'); }
-    var h = Math.floor(min / 60), m = min % 60;
-    if (h >= 24) {
-        var d = Math.floor(h / 24);
-        return d + (d === 1 ? ' dia' : ' dias');
+    for (var i = 0; ops.length < 6 && i < variacoes.length; i++) {
+        var x = variacoes[i];
+        ops.push({ id: 'var:' + x.id, nome: x.nome, desc: x.desc, voz: base, rate: x.rate, pitch: x.pitch });
     }
-    var txt = h + (h === 1 ? ' hora' : ' horas');
-    if (m >= 5) { txt += ' e ' + m + ' minutos'; }
-    return txt;
+    return ops;
 }
 
-function vozFalar(texto, aoComecar) {
+function vozOpcaoEscolhida() {
+    var ops = vozOpcoes();
+    var id = vozLer('vozEscolhidaABS', null);
+    for (var i = 0; i < ops.length; i++) { if (ops[i].id === id) { return ops[i]; } }
+    return ops[0] || null;
+}
+
+function vozFalar(texto, aoComecar, opcao) {
     if (!vozDisponivel()) { return; }
+    var op = opcao || vozOpcaoEscolhida();
     var u = new SpeechSynthesisUtterance(texto);
     u.lang = 'pt-BR';
-    var v = vozEscolher();
-    if (v) { u.voice = v; }
-    u.rate = 0.95; u.pitch = 1; u.volume = 1;
+    if (op && op.voz) {
+        var v = (window.speechSynthesis.getVoices() || []).filter(function (x) { return x.name === op.voz; })[0];
+        if (v) { u.voice = v; u.lang = v.lang; }
+    }
+    u.rate = op ? op.rate : 0.95;
+    u.pitch = op ? op.pitch : 1;
+    u.volume = 1;
     u.onstart = function () { vozLiberada = true; if (aoComecar) { aoComecar(); } };
     try { window.speechSynthesis.speak(u); } catch (e) { }
 }
 
 // Celular e navegador só deixam falar depois do primeiro toque na tela.
-// No primeiro toque, "acorda" a voz e já fala o que estiver pendente.
 function vozDesbloquear() {
     if (vozLiberada || !vozDisponivel()) { return; }
     try {
@@ -10106,49 +10180,280 @@ function vozDesbloquear() {
     } catch (e) { }
 }
 
-function vozVerificarFornecedores() {
-    if (!vozDisponivel() || !vozLigada()) { return; }
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) { return; }
-    var falados = vozLerFalados(), agora = Date.now();
-    var atrasados = [], chegando = [], vivos = {};
+// ---------- textos ----------
 
-    for (var i = 0; i < pendentesFornecedor.length; i++) {
-        var f = pendentesFornecedor[i];
-        vivos[f.id] = true;
-        var st = statusDoPrazo(f.prazo);
-        var r = falados[f.id];
-        if (st === 'vencido') {
-            if (!r || r.st !== 'vencido' || agora - r.t >= VOZ_REPETIR_MIN * 60000) { atrasados.push(f); }
-        } else if (st === 'proximo') {
-            if (!r || r.st !== 'proximo') { chegando.push(f); }
-        }
+// "PIRAMIDES DISTRIBUIDORA LTDA" -> "Piramides Distribuidora" (lido como palavra, não soletrado)
+function vozLimparNome(nome) {
+    var t = String(nome || '').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, ' ');
+    t = t.replace(/\b(LTDA|EIRELI|ME|EPP|S\/?A|S\.A\.?|CIA)\b\.?/gi, ' ').replace(/[&]/g, ' e ');
+    t = t.replace(/[:;]+\s*$/, '').replace(/\s+/g, ' ').trim();
+    if (t && t === t.toUpperCase() && /[A-ZÀ-Ú]{3,}/.test(t)) {
+        t = t.toLowerCase().replace(/(^|\s)(\S)/g, function (m, a, b) { return a + b.toUpperCase(); });
+        t = t.replace(/\b(De|Da|Do|Das|Dos|E)\b/g, function (m) { return m.toLowerCase(); });
     }
-    // esquece quem já recebeu baixa
-    var mudou = false;
-    for (var k in falados) { if (!vivos[k]) { delete falados[k]; mudou = true; } }
-    if (mudou) { vozSalvarFalados(falados); }
-    if (!atrasados.length && !chegando.length) { return; }
+    return t || 'sem nome';
+}
 
-    var partes = [];
-    if (atrasados.length) {
-        partes.push(atrasados.length === 1 ? 'Atenção: entrega atrasada.' : 'Atenção: ' + atrasados.length + ' entregas atrasadas.');
-        atrasados.forEach(function (f) {
-            partes.push(vozLimparNome(f.nome) + ', atrasado há ' + vozDuracao(agora - new Date(f.prazo).getTime()) + '.');
+function vozDuracao(ms) {
+    var min = Math.max(1, Math.round(Math.abs(ms) / 60000));
+    if (min < 60) { return min + (min === 1 ? ' minuto' : ' minutos'); }
+    var h = Math.floor(min / 60), m = min % 60;
+    if (h >= 24) { var d = Math.floor(h / 24); return d + (d === 1 ? ' dia' : ' dias'); }
+    var txt = h + (h === 1 ? ' hora' : ' horas');
+    if (m >= 5) { txt += ' e ' + m + ' minutos'; }
+    return txt;
+}
+
+function vozDias(n) { n = Math.abs(n); return n + (n === 1 ? ' dia' : ' dias'); }
+
+// ---------- dados de checklist e agenda (leitura leve, para todos os aparelhos) ----------
+
+function vozAtualizarDados(forcar) {
+    var agora = Date.now(), dia = chaveDiaChecklist();
+    if (!forcar && vozChk.dia === dia && agora - vozChk.lidoEm < 10 * 60000) { return; }
+    vozChk.lidoEm = agora; vozChk.dia = dia;
+    if (vozFonteLigada('validades') || vozFonteLigada('geladeiras')) {
+        supabaseGet('checklist_diaria_itens', 'select=id,texto,setor_id,tipo,vence_em,alerta_dias', function (err, d) {
+            if (!err && d) { vozChk.itens = d; }
+        });
+        supabaseGet('checklist_setores', 'select=id,nome', function (err, d) {
+            if (!err && d) { vozChk.setores = d; }
+        });
+        supabaseGet('checklist_historico', 'select=item_id&dia=eq.' + dia, function (err, d) {
+            if (!err && d) { vozChk.feitos = d; }
         });
     }
-    chegando.forEach(function (f) {
-        partes.push('Fornecedor chegando: ' + vozLimparNome(f.nome) + ', previsto para daqui a ' +
-            vozDuracao(new Date(f.prazo).getTime() - agora) + '.');
+    if (vozFonteLigada('agenda')) {
+        supabaseGet('agenda', 'select=id,titulo,horario,data&data=eq.' + dia, function (err, d) {
+            if (!err && d) { vozAgendaHoje = d; vozAgendaDia = dia; }
+        });
+    }
+}
+
+function vozItensChecklist() {
+    // o que veio do servidor vale mais; se ainda não leu, usa o que o aparelho já tem
+    var itens = (vozChk.itens && vozChk.itens.length) ? vozChk.itens : itensChecklistDiaria;
+    var setores = (vozChk.setores && vozChk.setores.length) ? vozChk.setores : checklistSetores;
+    var nomeSetor = {};
+    (setores || []).forEach(function (s) { nomeSetor[s.id] = s.nome; });
+    return { itens: itens || [], nomeSetor: nomeSetor, existe: function (sid) { return !!nomeSetor[sid]; } };
+}
+
+// ---------- o que precisa ser falado agora ----------
+
+function vozColetar(agora) {
+    var avisos = [];   // { chave, modo: 'repetir'|'uma'|'dia', minutos, fonte, frase }
+    var hoje = vozHojeIso();
+
+    if (vozFonteLigada('fornecedores')) {
+        pendentesFornecedor.forEach(function (f) {
+            var st = statusDoPrazo(f.prazo), t = new Date(f.prazo).getTime();
+            if (st === 'vencido') {
+                avisos.push({ chave: 'forn:' + f.id + ':v', modo: 'repetir', minutos: VOZ_REPETIR_MIN, fonte: 'forn-atraso',
+                    frase: vozLimparNome(f.nome) + ', atrasado há ' + vozDuracao(agora - t) + '.' });
+            } else if (st === 'proximo') {
+                avisos.push({ chave: 'forn:' + f.id + ':p', modo: 'uma', fonte: 'forn-chegando',
+                    frase: 'Fornecedor chegando: ' + vozLimparNome(f.nome) + ', previsto para daqui a ' + vozDuracao(t - agora) + '.' });
+            }
+        });
+    }
+
+    if (vozFonteLigada('manutencao')) {
+        problemasAtuais.forEach(function (p) {
+            var st = statusDoPrazo(p.prazo), t = new Date(p.prazo).getTime();
+            var oque = vozLimparNome(p.areaNome) + ', ' + String(p.descricao || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+            if (st === 'vencido') {
+                avisos.push({ chave: 'man:' + p.id + ':v', modo: 'repetir', minutos: VOZ_MANUT_REPETIR_MIN, fonte: 'manut',
+                    frase: 'Manutenção vencida: ' + oque + ', venceu há ' + vozDuracao(agora - t) + '.' });
+            } else if (st === 'proximo') {
+                avisos.push({ chave: 'man:' + p.id + ':p', modo: 'uma', fonte: 'manut',
+                    frase: 'Chamado de manutenção perto do prazo: ' + oque + ', vence em ' + vozDuracao(t - agora) + '.' });
+            }
+        });
+    }
+
+    var chk = null;
+    if (vozFonteLigada('validades')) {
+        chk = chk || vozItensChecklist();
+        chk.itens.forEach(function (it) {
+            if (it.tipo !== 'validade' || !it.vence_em) { return; }
+            if (it.setor_id && !chk.existe(it.setor_id)) { return; }   // item órfão/duplicado: não fala
+            var v = checklistValidade(it);
+            var nome = vozLimparNome(it.texto) + (chk.nomeSetor[it.setor_id] ? ', em ' + vozLimparNome(chk.nomeSetor[it.setor_id]) : '');
+            if (v.estado === 'vencido') {
+                avisos.push({ chave: 'val:' + it.id, modo: 'dia', fonte: 'validade',
+                    frase: v.dias === 0 ? 'Vence hoje: ' + nome + '.' : 'Validade vencida: ' + nome + ', venceu há ' + vozDias(v.dias) + '.' });
+            } else if (v.estado === 'perto') {
+                avisos.push({ chave: 'val:' + it.id, modo: 'dia', fonte: 'validade',
+                    frase: 'Validade perto de vencer: ' + nome + ', vence em ' + vozDias(v.dias) + '.' });
+            }
+        });
+    }
+
+    var hora = new Date(agora).getHours();
+    if (vozFonteLigada('geladeiras') && hora >= VOZ_HORA_GELADEIRAS) {
+        chk = chk || vozItensChecklist();
+        var feitos = {};
+        (vozChk.feitos || []).forEach(function (r) { feitos[r.item_id] = true; });
+        if (vozChk.dia === chaveDiaChecklist()) {
+            for (var k in checklistHoje) { if (checklistHoje[k]) { feitos[k] = true; } }   // registrado neste aparelho
+        }
+        var medicoes = chk.itens.filter(function (it) { return it.tipo === 'numero' && (!it.setor_id || chk.existe(it.setor_id)); });
+        var faltam = medicoes.filter(function (it) { return !feitos[it.id]; });
+        // só fala se já leu o dia no servidor (senão poderia acusar falta do que outro celular registrou)
+        if (medicoes.length && faltam.length && vozChk.feitos && vozChk.dia === chaveDiaChecklist()) {
+            var frase;
+            if (faltam.length === medicoes.length) {
+                frase = 'As medições de temperatura de hoje ainda não foram feitas.';
+            } else {
+                frase = 'Faltam ' + faltam.length + ' de ' + medicoes.length + ' medições de hoje: ' +
+                    faltam.slice(0, 4).map(function (it) { return vozLimparNome(it.texto); }).join(', ') +
+                    (faltam.length > 4 ? ' e outras' : '') + '.';
+            }
+            avisos.push({ chave: 'gel:' + hoje, modo: 'repetir', minutos: VOZ_REPETIR_MIN, fonte: 'geladeiras', frase: frase });
+        }
+    }
+
+    if (vozFonteLigada('agenda')) {
+        var hoje2 = chaveDiaChecklist();
+        var lista = (vozAgendaDia === hoje2 && vozAgendaHoje) ? vozAgendaHoje.slice() : [];
+        (compromissosCache[hoje2] || []).forEach(function (c) {
+            if (!lista.some(function (x) { return String(x.id) === String(c.id); })) { lista.push(c); }
+        });
+        lista.forEach(function (c) {
+            var m = /^(\d{1,2}):(\d{2})/.exec(String(c.horario || ''));
+            if (!m) { return; }
+            var quando = new Date(agora); quando.setHours(+m[1], +m[2], 0, 0);
+            var falta = (quando.getTime() - agora) / 60000;
+            if (falta > 0 && falta <= VOZ_AGENDA_ANTES_MIN) {
+                avisos.push({ chave: 'ag:' + hoje2 + ':' + c.id + ':' + c.horario, modo: 'uma', fonte: 'agenda',
+                    frase: 'Compromisso às ' + (+m[1]) + (m[2] !== '00' ? ' e ' + (+m[2]) : ' horas') + ': ' +
+                        String(c.titulo || 'sem título').trim() + '. Daqui a ' + vozDuracao(falta * 60000) + '.' });
+            }
+        });
+    }
+    return avisos;
+}
+
+function vozMontarFala(lista) {
+    var atrasos = lista.filter(function (a) { return a.fonte === 'forn-atraso'; });
+    var resto = lista.filter(function (a) { return a.fonte !== 'forn-atraso'; });
+    var partes = [];
+    if (atrasos.length) {
+        partes.push(atrasos.length === 1 ? 'Atenção: entrega atrasada.' : 'Atenção: ' + atrasos.length + ' entregas atrasadas.');
+        atrasos.forEach(function (a) { partes.push(a.frase); });
+    }
+    resto.forEach(function (a) { partes.push(a.frase); });
+    return partes.join(' ');
+}
+
+function vozVerificarFornecedores() {   // nome antigo mantido: agora verifica todos os lembretes
+    if (!vozDisponivel() || !vozLigada()) { return; }
+    var agora = Date.now(), h = new Date(agora).getHours();
+    if (h < VOZ_HORA_INICIO || h >= VOZ_HORA_FIM) { return; }
+    vozAtualizarDados(false);
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) { return; }
+
+    var falados = vozLerFalados(), hoje = vozHojeIso();
+    var avisos = vozColetar(agora), ativos = {}, falar = [];
+    avisos.forEach(function (a) {
+        ativos[a.chave] = true;
+        var r = falados[a.chave];
+        if (a.modo === 'repetir') { if (!r || agora - r.t >= a.minutos * 60000) { falar.push(a); } }
+        else if (a.modo === 'dia') { if (!r || r.dia !== hoje) { falar.push(a); } }
+        else if (!r) { falar.push(a); }
     });
+    // esquece o que já foi resolvido (os de "1 vez por dia" ficam até virar o dia)
+    var mudou = false;
+    for (var k in falados) {
+        var reg = falados[k];
+        if (ativos[k]) { continue; }
+        if (reg && reg.dia === hoje && /^val:/.test(k)) { continue; }
+        delete falados[k]; mudou = true;
+    }
+    if (mudou) { vozSalvarFalados(falados); }
+    if (!falar.length) { return; }
+    // se algum atraso vai ser lido, lê todos os atrasos juntos (uma fala só, e o relógio de todos reinicia)
+    if (falar.some(function (a) { return a.fonte === 'forn-atraso'; })) {
+        avisos.forEach(function (a) { if (a.fonte === 'forn-atraso' && falar.indexOf(a) < 0) { falar.push(a); } });
+        falar.sort(function (x, y) { return avisos.indexOf(x) - avisos.indexOf(y); });
+    }
 
     // só marca como falado quando a voz começou de verdade
-    // (se o aparelho ainda não liberou a voz, tenta de novo na próxima checagem)
-    vozFalar(partes.join(' '), function () {
+    vozFalar(vozMontarFala(falar), function () {
         var m = vozLerFalados(), t = Date.now();
-        atrasados.forEach(function (f) { m[f.id] = { st: 'vencido', t: t }; });
-        chegando.forEach(function (f) { m[f.id] = { st: 'proximo', t: t }; });
+        falar.forEach(function (a) { m[a.chave] = { t: t, dia: hoje }; });
         vozSalvarFalados(m);
     });
+}
+
+// ---------- tela de ajustes ----------
+
+function vozAbrirAjustes() {
+    vozRenderizarAjustes();
+    trocarTela('voz-screen');
+    // algumas vozes só aparecem depois de um instante (Chrome carrega a lista em segundo plano)
+    setTimeout(vozRenderizarAjustes, 600);
+}
+
+function vozRenderizarAjustes() {
+    var el = document.getElementById('vozCorpo');
+    if (!el) { return; }
+    if (!vozDisponivel()) {
+        el.innerHTML = '<p class="voz-nota">Este navegador não tem voz disponível. No iPhone use o Safari; no Android e no PC, o Chrome.</p>';
+        return;
+    }
+    var ligada = vozLigada();
+    var esc = vozOpcaoEscolhida();
+    var html = '<div class="voz-bloco voz-topo">' +
+        '<div><b>' + (ligada ? '🔊 Aviso por voz ligado' : '🔇 Aviso por voz desligado') + '</b>' +
+        '<small>vale só para este aparelho · fala entre ' + VOZ_HORA_INICIO + 'h e ' + VOZ_HORA_FIM + 'h</small></div>' +
+        '<button type="button" class="voz-btn' + (ligada ? '' : ' on') + '" onclick="vozAlternar()">' + (ligada ? 'Desligar' : 'Ligar') + '</button></div>';
+
+    html += '<div class="voz-sec">Escolha a voz</div><div class="voz-nota">Toque em ▶ para ouvir e em <b>Usar</b> para escolher. As vozes vêm do próprio aparelho, então a lista muda de um celular para outro.</div>';
+    vozOpcoes().forEach(function (op, i) {
+        var sel = esc && esc.id === op.id;
+        html += '<div class="voz-bloco voz-opcao' + (sel ? ' sel' : '') + '">' +
+            '<button type="button" class="voz-play" onclick="vozOuvir(' + i + ')">▶</button>' +
+            '<div class="voz-opcao-txt"><b>' + (i + 1) + '. ' + escHtmlSeguro(op.nome) + '</b><small>' + escHtmlSeguro(op.desc) + '</small></div>' +
+            (sel ? '<span class="voz-escolhida">✓ em uso</span>'
+                 : '<button type="button" class="voz-btn" onclick="vozUsar(' + i + ')">Usar</button>') +
+            '</div>';
+    });
+
+    html += '<div class="voz-sec">O que a voz avisa</div>';
+    VOZ_FONTES.forEach(function (f) {
+        var on = vozFonteLigada(f.id);
+        html += '<label class="voz-bloco voz-fonte"><input type="checkbox"' + (on ? ' checked' : '') +
+            ' onchange="vozFonteAlternar(\'' + f.id + '\', this.checked)">' +
+            '<span><b>' + f.icone + ' ' + f.nome + '</b><small>' + f.desc + '</small></span></label>';
+    });
+
+    html += '<button type="button" class="btn-confirm" style="width:100%;margin-top:16px;" onclick="vozTestar()">🔊 Falar agora os avisos pendentes</button>';
+    el.innerHTML = html;
+}
+
+function vozOuvir(i) {
+    var op = vozOpcoes()[i];
+    if (!op) { return; }
+    window.speechSynthesis.cancel();
+    vozFalar('Olá, esta é a voz ' + (i + 1) + ', ' + op.nome + '. Atenção: entrega atrasada. Piramides Distribuidora, atrasado há 40 minutos.', null, op);
+}
+
+function vozUsar(i) {
+    var op = vozOpcoes()[i];
+    if (!op) { return; }
+    vozGravar('vozEscolhidaABS', JSON.stringify(op.id));
+    window.speechSynthesis.cancel();
+    vozFalar('Pronto. Vou usar esta voz neste aparelho.', null, op);
+    vozRenderizarAjustes();
+}
+
+function vozFonteAlternar(id, ligado) {
+    var m = vozLer('vozFontesABS', {}) || {};
+    m[id] = !!ligado;
+    vozGravar('vozFontesABS', m);
+    if (ligado) { vozAtualizarDados(true); }
 }
 
 function vozAlternar() {
@@ -10158,36 +10463,40 @@ function vozAlternar() {
         window.speechSynthesis.cancel();
         if (ligar) { vozFalar('Aviso por voz ligado neste aparelho.'); }
     }
-    if (typeof montarListaInicial === 'function' && setorAtivoId === 'fornecedores') { montarListaInicial(); }
+    vozRenderizarAjustes();
+    if (typeof montarListaInicial === 'function' && (setorAtivoId === 'fornecedores' || setorAtivoId === 'manutencao')) { montarListaInicial(); }
 }
 
+// Fala na hora tudo o que está pendente (ignora o intervalo de repetição)
 function vozTestar() {
     if (!vozDisponivel()) { alert('Este navegador não tem voz disponível.'); return; }
     window.speechSynthesis.cancel();
-    var atr = pendentesFornecedor.filter(function (f) { return statusDoPrazo(f.prazo) === 'vencido'; });
-    var agora = Date.now();
-    var txt = atr.length
-        ? 'Teste de voz. ' + atr.map(function (f) {
-            return vozLimparNome(f.nome) + ', atrasado há ' + vozDuracao(agora - new Date(f.prazo).getTime());
-          }).join('. ') + '.'
-        : 'Teste de voz. Nenhum fornecedor atrasado agora.';
-    vozFalar(txt);
+    vozAtualizarDados(true);
+    setTimeout(function () {
+        var avisos = vozColetar(Date.now());
+        vozFalar(avisos.length ? vozMontarFala(avisos) : 'Tudo em dia. Nenhum aviso pendente agora.');
+    }, 900);
 }
 
 function vozLinhaControle() {
     var div = document.createElement('div');
     div.className = 'voz-controle';
-    var ligada = vozLigada();
+    var ligada = vozLigada(), op = vozOpcaoEscolhida();
     div.innerHTML =
         '<span>' + (ligada ? '🔊 Aviso por voz <b>ligado</b>' : '🔇 Aviso por voz <b>desligado</b>') +
-        '<small>' + (ligada ? 'atrasados a cada ' + VOZ_REPETIR_MIN + ' min · chegando 1 vez' : 'só neste aparelho') + '</small></span>' +
+        '<small>' + (ligada ? 'voz: ' + escHtmlSeguro(op ? op.nome : 'padrão') : 'só neste aparelho') + '</small></span>' +
         '<button type="button" onclick="event.stopPropagation(); vozTestar()">Testar</button>' +
-        '<button type="button" onclick="event.stopPropagation(); vozAlternar()">' + (ligada ? 'Desligar' : 'Ligar') + '</button>';
+        '<button type="button" onclick="event.stopPropagation(); vozAbrirAjustes()">⚙️ Vozes</button>';
     return div;
 }
 
-if (vozDisponivel() && window.speechSynthesis.onvoiceschanged !== undefined) {
-    window.speechSynthesis.onvoiceschanged = function () { };   // força o Chrome a carregar a lista de vozes
+if (vozDisponivel()) {
+    // força o Chrome a carregar a lista de vozes e redesenha a tela de ajustes quando ela chega
+    window.speechSynthesis.onvoiceschanged = function () {
+        var t = document.getElementById('voz-screen');
+        if (t && t.classList.contains('active')) { vozRenderizarAjustes(); }
+    };
+    try { window.speechSynthesis.getVoices(); } catch (e) { }
 }
 
 function verificarNovasUrgencias() {
