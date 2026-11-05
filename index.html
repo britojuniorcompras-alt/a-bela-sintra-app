@@ -387,6 +387,10 @@
     .history-card { background: var(--surface); padding: 20px; border-radius: 18px; border: 1px solid var(--line); margin-bottom: 16px; }
     .history-date { font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: var(--text); margin-bottom: 4px; font-size: 15px; }
     .history-setor { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .voz-controle { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 14px; padding: 10px 12px; margin: 0 0 10px; font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text); }
+    .voz-controle span { flex: 1; min-width: 0; line-height: 1.35; }
+    .voz-controle small { display: block; font-size: 11px; color: var(--text-dim); }
+    .voz-controle button { flex: 0 0 auto; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
     .history-item { font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text-dim); padding: 6px 0; border-bottom: 1px dashed var(--line); display: flex; justify-content: space-between;}
     .history-item:last-child { border-bottom: none; }
     .history-item strong { color: var(--text); }
@@ -7778,6 +7782,7 @@ function montarListaInicial() {
             tituloPendentes.className = 'lista-secao-titulo';
             tituloPendentes.innerText = 'Aguardando entrega';
             lista.appendChild(tituloPendentes);
+            if (vozDisponivel()) { lista.appendChild(vozLinhaControle()); }
 
             for (var pf = 0; pf < pendentesFornecedor.length; pf++) {
                 var pend = pendentesFornecedor[pf];
@@ -10014,6 +10019,177 @@ function salvarAlertadosSeguro(mapa) {
     try { localStorage.setItem('urgenciasAlertadasABS', JSON.stringify(mapa)); } catch (erro) { }
 }
 
+// ============================================================
+// AVISO POR VOZ — lê em voz alta os fornecedores atrasados e os que estão chegando.
+// Usa a voz em português que já vem no celular/PC (não precisa de internet nem de conta).
+// Atrasado: fala quando atrasa e repete a cada 30 min até dar baixa.
+// Chegando (menos de 2 h para o prazo): fala uma vez.
+// ============================================================
+var VOZ_REPETIR_MIN = 30;
+var vozLiberada = false;
+
+function vozDisponivel() {
+    return ('speechSynthesis' in window) && typeof SpeechSynthesisUtterance !== 'undefined';
+}
+
+function vozLigada() {
+    try { return localStorage.getItem('vozAvisosABS') !== 'off'; } catch (e) { return true; }
+}
+
+function vozLerFalados() {
+    try {
+        var d = JSON.parse(localStorage.getItem('vozFaladosABS') || '{}');
+        return (d && typeof d === 'object') ? d : {};
+    } catch (e) { return {}; }
+}
+
+function vozSalvarFalados(m) {
+    try { localStorage.setItem('vozFaladosABS', JSON.stringify(m)); } catch (e) { }
+}
+
+function vozEscolher() {
+    if (!vozDisponivel()) { return null; }
+    var vs = window.speechSynthesis.getVoices() || [];
+    var br = vs.filter(function (v) { return /^pt[-_]BR/i.test(v.lang); });
+    if (!br.length) { br = vs.filter(function (v) { return /^pt/i.test(v.lang); }); }
+    if (!br.length) { return null; }
+    // prefere as vozes "naturais"/do Google, que soam melhor
+    var boa = br.filter(function (v) { return /google|natural|luciana|francisca|thalita|neural/i.test(v.name); })[0];
+    return boa || br[0];
+}
+
+// "PIRAMIDES DISTRIBUIDORA LTDA" -> "Piramides Distribuidora" (lido como palavra, não soletrado)
+function vozLimparNome(nome) {
+    var t = String(nome || '').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, ' ');
+    t = t.replace(/\b(LTDA|EIRELI|ME|EPP|S\/?A|S\.A\.?|CIA)\b\.?/gi, ' ').replace(/[&]/g, ' e ');
+    t = t.replace(/\s+/g, ' ').trim();
+    if (t === t.toUpperCase()) {
+        t = t.toLowerCase().replace(/(^|\s)(\S)/g, function (m, a, b) { return a + b.toUpperCase(); });
+        t = t.replace(/\b(De|Da|Do|Das|Dos|E)\b/g, function (m) { return m.toLowerCase(); });
+    }
+    return t || 'fornecedor';
+}
+
+function vozDuracao(ms) {
+    var min = Math.max(1, Math.round(Math.abs(ms) / 60000));
+    if (min < 60) { return min + (min === 1 ? ' minuto' : ' minutos'); }
+    var h = Math.floor(min / 60), m = min % 60;
+    if (h >= 24) {
+        var d = Math.floor(h / 24);
+        return d + (d === 1 ? ' dia' : ' dias');
+    }
+    var txt = h + (h === 1 ? ' hora' : ' horas');
+    if (m >= 5) { txt += ' e ' + m + ' minutos'; }
+    return txt;
+}
+
+function vozFalar(texto, aoComecar) {
+    if (!vozDisponivel()) { return; }
+    var u = new SpeechSynthesisUtterance(texto);
+    u.lang = 'pt-BR';
+    var v = vozEscolher();
+    if (v) { u.voice = v; }
+    u.rate = 0.95; u.pitch = 1; u.volume = 1;
+    u.onstart = function () { vozLiberada = true; if (aoComecar) { aoComecar(); } };
+    try { window.speechSynthesis.speak(u); } catch (e) { }
+}
+
+// Celular e navegador só deixam falar depois do primeiro toque na tela.
+// No primeiro toque, "acorda" a voz e já fala o que estiver pendente.
+function vozDesbloquear() {
+    if (vozLiberada || !vozDisponivel()) { return; }
+    try {
+        var u = new SpeechSynthesisUtterance(' ');
+        u.volume = 0;
+        u.onend = function () { vozLiberada = true; setTimeout(vozVerificarFornecedores, 300); };
+        window.speechSynthesis.speak(u);
+    } catch (e) { }
+}
+
+function vozVerificarFornecedores() {
+    if (!vozDisponivel() || !vozLigada()) { return; }
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) { return; }
+    var falados = vozLerFalados(), agora = Date.now();
+    var atrasados = [], chegando = [], vivos = {};
+
+    for (var i = 0; i < pendentesFornecedor.length; i++) {
+        var f = pendentesFornecedor[i];
+        vivos[f.id] = true;
+        var st = statusDoPrazo(f.prazo);
+        var r = falados[f.id];
+        if (st === 'vencido') {
+            if (!r || r.st !== 'vencido' || agora - r.t >= VOZ_REPETIR_MIN * 60000) { atrasados.push(f); }
+        } else if (st === 'proximo') {
+            if (!r || r.st !== 'proximo') { chegando.push(f); }
+        }
+    }
+    // esquece quem já recebeu baixa
+    var mudou = false;
+    for (var k in falados) { if (!vivos[k]) { delete falados[k]; mudou = true; } }
+    if (mudou) { vozSalvarFalados(falados); }
+    if (!atrasados.length && !chegando.length) { return; }
+
+    var partes = [];
+    if (atrasados.length) {
+        partes.push(atrasados.length === 1 ? 'Atenção: entrega atrasada.' : 'Atenção: ' + atrasados.length + ' entregas atrasadas.');
+        atrasados.forEach(function (f) {
+            partes.push(vozLimparNome(f.nome) + ', atrasado há ' + vozDuracao(agora - new Date(f.prazo).getTime()) + '.');
+        });
+    }
+    chegando.forEach(function (f) {
+        partes.push('Fornecedor chegando: ' + vozLimparNome(f.nome) + ', previsto para daqui a ' +
+            vozDuracao(new Date(f.prazo).getTime() - agora) + '.');
+    });
+
+    // só marca como falado quando a voz começou de verdade
+    // (se o aparelho ainda não liberou a voz, tenta de novo na próxima checagem)
+    vozFalar(partes.join(' '), function () {
+        var m = vozLerFalados(), t = Date.now();
+        atrasados.forEach(function (f) { m[f.id] = { st: 'vencido', t: t }; });
+        chegando.forEach(function (f) { m[f.id] = { st: 'proximo', t: t }; });
+        vozSalvarFalados(m);
+    });
+}
+
+function vozAlternar() {
+    var ligar = !vozLigada();
+    try { localStorage.setItem('vozAvisosABS', ligar ? 'on' : 'off'); } catch (e) { }
+    if (vozDisponivel()) {
+        window.speechSynthesis.cancel();
+        if (ligar) { vozFalar('Aviso por voz ligado neste aparelho.'); }
+    }
+    if (typeof montarListaInicial === 'function' && setorAtivoId === 'fornecedores') { montarListaInicial(); }
+}
+
+function vozTestar() {
+    if (!vozDisponivel()) { alert('Este navegador não tem voz disponível.'); return; }
+    window.speechSynthesis.cancel();
+    var atr = pendentesFornecedor.filter(function (f) { return statusDoPrazo(f.prazo) === 'vencido'; });
+    var agora = Date.now();
+    var txt = atr.length
+        ? 'Teste de voz. ' + atr.map(function (f) {
+            return vozLimparNome(f.nome) + ', atrasado há ' + vozDuracao(agora - new Date(f.prazo).getTime());
+          }).join('. ') + '.'
+        : 'Teste de voz. Nenhum fornecedor atrasado agora.';
+    vozFalar(txt);
+}
+
+function vozLinhaControle() {
+    var div = document.createElement('div');
+    div.className = 'voz-controle';
+    var ligada = vozLigada();
+    div.innerHTML =
+        '<span>' + (ligada ? '🔊 Aviso por voz <b>ligado</b>' : '🔇 Aviso por voz <b>desligado</b>') +
+        '<small>' + (ligada ? 'atrasados a cada ' + VOZ_REPETIR_MIN + ' min · chegando 1 vez' : 'só neste aparelho') + '</small></span>' +
+        '<button type="button" onclick="event.stopPropagation(); vozTestar()">Testar</button>' +
+        '<button type="button" onclick="event.stopPropagation(); vozAlternar()">' + (ligada ? 'Desligar' : 'Ligar') + '</button>';
+    return div;
+}
+
+if (vozDisponivel() && window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = function () { };   // força o Chrome a carregar a lista de vozes
+}
+
 function verificarNovasUrgencias() {
     var alertados = lerAlertadosSeguro();
     var houveNovoAlerta = false;
@@ -10050,9 +10226,11 @@ function verificarNovasUrgencias() {
     }
 
     if (houveNovoAlerta) { salvarAlertadosSeguro(alertados); }
+    vozVerificarFornecedores();
 }
 
 document.addEventListener('click', function(evento) {
+    vozDesbloquear();
     var alvo = evento.target.closest('button, .tab-btn, .product-item, .unit-btn, .btn-whatsapp-link, .btn-email-link, .back-btn, .back-btn-inline, .history-share-btn, .folder-item');
     if (alvo) {
         tocarSomClique();
