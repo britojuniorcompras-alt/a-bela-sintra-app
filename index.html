@@ -407,6 +407,12 @@
     .voz-nome .ficha-input { margin: 0; }
     .voz-nome-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text); }
     .voz-nome-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .voz-opcao.travada { opacity: 0.6; }
+    .voz-travada { flex: 0 0 auto; font-size: 11.5px; color: var(--text-dim); }
+    .voz-dica { background: var(--surface); border-radius: 14px; padding: 10px 12px; margin: 0 0 10px; font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text); }
+    .voz-dica summary { cursor: pointer; font-weight: 600; }
+    .voz-dica ol { margin: 8px 0 4px; padding-left: 20px; line-height: 1.5; }
+    .voz-dica small { color: var(--text-dim); }
     .voz-fonte { cursor: pointer; }
     .voz-fonte input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--accent); }
     .voz-fonte span { flex: 1; min-width: 0; }
@@ -3214,7 +3220,7 @@ function checklistUpsert(registro, callback) {
 
 // ---------- abertura e sincronização ----------
 
-var CHECKLIST_VERSAO = '04/11/2026 · v5';
+var CHECKLIST_VERSAO = '04/11/2026 · v6';
 
 // Diagnóstico: bate em cada tabela e mostra o que o servidor respondeu,
 // com o código do erro. Serve para eu saber o que está acontecendo no aparelho.
@@ -10107,13 +10113,20 @@ function vozListaPt() {
     if (!vozDisponivel()) { return []; }
     var vs = window.speechSynthesis.getVoices() || [];
     var pt = vs.filter(function (v) { return /^pt/i.test(v.lang); });
-    // Brasil primeiro, depois as "naturais"/Google, que soam melhor
-    pt.sort(function (a, b) {
-        var pa = (/BR/i.test(a.lang) ? 0 : 2) + (/google|natural|neural|online/i.test(a.name) ? 0 : 1);
-        var pb = (/BR/i.test(b.lang) ? 0 : 2) + (/google|natural|neural|online/i.test(b.name) ? 0 : 1);
-        return pa - pb;
-    });
+    pt.sort(function (a, b) { return vozNota(b) - vozNota(a); });
     return pt;
+}
+
+// Quanto maior, mais natural a voz costuma soar
+function vozNota(v) {
+    var n = String(v.name || ''), nota = 0;
+    if (/BR/i.test(v.lang)) { nota += 100; }
+    if (/natural|neural|enhanced|premium|melhorad|aprimorad|siri|wavenet|online/i.test(n)) { nota += 40; }
+    else if (/google/i.test(n)) { nota += 25; }
+    else if (/luciana|felipe|francisca|antonio|thalita|daniel|maria/i.test(n)) { nota += 15; }
+    if (/espeak|compact|eloquence|grandma|grandpa|rocko|shelley|reed|sandy|flo|eddy/i.test(n)) { nota -= 30; }
+    if (v.localService === false) { nota += 5; }
+    return nota;
 }
 
 function vozNomeAmigavel(v) {
@@ -10126,19 +10139,20 @@ function vozNomeAmigavel(v) {
 function vozOpcoes() {
     var pt = vozListaPt();
     var ops = [];
-    pt.forEach(function (v) {
+    pt.forEach(function (v, k) {
         ops.push({ id: 'v:' + v.name, nome: vozNomeAmigavel(v),
-                   desc: /BR/i.test(v.lang) ? 'Português do Brasil' : 'Português de Portugal',
-                   voz: v.name, rate: 0.95, pitch: 1 });
+                   desc: (k === 0 ? '★ a melhor deste aparelho · ' : '') +
+                         (/BR/i.test(v.lang) ? 'Português do Brasil' : 'Português de Portugal'),
+                   voz: v.name, rate: 1, pitch: 1, grupo: 'local' });
     });
     // completa até 6 com variações de tom e ritmo da melhor voz do aparelho
     var base = pt[0] ? pt[0].name : null;
     var baseNome = pt[0] ? vozNomeAmigavel(pt[0]) : 'voz do aparelho';
     var variacoes = [
-        { id: 'grave',  nome: 'Grave',          desc: 'tom mais baixo · ' + baseNome, rate: 0.92, pitch: 0.7 },
-        { id: 'aguda',  nome: 'Aguda',          desc: 'tom mais alto · ' + baseNome, rate: 0.98, pitch: 1.35 },
-        { id: 'calma',  nome: 'Calma',          desc: 'mais devagar · ' + baseNome, rate: 0.8, pitch: 1 },
-        { id: 'rapida', nome: 'Rápida',         desc: 'mais ligeira · ' + baseNome, rate: 1.18, pitch: 1.05 },
+        { id: 'grave',  nome: 'Grave',          desc: 'tom mais baixo · ' + baseNome, rate: 0.95, pitch: 0.8 },
+        { id: 'aguda',  nome: 'Aguda',          desc: 'tom mais alto · ' + baseNome, rate: 1, pitch: 1.25 },
+        { id: 'calma',  nome: 'Calma',          desc: 'mais devagar · ' + baseNome, rate: 0.85, pitch: 1 },
+        { id: 'rapida', nome: 'Rápida',         desc: 'mais ligeira · ' + baseNome, rate: 1.15, pitch: 1.02 },
         { id: 'firme',  nome: 'Firme',          desc: 'tom firme, ritmo normal · ' + baseNome, rate: 1.02, pitch: 0.85 },
         { id: 'suave',  nome: 'Suave',          desc: 'tom leve e pausado · ' + baseNome, rate: 0.88, pitch: 1.15 }
     ];
@@ -10147,27 +10161,100 @@ function vozOpcoes() {
     }
     for (var i = 0; ops.length < 6 && i < variacoes.length; i++) {
         var x = variacoes[i];
-        ops.push({ id: 'var:' + x.id, nome: x.nome, desc: x.desc, voz: base, rate: x.rate, pitch: x.pitch });
+        ops.push({ id: 'var:' + x.id, nome: x.nome, desc: x.desc, voz: base, rate: x.rate, pitch: x.pitch, grupo: 'local' });
     }
+    VOZ_NUVEM.forEach(function (n) {
+        ops.push({ id: 'nuvem:' + n.id, nome: '☁️ ' + n.nome, desc: n.desc + ' · premium', nuvem: n.id,
+                   voz: base, rate: 1, pitch: 1, grupo: 'nuvem' });
+    });
     VOZ_PERSONAGENS.forEach(function (p) {
         ops.push({ id: 'fun:' + p.id, nome: p.nome, desc: p.desc, voz: base, rate: p.rate, pitch: p.pitch,
-                   divertida: true, efeito: p.efeito || null, abre: p.abre, fecha: p.fecha });
+                   divertida: true, efeito: p.efeito || null, abre: p.abre, fecha: p.fecha, grupo: 'fun' });
     });
     ops.push({ id: 'fun:surpresa', nome: '🎲 Surpresa', desc: 'um personagem diferente a cada aviso',
-               voz: base, rate: 1, pitch: 1, divertida: true, surpresa: true });
+               voz: base, rate: 1, pitch: 1, divertida: true, surpresa: true, grupo: 'fun' });
     return ops;
+}
+
+// Vozes premium de IA (Google Cloud, Chirp 3 HD) — passam pela função "tts" do Supabase,
+// que guarda a chave do Google e trava o uso no limite grátis do mês.
+var VOZ_NUVEM = [
+    { id: 'Kore',   nome: 'Kore',   desc: 'feminina, firme' },
+    { id: 'Aoede',  nome: 'Aoede',  desc: 'feminina, leve' },
+    { id: 'Leda',   nome: 'Leda',   desc: 'feminina, jovem' },
+    { id: 'Charon', nome: 'Charon', desc: 'masculina, grave' },
+    { id: 'Puck',   nome: 'Puck',   desc: 'masculina, animada' },
+    { id: 'Fenrir', nome: 'Fenrir', desc: 'masculina, intensa' }
+];
+var vozNuvemStatus = null;      // { ativo, usado, limite } vindo da função
+var vozAudio = null;
+var VOZ_SILENCIO = 'data:audio/wav;base64,UklGRmQGAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YUAGAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
+
+function vozAudioEl() {
+    if (!vozAudio) { vozAudio = new Audio(); vozAudio.preload = 'auto'; }
+    return vozAudio;
+}
+function vozAudioTocando() { return !!(vozAudio && !vozAudio.paused && !vozAudio.ended && vozAudio.currentTime > 0); }
+
+function vozConsultarNuvem(cb) {
+    fetch(SUPABASE_URL + '/functions/v1/tts', { method: 'POST', headers: supabaseHeaders(), body: JSON.stringify({ status: true }) })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { vozNuvemStatus = d || null; if (cb) { cb(); } })
+        .catch(function () { vozNuvemStatus = { ativo: false, erro: true }; if (cb) { cb(); } });
+}
+
+// Melhor voz do próprio aparelho — usada quando a premium não está disponível
+function vozMelhorLocal() {
+    var ops = vozOpcoes();
+    for (var i = 0; i < ops.length; i++) { if (ops[i].grupo === 'local') { return ops[i]; } }
+    return null;
+}
+
+function vozFalarNuvem(texto, aoComecar, op) {
+    fetch(SUPABASE_URL + '/functions/v1/tts', {
+        method: 'POST', headers: supabaseHeaders(),
+        body: JSON.stringify({ texto: texto, voz: op.nuvem, ritmo: op.rate || 1 })
+    }).then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+    }).then(function (x) {
+        if (!x.ok || !x.d || !x.d.audio) { throw new Error((x.d && x.d.erro) || 'falhou'); }
+        if (x.d.usado && vozNuvemStatus) { vozNuvemStatus.usado = x.d.usado; }
+        var a = vozAudioEl();
+        a.src = 'data:audio/mpeg;base64,' + x.d.audio;
+        return a.play();
+    }).then(function () {
+        vozLiberada = true;
+        if (aoComecar) { aoComecar(); }
+    }).catch(function () {
+        // sem internet, sem chave ou passou do limite: fala com a melhor voz do aparelho
+        vozFalar(texto, aoComecar, vozMelhorLocal(), true);
+    });
+}
+
+// A voz do Chrome costuma cortar falas longas no meio; dividir em frases resolve
+function vozDividir(texto) {
+    var frases = String(texto).match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [texto];
+    var partes = [], atual = '';
+    frases.forEach(function (f) {
+        f = f.trim();
+        if (!f) { return; }
+        if ((atual + ' ' + f).length > 180 && atual) { partes.push(atual); atual = f; }
+        else { atual = atual ? atual + ' ' + f : f; }
+    });
+    if (atual) { partes.push(atual); }
+    return partes.length ? partes : [texto];
 }
 
 // Personagens para alegrar a equipe. Só mudam tom, ritmo e o jeito de falar —
 // não imitam a voz de nenhuma pessoa real.
 var VOZ_PERSONAGENS = [
-    { id: 'robo', nome: '🤖 Robô', desc: 'bip bop, voz metálica e grave', rate: 0.85, pitch: 0.1, efeito: 'bip',
+    { id: 'robo', nome: '🤖 Robô', desc: 'bip bop, voz metálica e grave', rate: 0.88, pitch: 0.35, efeito: 'bip',
       abre: ['Bip bop. Sistema de alerta ativado.', 'Bip. Processando avisos.', 'Alerta detectado. Bip bop.'],
       fecha: ['Fim da transmissão. Bip.', 'Desligando alto-falante. Bop.', 'Missão registrada. Bip bip.'] },
-    { id: 'esquilo', nome: '🐿️ Esquilo', desc: 'fininha e acelerada', rate: 1.4, pitch: 2,
+    { id: 'esquilo', nome: '🐿️ Esquilo', desc: 'fininha e acelerada', rate: 1.3, pitch: 1.75,
       abre: ['Ei ei ei, escuta só!', 'Rapidinho, rapidinho!', 'Psiu! Notícia quentinha!'],
       fecha: ['Corre, corre!', 'Tchau, vou buscar castanha!', 'Anda logo, pessoal!'] },
-    { id: 'gigante', nome: '👹 Gigante', desc: 'grossona e bem devagar', rate: 0.7, pitch: 0,
+    { id: 'gigante', nome: '👹 Gigante', desc: 'grossona e bem devagar', rate: 0.78, pitch: 0.3,
       abre: ['Hum... o gigante acordou.', 'Quem ousa atrasar a entrega?', 'Hmmm. Escutem o gigante.'],
       fecha: ['Não me façam repetir.', 'Agora voltem ao trabalho.', 'O gigante vai voltar a dormir.'] },
     { id: 'narrador', nome: '⚽ Narrador', desc: 'empolgado, estilo jogo de futebol', rate: 1.25, pitch: 1.15,
@@ -10176,10 +10263,10 @@ var VOZ_PERSONAGENS = [
     { id: 'pirata', nome: '🏴‍☠️ Pirata', desc: 'capitão do navio', rate: 0.95, pitch: 0.6,
       abre: ['Arrr, marujos!', 'Ahoy, tripulação!', 'Içar as velas, escutem o capitão!'],
       fecha: ['Ao trabalho, tripulação!', 'Ou vão andar na prancha!', 'Arrr!'] },
-    { id: 'vovo', nome: '👵 Vovó', desc: 'carinhosa e devagarinho', rate: 0.75, pitch: 1.5,
+    { id: 'vovo', nome: '👵 Vovó', desc: 'carinhosa e devagarinho', rate: 0.8, pitch: 1.4,
       abre: ['Ô meu filho, vem cá.', 'Ai, ai, ai, deixa a vó falar.', 'Escuta a vó, querido.'],
       fecha: ['Vai lá, que a vó tá esperando.', 'E não esquece de comer, viu?', 'Benza Deus.'] },
-    { id: 'alien', nome: '👽 Alienígena', desc: 'aguda e lenta, de outro planeta', rate: 0.6, pitch: 2, efeito: 'disco',
+    { id: 'alien', nome: '👽 Alienígena', desc: 'aguda e lenta, de outro planeta', rate: 0.7, pitch: 1.8, efeito: 'disco',
       abre: ['Saudações, terráqueos.', 'Contato estabelecido com a Terra.', 'Aqui fala a nave mãe.'],
       fecha: ['Fim da mensagem intergaláctica.', 'Leve-me ao seu gerente.', 'Voltando para a nave.'] },
     { id: 'radio', nome: '🎙️ Locutor de rádio', desc: 'voz de plantão de notícias', rate: 1.05, pitch: 0.75, efeito: 'vinheta',
@@ -10238,17 +10325,25 @@ function vozFalar(texto, aoComecar, opcao, semPersonagem) {
             return;
         }
     }
-    var u = new SpeechSynthesisUtterance(texto);
-    u.lang = 'pt-BR';
+    if (op && op.nuvem) { vozFalarNuvem(texto, aoComecar, op); return; }
+    var vozDoAparelho = null;
     if (op && op.voz) {
-        var v = (window.speechSynthesis.getVoices() || []).filter(function (x) { return x.name === op.voz; })[0];
-        if (v) { u.voice = v; u.lang = v.lang; }
+        vozDoAparelho = (window.speechSynthesis.getVoices() || []).filter(function (x) { return x.name === op.voz; })[0] || null;
     }
-    u.rate = op ? op.rate : 0.95;
-    u.pitch = op ? op.pitch : 1;
-    u.volume = 1;
-    u.onstart = function () { vozLiberada = true; if (aoComecar) { aoComecar(); } };
-    try { window.speechSynthesis.speak(u); } catch (e) { }
+    var avisou = false;
+    vozDividir(texto).forEach(function (pedaco) {
+        var u = new SpeechSynthesisUtterance(pedaco);
+        u.lang = 'pt-BR';
+        if (vozDoAparelho) { u.voice = vozDoAparelho; u.lang = vozDoAparelho.lang; }
+        u.rate = op ? op.rate : 1;
+        u.pitch = op ? op.pitch : 1;
+        u.volume = 1;
+        u.onstart = function () {
+            vozLiberada = true;
+            if (!avisou) { avisou = true; if (aoComecar) { aoComecar(); } }
+        };
+        try { window.speechSynthesis.speak(u); } catch (e) { }
+    });
 }
 
 // Celular e navegador só deixam falar depois do primeiro toque na tela.
@@ -10260,6 +10355,7 @@ function vozDesbloquear() {
         u.onend = function () { vozLiberada = true; setTimeout(vozVerificarFornecedores, 300); };
         window.speechSynthesis.speak(u);
     } catch (e) { }
+    try { var a = vozAudioEl(); a.src = VOZ_SILENCIO; var p = a.play(); if (p && p.catch) { p.catch(function () { }); } } catch (e2) { }
 }
 
 // ---------- textos ----------
@@ -10467,7 +10563,7 @@ function vozVerificarFornecedores() {   // nome antigo mantido: agora verifica t
     var agora = Date.now(), h = new Date(agora).getHours();
     if (h < VOZ_HORA_INICIO || h >= VOZ_HORA_FIM) { return; }
     vozAtualizarDados(false);
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) { return; }
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending || vozAudioTocando()) { return; }
 
     var falados = vozLerFalados(), hoje = vozHojeIso();
     var avisos = vozColetar(agora), ativos = {}, falar = [];
@@ -10505,6 +10601,7 @@ function vozVerificarFornecedores() {   // nome antigo mantido: agora verifica t
 // ---------- tela de ajustes ----------
 
 function vozAbrirAjustes() {
+    vozConsultarNuvem(vozRenderizarAjustes);
     vozRenderizarAjustes();
     trocarTela('voz-screen');
     // algumas vozes só aparecem depois de um instante (Chrome carrega a lista em segundo plano)
@@ -10542,20 +10639,26 @@ function vozRenderizarAjustes() {
         html += '<div class="voz-nota">Ninguém está logado neste aparelho. Faça o login para a voz chamar a pessoa pelo nome.</div>';
     }
 
-    html += '<div class="voz-sec">Escolha a voz</div><div class="voz-nota">Toque em ▶ para ouvir e em <b>Usar</b> para escolher. As vozes vêm do próprio aparelho, então a lista muda de um celular para outro.</div>';
-    var jaTitulou = false;
+    var nuvemAtiva = !!(vozNuvemStatus && vozNuvemStatus.ativo);
+    var titulos = {
+        local: '<div class="voz-sec">Vozes do aparelho · grátis</div><div class="voz-nota">Toque em ▶ para ouvir e em ' +
+               '<b>Usar</b> para escolher. Elas vêm do próprio aparelho, então a lista muda de um celular para outro.</div>' +
+               vozDicaAparelho(),
+        nuvem: '<div class="voz-sec">Vozes premium ☁️ · inteligência artificial</div>' + vozBlocoNuvem(),
+        fun:   '<div class="voz-sec">Vozes divertidas 🎉</div><div class="voz-nota">Personagens para alegrar a equipe — ' +
+               'cada um tem o seu jeito de abrir e fechar o aviso. O 🎲 Surpresa sorteia um a cada aviso.</div>'
+    };
+    var grupoAtual = null;
     vozOpcoes().forEach(function (op, i) {
         var sel = esc && esc.id === op.id;
-        if (op.divertida && !jaTitulou) {
-            jaTitulou = true;
-            html += '<div class="voz-sec">Vozes divertidas 🎉</div><div class="voz-nota">Personagens para alegrar a equipe — ' +
-                'cada um tem o seu jeito de abrir e fechar o aviso. O 🎲 Surpresa sorteia um a cada aviso.</div>';
-        }
-        html += '<div class="voz-bloco voz-opcao' + (sel ? ' sel' : '') + '">' +
+        if (op.grupo !== grupoAtual) { grupoAtual = op.grupo; html += titulos[op.grupo] || ''; }
+        var travada = op.nuvem && !nuvemAtiva;
+        html += '<div class="voz-bloco voz-opcao' + (sel ? ' sel' : '') + (travada ? ' travada' : '') + '">' +
             '<button type="button" class="voz-play" onclick="vozOuvir(' + i + ')">▶</button>' +
             '<div class="voz-opcao-txt"><b>' + (i + 1) + '. ' + escHtmlSeguro(op.nome) + '</b><small>' + escHtmlSeguro(op.desc) + '</small></div>' +
             (sel ? '<span class="voz-escolhida">✓ em uso</span>'
-                 : '<button type="button" class="voz-btn" onclick="vozUsar(' + i + ')">Usar</button>') +
+                 : (travada ? '<span class="voz-travada">🔒 ativar</span>'
+                            : '<button type="button" class="voz-btn" onclick="vozUsar(' + i + ')">Usar</button>')) +
             '</div>';
     });
 
@@ -10571,9 +10674,54 @@ function vozRenderizarAjustes() {
     el.innerHTML = html;
 }
 
+// Passo a passo para baixar as vozes melhores que o próprio aparelho oferece de graça
+function vozDicaAparelho() {
+    var ua = navigator.userAgent || '';
+    var passos;
+    if (/iPhone|iPad|iPod/i.test(ua)) {
+        passos = '<ol><li>Abra <b>Ajustes</b> → <b>Acessibilidade</b> → <b>Conteúdo Falado</b> → <b>Vozes</b>.</li>' +
+            '<li>Entre em <b>Português (Brasil)</b>.</li>' +
+            '<li>Baixe uma voz <b>Melhorada</b> ou <b>Premium</b> (ex.: Luciana ou Felipe).</li>' +
+            '<li>Feche e abra o app de novo: ela aparece aqui no topo da lista.</li></ol>';
+    } else if (/Android/i.test(ua)) {
+        passos = '<ol><li>Abra <b>Configurações</b> e procure por <b>Conversão de texto em voz</b> (fica em Acessibilidade ou em Sistema → Idiomas, muda de marca para marca).</li>' +
+            '<li>Em <b>Mecanismo preferido</b>, escolha <b>Serviços de fala do Google</b>.</li>' +
+            '<li>Toque na engrenagem ⚙️ → <b>Instalar dados de voz</b> → <b>Português (Brasil)</b> e baixe a voz em alta qualidade.</li>' +
+            '<li>Feche e abra o app de novo.</li></ol>';
+    } else {
+        passos = '<ol><li>No computador, abra o app pelo <b>Microsoft Edge</b>: ele traz de graça as vozes <b>Francisca</b>, <b>Thalita</b> e <b>Antonio</b> "Natural", que são as mais humanas.</li>' +
+            '<li>No Chrome, a melhor é a <b>Google Brasil</b>.</li></ol>';
+    }
+    return '<details class="voz-dica"><summary>💡 Como ter vozes melhores neste aparelho, de graça</summary>' + passos + '</details>';
+}
+
+function vozBlocoNuvem() {
+    var ns = vozNuvemStatus;
+    if (!ns) { return '<div class="voz-nota">Verificando…</div>'; }
+    if (ns.ativo) {
+        var pct = ns.limite ? Math.min(100, Math.round((ns.usado || 0) / ns.limite * 100)) : 0;
+        return '<div class="voz-nota">✅ <b>Ativas.</b> Vozes quase humanas, iguais em todos os aparelhos (precisa de internet). ' +
+            'Usado este mês: <b>' + pct + '%</b> da cota grátis. Se acabar, o app usa a voz do aparelho até virar o mês — nunca cobra.</div>';
+    }
+    return '<div class="voz-nota">🔒 <b>Ainda não ativadas.</b> Quando ativar, estas 6 vozes de IA ficam disponíveis em todos os aparelhos.</div>' +
+        '<details class="voz-dica"><summary>Como ativar (uma vez só, no computador)</summary><ol>' +
+        '<li>Entre em <b>console.cloud.google.com</b> com a conta Google do restaurante e crie um projeto (ex.: <i>Bela Sintra Voz</i>).</li>' +
+        '<li>Ative o <b>faturamento</b> com um cartão. O Google exige o cartão mesmo dentro da cota grátis; o app trava o uso abaixo dela.</li>' +
+        '<li>Em <b>APIs e serviços</b>, ative a <b>Cloud Text-to-Speech API</b>.</li>' +
+        '<li>Em <b>Credenciais</b> → <b>Criar credenciais</b> → <b>Chave de API</b>. Em seguida, restrinja a chave para usar só a Text-to-Speech API.</li>' +
+        '<li>No <b>Supabase</b> (projeto do app de compras) → <b>Edge Functions</b> → <b>Secrets</b>: adicione o nome <b>GOOGLE_TTS_KEY</b> e cole a chave como valor.</li>' +
+        '<li>Volte aqui e abra esta tela de novo: as vozes premium ficam liberadas.</li></ol>' +
+        '<small>A chave fica guardada só no servidor, nunca no app. Não precisa me mandar a chave.</small></details>';
+}
+
 function vozOuvir(i) {
     var op = vozOpcoes()[i];
     if (!op) { return; }
+    if (op.nuvem && !(vozNuvemStatus && vozNuvemStatus.ativo)) {
+        alert('As vozes premium ainda não foram ativadas.\n\nAbra "Como ativar" logo acima da lista para ver o passo a passo.');
+        return;
+    }
+    if (vozAudio) { try { vozAudio.pause(); } catch (e) { } }
     window.speechSynthesis.cancel();
     vozFalar((op.divertida ? '' : 'Olá, esta é a voz ' + (i + 1) + ', ' + vozLimparNome(op.nome) + '. ') +
         vozChamada() + 'Atenção: entrega atrasada. Piramides Distribuidora, atrasado há 40 minutos.', null, op);
