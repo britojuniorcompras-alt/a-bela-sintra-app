@@ -3208,7 +3208,7 @@ function checklistUpsert(registro, callback) {
 
 // ---------- abertura e sincronização ----------
 
-var CHECKLIST_VERSAO = '04/11/2026 · v3';
+var CHECKLIST_VERSAO = '04/11/2026 · v4';
 
 // Diagnóstico: bate em cada tabela e mostra o que o servidor respondeu,
 // com o código do erro. Serve para eu saber o que está acontecendo no aparelho.
@@ -10143,7 +10143,68 @@ function vozOpcoes() {
         var x = variacoes[i];
         ops.push({ id: 'var:' + x.id, nome: x.nome, desc: x.desc, voz: base, rate: x.rate, pitch: x.pitch });
     }
+    VOZ_PERSONAGENS.forEach(function (p) {
+        ops.push({ id: 'fun:' + p.id, nome: p.nome, desc: p.desc, voz: base, rate: p.rate, pitch: p.pitch,
+                   divertida: true, efeito: p.efeito || null, abre: p.abre, fecha: p.fecha });
+    });
+    ops.push({ id: 'fun:surpresa', nome: '🎲 Surpresa', desc: 'um personagem diferente a cada aviso',
+               voz: base, rate: 1, pitch: 1, divertida: true, surpresa: true });
     return ops;
+}
+
+// Personagens para alegrar a equipe. Só mudam tom, ritmo e o jeito de falar —
+// não imitam a voz de nenhuma pessoa real.
+var VOZ_PERSONAGENS = [
+    { id: 'robo', nome: '🤖 Robô', desc: 'bip bop, voz metálica e grave', rate: 0.85, pitch: 0.1, efeito: 'bip',
+      abre: ['Bip bop. Sistema de alerta ativado.', 'Bip. Processando avisos.', 'Alerta detectado. Bip bop.'],
+      fecha: ['Fim da transmissão. Bip.', 'Desligando alto-falante. Bop.', 'Missão registrada. Bip bip.'] },
+    { id: 'esquilo', nome: '🐿️ Esquilo', desc: 'fininha e acelerada', rate: 1.4, pitch: 2,
+      abre: ['Ei ei ei, escuta só!', 'Rapidinho, rapidinho!', 'Psiu! Notícia quentinha!'],
+      fecha: ['Corre, corre!', 'Tchau, vou buscar castanha!', 'Anda logo, pessoal!'] },
+    { id: 'gigante', nome: '👹 Gigante', desc: 'grossona e bem devagar', rate: 0.7, pitch: 0,
+      abre: ['Hum... o gigante acordou.', 'Quem ousa atrasar a entrega?', 'Hmmm. Escutem o gigante.'],
+      fecha: ['Não me façam repetir.', 'Agora voltem ao trabalho.', 'O gigante vai voltar a dormir.'] },
+    { id: 'narrador', nome: '⚽ Narrador', desc: 'empolgado, estilo jogo de futebol', rate: 1.25, pitch: 1.15,
+      abre: ['Atenção, torcida! Olha o lance!', 'Vai começar a partida no almoxarifado!', 'É agora, minha gente!'],
+      fecha: ['É pressão total no estoque!', 'Que jogo, que jogo!', 'E o placar segue aberto!'] },
+    { id: 'pirata', nome: '🏴‍☠️ Pirata', desc: 'capitão do navio', rate: 0.95, pitch: 0.6,
+      abre: ['Arrr, marujos!', 'Ahoy, tripulação!', 'Içar as velas, escutem o capitão!'],
+      fecha: ['Ao trabalho, tripulação!', 'Ou vão andar na prancha!', 'Arrr!'] },
+    { id: 'vovo', nome: '👵 Vovó', desc: 'carinhosa e devagarinho', rate: 0.75, pitch: 1.5,
+      abre: ['Ô meu filho, vem cá.', 'Ai, ai, ai, deixa a vó falar.', 'Escuta a vó, querido.'],
+      fecha: ['Vai lá, que a vó tá esperando.', 'E não esquece de comer, viu?', 'Benza Deus.'] },
+    { id: 'alien', nome: '👽 Alienígena', desc: 'aguda e lenta, de outro planeta', rate: 0.6, pitch: 2, efeito: 'disco',
+      abre: ['Saudações, terráqueos.', 'Contato estabelecido com a Terra.', 'Aqui fala a nave mãe.'],
+      fecha: ['Fim da mensagem intergaláctica.', 'Leve-me ao seu gerente.', 'Voltando para a nave.'] },
+    { id: 'radio', nome: '🎙️ Locutor de rádio', desc: 'voz de plantão de notícias', rate: 1.05, pitch: 0.75, efeito: 'vinheta',
+      abre: ['Bom dia, almoxarifado! Plantão de avisos:', 'Interrompemos a programação para um aviso:', 'Atenção, ouvintes da Bela Sintra:'],
+      fecha: ['Voltamos já com mais avisos.', 'Fique ligado na nossa frequência.', 'Esse foi o plantão. Até a próxima.'] }
+];
+
+function vozSortear(lista) { return lista[Math.floor(Math.random() * lista.length)]; }
+
+// Efeitos curtos antes da fala (bip do robô, disco voador, vinheta de rádio)
+function vozTocarEfeito(efeito) {
+    try {
+        if (!audioCtxClique) { audioCtxClique = new (window.AudioContext || window.webkitAudioContext)(); }
+        if (audioCtxClique.state === 'suspended') { audioCtxClique.resume(); }
+        var ctx = audioCtxClique, t0 = ctx.currentTime;
+        function nota(freq, ini, dur, tipo, freqFim) {
+            var o = ctx.createOscillator(), g = ctx.createGain();
+            o.type = tipo || 'square';
+            o.frequency.setValueAtTime(freq, t0 + ini);
+            if (freqFim) { o.frequency.exponentialRampToValueAtTime(freqFim, t0 + ini + dur); }
+            g.gain.setValueAtTime(0.001, t0 + ini);
+            g.gain.linearRampToValueAtTime(0.12, t0 + ini + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.001, t0 + ini + dur);
+            o.connect(g); g.connect(ctx.destination);
+            o.start(t0 + ini); o.stop(t0 + ini + dur + 0.02);
+        }
+        if (efeito === 'bip') { nota(1200, 0, 0.09); nota(800, 0.13, 0.09); nota(1500, 0.26, 0.12); return 450; }
+        if (efeito === 'disco') { nota(300, 0, 0.7, 'sine', 1400); nota(1400, 0.7, 0.5, 'sine', 500); return 1250; }
+        if (efeito === 'vinheta') { nota(523, 0, 0.18, 'triangle'); nota(659, 0.18, 0.18, 'triangle'); nota(784, 0.36, 0.35, 'triangle'); return 800; }
+    } catch (e) { }
+    return 0;
 }
 
 function vozOpcaoEscolhida() {
@@ -10153,9 +10214,24 @@ function vozOpcaoEscolhida() {
     return ops[0] || null;
 }
 
-function vozFalar(texto, aoComecar, opcao) {
+function vozFalar(texto, aoComecar, opcao, semPersonagem) {
     if (!vozDisponivel()) { return; }
     var op = opcao || vozOpcaoEscolhida();
+    if (op && op.surpresa) {
+        var p = vozSortear(VOZ_PERSONAGENS);
+        op = vozOpcoes().filter(function (o) { return o.id === 'fun:' + p.id; })[0] || op;
+    }
+    if (op && op.divertida && !op.surpresa && !semPersonagem && op.abre) {
+        texto = vozSortear(op.abre) + ' ' + texto + ' ' + vozSortear(op.fecha);
+    }
+    if (op && op.efeito) {
+        var espera = vozTocarEfeito(op.efeito);
+        if (espera) {
+            var opFixa = Object.assign({}, op, { efeito: null, abre: null, divertida: false, surpresa: false });
+            setTimeout(function () { vozFalar(texto, aoComecar, opFixa, true); }, espera);
+            return;
+        }
+    }
     var u = new SpeechSynthesisUtterance(texto);
     u.lang = 'pt-BR';
     if (op && op.voz) {
@@ -10411,8 +10487,14 @@ function vozRenderizarAjustes() {
         '<button type="button" class="voz-btn' + (ligada ? '' : ' on') + '" onclick="vozAlternar()">' + (ligada ? 'Desligar' : 'Ligar') + '</button></div>';
 
     html += '<div class="voz-sec">Escolha a voz</div><div class="voz-nota">Toque em ▶ para ouvir e em <b>Usar</b> para escolher. As vozes vêm do próprio aparelho, então a lista muda de um celular para outro.</div>';
+    var jaTitulou = false;
     vozOpcoes().forEach(function (op, i) {
         var sel = esc && esc.id === op.id;
+        if (op.divertida && !jaTitulou) {
+            jaTitulou = true;
+            html += '<div class="voz-sec">Vozes divertidas 🎉</div><div class="voz-nota">Personagens para alegrar a equipe — ' +
+                'cada um tem o seu jeito de abrir e fechar o aviso. O 🎲 Surpresa sorteia um a cada aviso.</div>';
+        }
         html += '<div class="voz-bloco voz-opcao' + (sel ? ' sel' : '') + '">' +
             '<button type="button" class="voz-play" onclick="vozOuvir(' + i + ')">▶</button>' +
             '<div class="voz-opcao-txt"><b>' + (i + 1) + '. ' + escHtmlSeguro(op.nome) + '</b><small>' + escHtmlSeguro(op.desc) + '</small></div>' +
@@ -10437,7 +10519,8 @@ function vozOuvir(i) {
     var op = vozOpcoes()[i];
     if (!op) { return; }
     window.speechSynthesis.cancel();
-    vozFalar('Olá, esta é a voz ' + (i + 1) + ', ' + op.nome + '. Atenção: entrega atrasada. Piramides Distribuidora, atrasado há 40 minutos.', null, op);
+    vozFalar((op.divertida ? '' : 'Olá, esta é a voz ' + (i + 1) + ', ' + vozLimparNome(op.nome) + '. ') +
+        'Atenção: entrega atrasada. Piramides Distribuidora, atrasado há 40 minutos.', null, op);
 }
 
 function vozUsar(i) {
