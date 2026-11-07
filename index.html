@@ -302,6 +302,7 @@
     .screen { display: none; padding-bottom: 100px; }
     .screen.active { display: block; animation: fadeIn 0.15s ease-out; }
     #login-screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 0 28px; box-sizing: border-box; }
+    #dashboard-screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 0 28px; box-sizing: border-box; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
     .screen-header { padding: 18px 20px; display: flex; align-items: center; gap: 14px; background: rgba(var(--bg-rgb),0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 100;}
@@ -401,6 +402,14 @@
     .voz-btn { flex: 0 0 auto; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
     .voz-btn.on { background: var(--accent); color: var(--accent-text, #fff); border-color: transparent; }
     .voz-escolhida { flex: 0 0 auto; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+    .dash-botao { width: 208px; height: 80px; border-radius: 40px; border: none; cursor: pointer; display: flex; align-items: center;
+        justify-content: center; gap: 12px; color: var(--accent-text); background: linear-gradient(180deg, var(--accent-light), var(--accent) 62%);
+        box-shadow: 0 12px 20px rgba(0,0,0,0.45), inset 0 2px 3px rgba(255,255,255,0.45), inset 0 -10px 13px rgba(0,0,0,0.3);
+        transition: transform 0.08s ease, box-shadow 0.08s ease; }
+    .dash-botao:active { transform: translateY(2px) scale(0.98);
+        box-shadow: 0 7px 12px rgba(0,0,0,0.4), inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -6px 9px rgba(0,0,0,0.35); }
+    .dash-botao svg { width: 28px; height: 28px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
+    .dash-botao span { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; }
     .voz-nome { flex-direction: column; align-items: stretch; gap: 8px; }
     .voz-velocidade { flex-direction: column; align-items: stretch; gap: 6px; }
     .voz-vel-linha { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-dim); }
@@ -802,6 +811,18 @@
 
         <button type="button" onclick="tentarLogin()" style="width:100%; box-sizing:border-box; margin-top:18px; padding:15px; border:none; border-radius:18px; background:var(--accent); color:#1B1420; font-family:'Inter',sans-serif; font-size:15px; font-weight:700; cursor:pointer;">Entrar</button>
     </div>
+</div>
+
+<div id="dashboard-screen" class="screen" style="align-items:center; justify-content:center; text-align:center;">
+    <div style="font-family:'Space Grotesk',sans-serif; font-size:12px; color:var(--text-dim); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:4px;">Gestão de Compras</div>
+    <div style="font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:var(--text); margin-bottom:8px;">A Bela Sintra</div>
+    <div id="dashboardSaudacao" style="font-family:'Inter',sans-serif; font-size:13.5px; color:var(--text-dim); margin-bottom:52px;"></div>
+    <button type="button" class="dash-botao" onclick="dashboardAbrir()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+        <span>Abrir</span>
+    </button>
 </div>
 
 <div id="main-screen" class="screen">
@@ -2838,8 +2859,19 @@ function tentarLogin() {
     try { localStorage.setItem('logadoABS', 'sim'); } catch (e) { }
 
     atualizarAvatarUsuario();
-    trocarTela('main-screen');
+    dashboardMostrar();
 }
+
+// Tela de entrada com o botão grande — fica entre o login e a tela principal de hoje
+function dashboardMostrar() {
+    var sauda = document.getElementById('dashboardSaudacao');
+    if (sauda) {
+        var nome = (typeof vozLimparNome === 'function') ? vozLimparNome(String(usuarioAtual || '').split(/\s+/)[0]) : (usuarioAtual || '');
+        sauda.innerText = nome ? ('Olá, ' + nome + '!') : '';
+    }
+    trocarTela('dashboard-screen');
+}
+function dashboardAbrir() { trocarTela('main-screen'); }
 
 function fazerLogout() {
     try { localStorage.removeItem('logadoABS'); } catch (e) { }
@@ -8075,7 +8107,7 @@ function iniciar() {
     // Se ninguém entrou ainda neste aparelho, pede o login antes de liberar o app
     montarTelaLogin();
     if (estaLogado()) {
-        trocarTela('main-screen');
+        dashboardMostrar();
     } else {
         trocarTela('login-screen');
     }
