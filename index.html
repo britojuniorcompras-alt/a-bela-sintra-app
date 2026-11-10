@@ -1516,6 +1516,8 @@
         <button onclick="cfMudarMes(1)">▶</button>
     </div>
     <div style="padding: 0 20px 24px 20px;">
+      <div id="cfRelatorio">
+        <div id="cfCabecalhoPdf" style="display:none;"></div>
         <div id="cfHero" class="nf-hero"></div>
         <div id="cfVeredito"></div>
         <div id="cfKpis" class="nf-resumo" style="padding: 12px 0 0 0;"></div>
@@ -1544,9 +1546,12 @@
 
         <div class="nf-secao-titulo">CMV dos últimos 6 meses</div>
         <div id="cfEvolucao"></div>
+      </div>
 
         <div class="nf-secao-titulo">Levar para fora do app</div>
-        <button class="nf-protocolos-btn" onclick="cfCompartilharPdf()">📤 Compartilhar em PDF</button>
+        <button class="nf-protocolos-btn nf-confronto-btn" onclick="cfPdfDaTela('baixar')">📥 Baixar PDF igual à tela</button>
+        <button class="nf-protocolos-btn nf-gastos-btn" onclick="cfPdfDaTela('enviar')">📤 Enviar PDF igual à tela</button>
+        <button class="nf-protocolos-btn" onclick="cfCompartilharPdf()">📄 PDF em lista (texto)</button>
         <button class="nf-protocolos-btn nf-confronto-btn" onclick="cfExcel('baixar')">📊 Baixar planilha Excel</button>
         <button class="nf-protocolos-btn nf-gastos-btn" onclick="cfExcel('enviar')">📤 Enviar planilha Excel</button>
         <div id="cfAvisoExcel" class="nf-status" style="display:none;"></div>
@@ -17588,6 +17593,118 @@ function cfCompartilharPdf() {
         return;
     }
     doc.save(nome);
+}
+
+// PDF "igual à tela": tira uma foto do bloco do relatório como ele aparece no app
+// (cores, barra, caixinhas) e monta o PDF com essa imagem, quebrando em páginas se precisar.
+function cfGarantirHtml2Canvas(cb) {
+    if (window.html2canvas) { cb(null); return; }
+    nfCarregarScript([
+        'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+        'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
+    ], function (err) { cb(err || (window.html2canvas ? null : new Error('sem html2canvas'))); });
+}
+
+// O html2canvas corta o texto de dentro dos <input>. Então, só durante a foto,
+// cada campo vira um quadrinho de texto igualzinho — e depois tudo volta ao normal.
+function cfTrocarInputsPorTexto(raiz) {
+    var trocas = [], inputs = raiz.querySelectorAll('input');
+    for (var i = 0; i < inputs.length; i++) {
+        var inp = inputs[i];
+        if (inp.type === 'checkbox' || inp.type === 'radio') { continue; }
+        var cs = getComputedStyle(inp);
+        var alinha = cs.textAlign === 'right' ? 'flex-end' : (cs.textAlign === 'center' ? 'center' : 'flex-start');
+        var div = document.createElement('div');
+        div.setAttribute('data-cf-falso', '1');
+        div.textContent = inp.value || inp.placeholder || '';
+        div.style.cssText = 'box-sizing:border-box;display:flex;align-items:center;justify-content:' + alinha + ';' +
+            'width:' + inp.offsetWidth + 'px;height:' + inp.offsetHeight + 'px;' +
+            'padding:0 ' + cs.paddingRight + ' 0 ' + cs.paddingLeft + ';' +
+            'font-family:' + cs.fontFamily + ';font-size:' + cs.fontSize + ';font-weight:' + cs.fontWeight + ';' +
+            'letter-spacing:' + cs.letterSpacing + ';color:' + cs.color + ';background:' + cs.backgroundColor + ';' +
+            'border:' + cs.borderTopWidth + ' solid ' + cs.borderTopColor + ';border-radius:' + cs.borderRadius + ';' +
+            'margin:' + cs.margin + ';overflow:hidden;white-space:nowrap;';
+        inp.parentNode.insertBefore(div, inp);
+        inp.style.display = 'none';
+        trocas.push({ inp: inp, div: div });
+    }
+    return trocas;
+}
+function cfRestaurarInputs(trocas) {
+    (trocas || []).forEach(function (t) {
+        t.inp.style.display = '';
+        if (t.div.parentNode) { t.div.parentNode.removeChild(t.div); }
+    });
+}
+
+function cfPdfDaTela(modo) {
+    var aviso = document.getElementById('cfAvisoExcel');
+    aviso.style.display = 'block';
+    aviso.innerText = 'Preparando o PDF... pode levar alguns segundos.';
+    var mes = cfMes;
+    cfGarantirHtml2Canvas(function (err) {
+        if (err || !window.html2canvas) {
+            aviso.innerText = 'Não consegui carregar o gerador de imagem (sem internet?). Tente de novo.';
+            return;
+        }
+        var jsPDFRef = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
+        if (!jsPDFRef) { aviso.innerText = 'Não consegui carregar o gerador de PDF. Atualize a página.'; return; }
+
+        var alvo = document.getElementById('cfRelatorio');
+        var cab = document.getElementById('cfCabecalhoPdf');
+        var fundo = getComputedStyle(document.body).backgroundColor || '#271B31';
+        cab.innerHTML = '<div style="padding:6px 0 16px 0;text-align:center;">' +
+            '<div style="font-family:\'Space Grotesk\',sans-serif;font-size:17px;font-weight:700;color:var(--text);">Compra × Venda — ' + nfNomeMes(mes) + '</div>' +
+            '<div style="font-family:\'Inter\',sans-serif;font-size:11px;color:var(--text-dim);margin-top:3px;">a bela Sintra · gerado em ' + nfDataBR(nfHojeIso()) + '</div></div>';
+        cab.style.display = 'block';
+        var trocas = cfTrocarInputsPorTexto(alvo);
+
+        window.html2canvas(alvo, { backgroundColor: fundo, scale: 2, useCORS: true, logging: false })
+            .then(function (canvas) {
+                cab.style.display = 'none';
+                cfRestaurarInputs(trocas);
+                var doc = new jsPDFRef({ unit: 'mm', format: 'a4' });
+                var margem = 6;
+                var larguraImg = doc.internal.pageSize.getWidth() - margem * 2;
+                var alturaUtil = doc.internal.pageSize.getHeight() - margem * 2;
+                var alturaImg = canvas.height * larguraImg / canvas.width;
+
+                if (alturaImg <= alturaUtil) {
+                    doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margem, margem, larguraImg, alturaImg);
+                } else {
+                    var pxPorPagina = Math.floor(canvas.width * alturaUtil / larguraImg);
+                    var y = 0, primeira = true;
+                    while (y < canvas.height) {
+                        var h = Math.min(pxPorPagina, canvas.height - y);
+                        var fatia = document.createElement('canvas');
+                        fatia.width = canvas.width; fatia.height = h;
+                        var ctx = fatia.getContext('2d');
+                        ctx.fillStyle = fundo; ctx.fillRect(0, 0, fatia.width, fatia.height);
+                        ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+                        if (!primeira) { doc.addPage(); }
+                        doc.addImage(fatia.toDataURL('image/jpeg', 0.92), 'JPEG', margem, margem, larguraImg, h * larguraImg / canvas.width);
+                        primeira = false;
+                        y += h;
+                    }
+                }
+
+                var nome = 'Compra x Venda ' + nfNomeMes(mes) + '.pdf';
+                var arquivo = null;
+                try { arquivo = new File([doc.output('blob')], nome, { type: 'application/pdf' }); } catch (e2) { }
+                if (modo === 'enviar' && arquivo && navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+                    navigator.share({ files: [arquivo], title: nome }).catch(function () { });
+                    aviso.innerText = '📤 Escolha onde enviar (WhatsApp, e-mail...).';
+                    return;
+                }
+                doc.save(nome);
+                aviso.innerText = '✅ PDF gerado: ' + nome;
+            })
+            .catch(function (e3) {
+                cab.style.display = 'none';
+                cfRestaurarInputs(trocas);
+                aviso.innerText = 'Não consegui gerar o PDF: ' + (e3 && e3.message ? e3.message : 'erro');
+            });
+    });
 }
 
 function nfRenderizarGastos() {
