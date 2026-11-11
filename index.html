@@ -10452,10 +10452,16 @@ function vozNomeAmigavel(v) {
     return n || 'Voz';
 }
 
+// A IA está no ar? Quando está, as vozes do aparelho saem da lista (viram só reserva
+// automática para quando faltar internet), e os personagens falam com voz de IA.
+function vozNuvemAtiva() { return !!(vozNuvemStatus && vozNuvemStatus.ativo); }
+
 function vozOpcoes() {
     var pt = vozListaPt();
     var ops = [];
+    var escondeLocais = vozNuvemAtiva();
     pt.forEach(function (v, k) {
+        if (escondeLocais) { return; }
         ops.push({ id: 'v:' + v.name, nome: vozNomeAmigavel(v),
                    desc: (k === 0 ? '★ a melhor deste aparelho · ' : '') +
                          (/BR/i.test(v.lang) ? 'Português do Brasil' : 'Português de Portugal'),
@@ -10472,20 +10478,29 @@ function vozOpcoes() {
         { id: 'firme',  nome: 'Firme',          desc: 'tom firme, ritmo normal · ' + baseNome, rate: 1.02, pitch: 0.85 },
         { id: 'suave',  nome: 'Suave',          desc: 'tom leve e pausado · ' + baseNome, rate: 0.88, pitch: 1.15 }
     ];
-    if (!ops.length) {
+    if (!ops.length && !escondeLocais) {
         ops.push({ id: 'padrao', nome: 'Padrão', desc: 'voz do aparelho', voz: null, rate: 0.95, pitch: 1 });
     }
-    for (var i = 0; ops.length < 6 && i < variacoes.length; i++) {
-        var x = variacoes[i];
-        ops.push({ id: 'var:' + x.id, nome: x.nome, desc: x.desc, voz: base, rate: x.rate, pitch: x.pitch, grupo: 'local' });
+    if (!escondeLocais) {
+        for (var i = 0; ops.length < 6 && i < variacoes.length; i++) {
+            var x = variacoes[i];
+            ops.push({ id: 'var:' + x.id, nome: x.nome, desc: x.desc, voz: base, rate: x.rate, pitch: x.pitch, grupo: 'local' });
+        }
     }
     VOZ_NUVEM.forEach(function (n) {
-        ops.push({ id: 'nuvem:' + n.id, nome: '☁️ ' + n.nome, desc: n.desc + ' · premium', nuvem: n.id,
+        ops.push({ id: 'nuvem:' + n.id, nome: '☁️ ' + n.nome, desc: n.desc, nuvem: n.id,
                    voz: base, rate: 1, pitch: 1, grupo: 'nuvem' });
     });
     VOZ_PERSONAGENS.forEach(function (p) {
-        ops.push({ id: 'fun:' + p.id, nome: p.nome, desc: p.desc, voz: base, rate: p.rate, pitch: p.pitch,
-                   divertida: true, efeito: p.efeito || null, abre: p.abre, fecha: p.fecha, grupo: 'fun' });
+        ops.push({
+            id: 'fun:' + p.id, nome: p.nome, desc: p.desc,
+            // com a IA ligada o personagem fala com a voz premium que combina com ele;
+            // sem IA, cai na voz do aparelho com o tom e o ritmo de antes
+            nuvem: vozNuvemAtiva() ? (p.nuvem || null) : null,
+            estilo: p.estilo || '',
+            voz: base, rate: p.rate, pitch: p.pitch,
+            divertida: true, efeito: p.efeito || null, abre: p.abre, fecha: p.fecha, grupo: 'fun'
+        });
     });
     ops.push({ id: 'fun:surpresa', nome: '🎲 Surpresa', desc: 'um personagem diferente a cada aviso',
                voz: base, rate: 1, pitch: 1, divertida: true, surpresa: true, grupo: 'fun' });
@@ -10495,12 +10510,36 @@ function vozOpcoes() {
 // Vozes premium de IA (Google Cloud, Chirp 3 HD) — passam pela função "tts" do Supabase,
 // que guarda a chave do Google e trava o uso no limite grátis do mês.
 var VOZ_NUVEM = [
-    { id: 'Kore',   nome: 'Kore',   desc: 'feminina, firme' },
-    { id: 'Aoede',  nome: 'Aoede',  desc: 'feminina, leve' },
-    { id: 'Leda',   nome: 'Leda',   desc: 'feminina, jovem' },
-    { id: 'Charon', nome: 'Charon', desc: 'masculina, grave' },
-    { id: 'Puck',   nome: 'Puck',   desc: 'masculina, animada' },
-    { id: 'Fenrir', nome: 'Fenrir', desc: 'masculina, intensa' }
+    { id: 'Kore',          nome: 'Kore',          desc: 'firme e segura' },
+    { id: 'Aoede',         nome: 'Aoede',         desc: 'leve e arejada' },
+    { id: 'Leda',          nome: 'Leda',          desc: 'jovem' },
+    { id: 'Charon',        nome: 'Charon',        desc: 'grave, de locutor' },
+    { id: 'Puck',          nome: 'Puck',          desc: 'animada' },
+    { id: 'Fenrir',        nome: 'Fenrir',        desc: 'intensa, empolgada' },
+    { id: 'Zephyr',        nome: 'Zephyr',        desc: 'clara e luminosa' },
+    { id: 'Orus',          nome: 'Orus',          desc: 'firme e encorpada' },
+    { id: 'Callirrhoe',    nome: 'Callirrhoe',    desc: 'tranquila' },
+    { id: 'Autonoe',       nome: 'Autonoe',       desc: 'clara e desperta' },
+    { id: 'Enceladus',     nome: 'Enceladus',     desc: 'sussurrada' },
+    { id: 'Iapetus',       nome: 'Iapetus',       desc: 'clara e direta' },
+    { id: 'Umbriel',       nome: 'Umbriel',       desc: 'de boa, sem pressa' },
+    { id: 'Algieba',       nome: 'Algieba',       desc: 'macia' },
+    { id: 'Despina',       nome: 'Despina',       desc: 'macia e suave' },
+    { id: 'Erinome',       nome: 'Erinome',       desc: 'nítida' },
+    { id: 'Algenib',       nome: 'Algenib',       desc: 'rouca' },
+    { id: 'Rasalgethi',    nome: 'Rasalgethi',    desc: 'informativa' },
+    { id: 'Laomedeia',     nome: 'Laomedeia',     desc: 'animada' },
+    { id: 'Achernar',      nome: 'Achernar',      desc: 'suave' },
+    { id: 'Alnilam',       nome: 'Alnilam',       desc: 'firme' },
+    { id: 'Schedar',       nome: 'Schedar',       desc: 'equilibrada' },
+    { id: 'Gacrux',        nome: 'Gacrux',        desc: 'madura' },
+    { id: 'Pulcherrima',   nome: 'Pulcherrima',   desc: 'marcante' },
+    { id: 'Achird',        nome: 'Achird',        desc: 'amigável' },
+    { id: 'Zubenelgenubi', nome: 'Zubenelgenubi', desc: 'casual, de conversa' },
+    { id: 'Vindemiatrix',  nome: 'Vindemiatrix',  desc: 'gentil' },
+    { id: 'Sadachbia',     nome: 'Sadachbia',     desc: 'viva' },
+    { id: 'Sadaltager',    nome: 'Sadaltager',    desc: 'professoral' },
+    { id: 'Sulafat',       nome: 'Sulafat',       desc: 'calorosa' }
 ];
 var vozNuvemStatus = null;      // { ativo, usado, limite } vindo da função
 var vozAudio = null;
@@ -10520,10 +10559,13 @@ function vozConsultarNuvem(cb) {
 }
 
 // Melhor voz do próprio aparelho — usada quando a premium não está disponível
+// Reserva: a melhor voz do próprio aparelho. NÃO pode depender de vozOpcoes(),
+// porque com a IA ligada as vozes do aparelho somem da lista — mas continuam servindo
+// de rede de segurança quando falta internet.
 function vozMelhorLocal() {
-    var ops = vozOpcoes();
-    for (var i = 0; i < ops.length; i++) { if (ops[i].grupo === 'local') { return ops[i]; } }
-    return null;
+    var pt = vozListaPt();
+    if (!pt.length) { return { id: 'padrao', nome: 'Padrão', voz: null, rate: 0.95, pitch: 1, grupo: 'local' }; }
+    return { id: 'v:' + pt[0].name, nome: vozNomeAmigavel(pt[0]), voz: pt[0].name, rate: 1, pitch: 1, grupo: 'local' };
 }
 
 var vozUltimoErroNuvem = null;   // 'cota_dia', 'sem_chave', 'rede'...
@@ -10572,43 +10614,43 @@ function vozDividir(texto) {
 // Personagens para alegrar a equipe. Só mudam tom, ritmo e o jeito de falar —
 // não imitam a voz de nenhuma pessoa real.
 var VOZ_PERSONAGENS = [
-    { id: 'robo', nome: '🤖 Robô', desc: 'bip bop, voz metálica e grave', rate: 0.88, pitch: 0.35, efeito: 'bip',
+    { id: 'robo', nuvem: 'Charon', estilo: 'Fale como um robô de ficção científica, em tom metálico, monótono e mecânico.', nome: '🤖 Robô', desc: 'bip bop, voz metálica e grave', rate: 0.88, pitch: 0.35, efeito: 'bip',
       abre: ['Bip bop. Sistema de alerta ativado.', 'Bip. Processando avisos.', 'Alerta detectado. Bip bop.'],
       fecha: ['Fim da transmissão. Bip.', 'Desligando alto-falante. Bop.', 'Missão registrada. Bip bip.'] },
-    { id: 'esquilo', nome: '🐿️ Esquilo', desc: 'fininha e acelerada', rate: 1.3, pitch: 1.75,
+    { id: 'esquilo', nuvem: 'Leda', estilo: 'Fale como um esquilo falante de desenho animado: rápido, agudo e agitado.', nome: '🐿️ Esquilo', desc: 'fininha e acelerada', rate: 1.3, pitch: 1.75,
       abre: ['Ei ei ei, escuta só!', 'Rapidinho, rapidinho!', 'Psiu! Notícia quentinha!'],
       fecha: ['Corre, corre!', 'Tchau, vou buscar castanha!', 'Anda logo, pessoal!'] },
-    { id: 'gigante', nome: '👹 Gigante', desc: 'grossona e bem devagar', rate: 0.78, pitch: 0.3,
+    { id: 'gigante', nuvem: 'Algenib', estilo: 'Fale como um gigante enorme: bem devagar, pesado e profundo.', nome: '👹 Gigante', desc: 'grossona e bem devagar', rate: 0.78, pitch: 0.3,
       abre: ['Hum... o gigante acordou.', 'Quem ousa atrasar a entrega?', 'Hmmm. Escutem o gigante.'],
       fecha: ['Não me façam repetir.', 'Agora voltem ao trabalho.', 'O gigante vai voltar a dormir.'] },
-    { id: 'narrador', nome: '⚽ Narrador', desc: 'empolgado, estilo jogo de futebol', rate: 1.25, pitch: 1.15,
+    { id: 'narrador', nuvem: 'Fenrir', estilo: 'Fale como um narrador de futebol empolgado, com muita energia.', nome: '⚽ Narrador', desc: 'empolgado, estilo jogo de futebol', rate: 1.25, pitch: 1.15,
       abre: ['Atenção, torcida! Olha o lance!', 'Vai começar a partida no almoxarifado!', 'É agora, minha gente!'],
       fecha: ['É pressão total no estoque!', 'Que jogo, que jogo!', 'E o placar segue aberto!'] },
-    { id: 'pirata', nome: '🏴‍☠️ Pirata', desc: 'capitão do navio', rate: 0.95, pitch: 0.6,
+    { id: 'pirata', nuvem: 'Orus', estilo: 'Fale como um capitão pirata rouco e teatral.', nome: '🏴‍☠️ Pirata', desc: 'capitão do navio', rate: 0.95, pitch: 0.6,
       abre: ['Arrr, marujos!', 'Ahoy, tripulação!', 'Içar as velas, escutem o capitão!'],
       fecha: ['Ao trabalho, tripulação!', 'Ou vão andar na prancha!', 'Arrr!'] },
-    { id: 'vovo', nome: '👵 Vovó', desc: 'carinhosa e devagarinho', rate: 0.8, pitch: 1.4,
+    { id: 'vovo', nuvem: 'Vindemiatrix', estilo: 'Fale como uma vovó carinhosa, devagar e com doçura.', nome: '👵 Vovó', desc: 'carinhosa e devagarinho', rate: 0.8, pitch: 1.4,
       abre: ['Ô meu filho, vem cá.', 'Ai, ai, ai, deixa a vó falar.', 'Escuta a vó, querido.'],
       fecha: ['Vai lá, que a vó tá esperando.', 'E não esquece de comer, viu?', 'Benza Deus.'] },
-    { id: 'alien', nome: '👽 Alienígena', desc: 'aguda e lenta, de outro planeta', rate: 0.7, pitch: 1.8, efeito: 'disco',
+    { id: 'alien', nuvem: 'Enceladus', estilo: 'Fale como um alienígena de outro planeta: lento, etéreo e misterioso.', nome: '👽 Alienígena', desc: 'aguda e lenta, de outro planeta', rate: 0.7, pitch: 1.8, efeito: 'disco',
       abre: ['Saudações, terráqueos.', 'Contato estabelecido com a Terra.', 'Aqui fala a nave mãe.'],
       fecha: ['Fim da mensagem intergaláctica.', 'Leve-me ao seu gerente.', 'Voltando para a nave.'] },
-    { id: 'radio', nome: '🎙️ Locutor de rádio', desc: 'voz de plantão de notícias', rate: 1.05, pitch: 0.75, efeito: 'vinheta',
+    { id: 'radio', nuvem: 'Rasalgethi', estilo: 'Fale como um locutor de rádio em plantão de notícias, firme e profissional.', nome: '🎙️ Locutor de rádio', desc: 'voz de plantão de notícias', rate: 1.05, pitch: 0.75, efeito: 'vinheta',
       abre: ['Bom dia, almoxarifado! Plantão de avisos:', 'Interrompemos a programação para um aviso:', 'Atenção, ouvintes da Bela Sintra:'],
       fecha: ['Voltamos já com mais avisos.', 'Fique ligado na nossa frequência.', 'Esse foi o plantão. Até a próxima.'] },
-    { id: 'sargento', nome: '🫡 Sargento', desc: 'grita rápido e sem paciência', rate: 1.32, pitch: 0.55,
+    { id: 'sargento', nuvem: 'Alnilam', estilo: 'Fale como um sargento gritando ordens: rápido, severo e sem paciência.', nome: '🫡 Sargento', desc: 'grita rápido e sem paciência', rate: 1.32, pitch: 0.55,
       abre: ['Atenção, pelotão!', 'Formar, formar! Escutem bem!', 'Prestem atenção, agora!'],
       fecha: ['Isso é tudo! Dispersar!', 'Cumpram a missão!', 'Sem desculpa, vai lá resolver!'] },
-    { id: 'zen', nome: '🧘 Monge zen', desc: 'bem calma e bem devagar', rate: 0.68, pitch: 0.95,
+    { id: 'zen', nuvem: 'Achernar', estilo: 'Fale como um monge zen: muito calmo, pausado e sereno.', nome: '🧘 Monge zen', desc: 'bem calma e bem devagar', rate: 0.68, pitch: 0.95,
       abre: ['Respire fundo.', 'Com calma, ouça este aviso.', 'Que a paz esteja com o estoque.'],
       fecha: ['Namastê.', 'Siga em frente com serenidade.', 'E assim se encerra este momento.'] },
-    { id: 'dj', nome: '🎉 DJ de festa', desc: 'animado, estilo balada', rate: 1.22, pitch: 1.3, efeito: 'vinheta',
+    { id: 'dj', nuvem: 'Laomedeia', estilo: 'Fale como um DJ animando uma festa, com muita empolgação.', nome: '🎉 DJ de festa', desc: 'animado, estilo balada', rate: 1.22, pitch: 1.3, efeito: 'vinheta',
       abre: ['Eeeaa, galera, segura esse som!', 'Vem comigo que o aviso chegou!', 'Levanta a mão quem tá ouvindo!'],
       fecha: ['Mandou bem quem resolver isso!', 'Bora, bora, bora!', 'E o som não pode parar!'] },
-    { id: 'surfista', nome: '🏄 Surfista', desc: 'de boa, no seu tempo', rate: 0.92, pitch: 1.05,
+    { id: 'surfista', nuvem: 'Umbriel', estilo: 'Fale como um surfista relaxado, de boa e sem pressa.', nome: '🏄 Surfista', desc: 'de boa, no seu tempo', rate: 0.92, pitch: 1.05,
       abre: ['E aí, parça, suave?', 'Ó só, mano, chegou onda.', 'Relaxa, mas escuta aqui.'],
       fecha: ['Tamo junto, flow.', 'Depois me conta como foi, surfista.', 'Fica na paz.'] },
-    { id: 'opera', nome: '🎭 Cantor de ópera', desc: 'dramático, voz de teatro', rate: 0.9, pitch: 1.5,
+    { id: 'opera', nuvem: 'Pulcherrima', estilo: 'Fale como um cantor de ópera dramático e teatral.', nome: '🎭 Cantor de ópera', desc: 'dramático, voz de teatro', rate: 0.9, pitch: 1.5,
       abre: ['Ouçam, ó bravos guerreiros do estoque!', 'Eis que o destino anuncia um aviso!', 'Que comece o grande ato!'],
       fecha: ['E assim cai o pano deste ato!', 'Bravo! Agora, à cena seguinte!', 'Fim do dramático anúncio!'] }
 ];
@@ -10994,9 +11036,10 @@ function vozRenderizarAjustes() {
         local: '<div class="voz-sec">Vozes do aparelho · grátis</div><div class="voz-nota">Toque em ▶ para ouvir e em ' +
                '<b>Usar</b> para escolher. Elas vêm do próprio aparelho, então a lista muda de um celular para outro.</div>' +
                vozDicaAparelho(),
-        nuvem: '<div class="voz-sec">Vozes premium ☁️ · inteligência artificial</div>' + vozBlocoNuvem(),
+        nuvem: '<div class="voz-sec">Vozes de IA ☁️ · ' + VOZ_NUVEM.length + ' opções</div>' + vozBlocoNuvem(),
         fun:   '<div class="voz-sec">Vozes divertidas 🎉</div><div class="voz-nota">Personagens para alegrar a equipe — ' +
-               'cada um tem o seu jeito de abrir e fechar o aviso. O 🎲 Surpresa sorteia um a cada aviso.</div>'
+               'cada um tem o seu jeito de abrir e fechar o aviso. O 🎲 Surpresa sorteia um a cada aviso.' +
+               (vozNuvemAtiva() ? ' Com a IA ligada, cada personagem fala com a voz de IA que combina com ele.' : '') + '</div>'
     };
     var grupoAtual = null;
     vozOpcoes().forEach(function (op, i) {
@@ -11034,6 +11077,14 @@ function vozNaturaisDoAparelho() {
 
 // Aviso no topo da tela: grátis e ilimitado, só depende de instalar a voz certa no aparelho.
 function vozAvisoQualidade() {
+    // com a IA ligada, a qualidade do aparelho vira só assunto de reserva
+    if (vozNuvemAtiva()) {
+        var reserva = vozMelhorLocal();
+        return '<div class="voz-bloco voz-qualidade voz-qualidade-ok">' +
+            '<div><b>✅ Vozes de IA ligadas</b>' +
+            '<small>Os avisos falam com voz de IA, igual em todos os aparelhos. Se faltar internet, ' +
+            'este aparelho usa sozinho a voz de reserva (' + escHtmlSeguro(reserva && reserva.nome ? reserva.nome : 'padrão') + ').</small></div></div>';
+    }
     var naturais = vozNaturaisDoAparelho();
     if (naturais.length) {
         return '<div class="voz-bloco voz-qualidade voz-qualidade-ok">' +
@@ -11086,10 +11137,12 @@ function vozBlocoNuvem() {
     var ns = vozNuvemStatus;
     if (!ns) { return '<div class="voz-nota">Verificando…</div>'; }
     if (ns.ativo) {
-        return '<div class="voz-nota">✅ <b>Ativas, mas com teto baixo.</b> São as vozes mais humanas que existem aqui, iguais em todos os aparelhos. ' +
-            'Só que a conta grátis do Google solta <b>poucas falas por dia</b> — quando acaba, o app volta sozinho para a voz do aparelho e avisa. ' +
-            'Nunca cobra nada.<br>Para ter voz natural <b>sem limite nenhum</b>, use a dica do bloco laranja lá em cima: ' +
-            'no PC é abrir pelo Microsoft Edge; no celular é baixar a voz melhorada.</div>';
+        var pct = ns.limite ? Math.min(100, Math.round((ns.usado || 0) / ns.limite * 100)) : 0;
+        var sobram = Math.max(0, Math.round(((ns.limite || 0) - (ns.usado || 0)) / 70));
+        return '<div class="voz-nota">✅ <b>Ativas.</b> Vozes de IA quase humanas, iguais em todos os aparelhos (precisa de internet). ' +
+            'Toque em ▶ para ouvir cada uma e em <b>Usar</b> para escolher — a escolha vale só para este aparelho.' +
+            '<br>Uso deste mês: <b>' + pct + '%</b> da cota grátis, ainda dá para uns <b>' + sobram.toLocaleString('pt-BR') + ' avisos</b>. ' +
+            'Se um dia acabar, o app volta sozinho para a voz do aparelho e avisa na tela. Nunca cobra.</div>';
     }
     return '<div class="voz-nota">🔒 <b>Ainda não ativadas.</b> Quando ativar, estas 6 vozes de IA ficam disponíveis em todos os aparelhos.</div>' +
         '<details class="voz-dica"><summary>Como ativar — grátis, sem cartão (uma vez só, no computador)</summary><ol>' +
