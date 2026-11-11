@@ -10532,7 +10532,7 @@ function vozFalarNuvem(texto, aoComecar, op) {
         if (!x.ok || !x.d || !x.d.audio) { throw new Error((x.d && x.d.erro) || 'falhou'); }
         if (x.d.usado && vozNuvemStatus) { vozNuvemStatus.usado = x.d.usado; }
         var a = vozAudioEl();
-        a.src = 'data:audio/mpeg;base64,' + x.d.audio;
+        a.src = 'data:' + (x.d.mime || 'audio/mpeg') + ';base64,' + x.d.audio;
         return a.play();
     }).then(function () {
         vozLiberada = true;
@@ -11040,14 +11040,14 @@ function vozBlocoNuvem() {
             'Usado este mês: <b>' + pct + '%</b> da cota grátis. Se acabar, o app usa a voz do aparelho até virar o mês — nunca cobra.</div>';
     }
     return '<div class="voz-nota">🔒 <b>Ainda não ativadas.</b> Quando ativar, estas 6 vozes de IA ficam disponíveis em todos os aparelhos.</div>' +
-        '<details class="voz-dica"><summary>Como ativar (uma vez só, no computador)</summary><ol>' +
-        '<li>Entre em <b>console.cloud.google.com</b> com a conta Google do restaurante e crie um projeto (ex.: <i>Bela Sintra Voz</i>).</li>' +
-        '<li>Ative o <b>faturamento</b> com um cartão. O Google exige o cartão mesmo dentro da cota grátis; o app trava o uso abaixo dela.</li>' +
-        '<li>Em <b>APIs e serviços</b>, ative a <b>Cloud Text-to-Speech API</b>.</li>' +
-        '<li>Em <b>Credenciais</b> → <b>Criar credenciais</b> → <b>Chave de API</b>. Em seguida, restrinja a chave para usar só a Text-to-Speech API.</li>' +
-        '<li>No <b>Supabase</b> (projeto do app de compras) → <b>Edge Functions</b> → <b>Secrets</b>: adicione o nome <b>GOOGLE_TTS_KEY</b> e cole a chave como valor.</li>' +
-        '<li>Volte aqui e abra esta tela de novo: as vozes premium ficam liberadas.</li></ol>' +
-        '<small>A chave fica guardada só no servidor, nunca no app. Não precisa me mandar a chave.</small></details>';
+        '<details class="voz-dica"><summary>Como ativar — grátis, sem cartão (uma vez só, no computador)</summary><ol>' +
+        '<li>Abra <b>aistudio.google.com/apikey</b> e entre com a conta Google do restaurante.</li>' +
+        '<li>Clique em <b>Criar chave de API</b> (“Create API key”) e depois em <b>copiar</b>. Não pede cartão.</li>' +
+        '<li>Abra <b>supabase.com</b> → projeto do app de compras → <b>Edge Functions</b> → <b>Secrets</b>.</li>' +
+        '<li>Clique em <b>Add new secret</b>, escreva o nome <b>GOOGLE_TTS_KEY</b> e cole a chave no valor. Salve.</li>' +
+        '<li>Volte aqui, feche e abra esta tela: as vozes de IA ficam liberadas.</li></ol>' +
+        '<small>A chave fica guardada só no servidor, nunca dentro do app — e não precisa mandar a chave para ninguém. ' +
+        'Se um dia quiser usar a chave paga do Google Cloud, ela também funciona no mesmo lugar.</small></details>';
 }
 
 function vozOuvir(i) {
