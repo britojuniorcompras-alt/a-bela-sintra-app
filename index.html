@@ -439,6 +439,10 @@
         box-shadow: 0 6px 12px rgba(0,0,0,0.45), inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -6px 8px rgba(0,0,0,0.35); }
     .dash-fab svg { width: 26px; height: 26px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
     .voz-nome { flex-direction: column; align-items: stretch; gap: 8px; }
+    .voz-qualidade { align-items: flex-start; border-left: 4px solid var(--accent); }
+    .voz-qualidade-ok { border-left-color: #3FC98A; }
+    .voz-qualidade-alerta { border-left-color: #D4A24C; }
+    .voz-qualidade small { line-height: 1.45; margin-top: 4px; }
     .voz-velocidade { flex-direction: column; align-items: stretch; gap: 6px; }
     .voz-vel-linha { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-dim); }
     .voz-vel-linha b { color: var(--text); }
@@ -10522,23 +10526,31 @@ function vozMelhorLocal() {
     return null;
 }
 
+var vozUltimoErroNuvem = null;   // 'cota_dia', 'sem_chave', 'rede'...
+
 function vozFalarNuvem(texto, aoComecar, op) {
     fetch(SUPABASE_URL + '/functions/v1/tts', {
         method: 'POST', headers: supabaseHeaders(),
-        body: JSON.stringify({ texto: texto, voz: op.nuvem, ritmo: Math.max(0.5, Math.min(2, (op.rate || 1) * vozVelocidade())) })
+        body: JSON.stringify({
+            texto: texto, voz: op.nuvem, estilo: op.estilo || '',
+            ritmo: Math.max(0.5, Math.min(2, (op.rate || 1) * vozVelocidade()))
+        })
     }).then(function (r) {
         return r.json().then(function (d) { return { ok: r.ok, d: d }; });
     }).then(function (x) {
         if (!x.ok || !x.d || !x.d.audio) { throw new Error((x.d && x.d.erro) || 'falhou'); }
         if (x.d.usado && vozNuvemStatus) { vozNuvemStatus.usado = x.d.usado; }
+        vozUltimoErroNuvem = null;
         var a = vozAudioEl();
         a.src = 'data:' + (x.d.mime || 'audio/mpeg') + ';base64,' + x.d.audio;
         return a.play();
     }).then(function () {
         vozLiberada = true;
         if (aoComecar) { aoComecar(); }
-    }).catch(function () {
-        // sem internet, sem chave ou passou do limite: fala com a melhor voz do aparelho
+    }).catch(function (e) {
+        // sem internet, sem chave ou passou do limite do dia: fala com a melhor voz do aparelho
+        vozUltimoErroNuvem = String((e && e.message) || 'rede');
+        if (op.aoFalhar) { try { op.aoFalhar(vozUltimoErroNuvem); } catch (e2) { } }
         vozFalar(texto, aoComecar, vozMelhorLocal(), true);
     });
 }
@@ -10949,6 +10961,8 @@ function vozRenderizarAjustes() {
         '<small>vale só para este aparelho · fala entre ' + VOZ_HORA_INICIO + 'h e ' + VOZ_HORA_FIM + 'h</small></div>' +
         '<button type="button" class="voz-btn' + (ligada ? '' : ' on') + '" onclick="vozAlternar()">' + (ligada ? 'Desligar' : 'Ligar') + '</button></div>';
 
+    html += vozAvisoQualidade();
+
     var velAtual = vozVelocidade();
     html += '<div class="voz-sec">Velocidade da fala</div>' +
         '<div class="voz-bloco voz-velocidade">' +
@@ -11010,6 +11024,43 @@ function vozRenderizarAjustes() {
     el.innerHTML = html;
 }
 
+// Uma voz "natural/neural" é de outra categoria: soa humana. As antigas (Daniel, Maria,
+// eSpeak) soam robóticas. Isso aqui descobre em qual situação o aparelho está.
+function vozNaturaisDoAparelho() {
+    return vozListaPt().filter(function (v) {
+        return /natural|neural|enhanced|premium|melhorad|aprimorad|siri|wavenet/i.test(String(v.name || ''));
+    });
+}
+
+// Aviso no topo da tela: grátis e ilimitado, só depende de instalar a voz certa no aparelho.
+function vozAvisoQualidade() {
+    var naturais = vozNaturaisDoAparelho();
+    if (naturais.length) {
+        return '<div class="voz-bloco voz-qualidade voz-qualidade-ok">' +
+            '<div><b>✅ Este aparelho tem voz natural</b>' +
+            '<small>Achei ' + naturais.length + ': ' + escHtmlSeguro(naturais.slice(0, 3).map(vozNomeAmigavel).join(', ')) +
+            '. São grátis e sem limite de falas — já aparecem no topo da lista abaixo.</small></div></div>';
+    }
+    var ua = navigator.userAgent || '';
+    var recado, comoFazer;
+    if (/iPhone|iPad|iPod/i.test(ua)) {
+        recado = 'Este iPhone só tem as vozes antigas, que soam robóticas.';
+        comoFazer = 'Baixe a voz <b>Melhorada</b> em Ajustes → Acessibilidade → Conteúdo Falado → Vozes → Português (Brasil). É grátis e sem limite.';
+    } else if (/Android/i.test(ua)) {
+        recado = 'Este aparelho só tem as vozes antigas, que soam robóticas.';
+        comoFazer = 'Instale a voz em alta qualidade dos <b>Serviços de fala do Google</b> nas Configurações. É grátis e sem limite.';
+    } else if (/Edg\//.test(ua)) {
+        recado = 'Você já está no Microsoft Edge, mas as vozes naturais ainda não apareceram.';
+        comoFazer = 'Feche e abra o app de novo. Elas precisam de internet para carregar (aparecem como <b>Francisca</b>, <b>Antonio</b> ou <b>Thalita</b> "Natural").';
+    } else {
+        recado = 'Neste navegador só existem vozes antigas (Daniel, Maria), que soam robóticas.';
+        comoFazer = 'Abra este app no <b>Microsoft Edge</b> (já vem instalado no Windows): lá as vozes <b>Francisca</b>, <b>Antonio</b> e <b>Thalita</b> "Natural" vêm de graça, soam humanas e <b>não têm limite de falas</b>.';
+    }
+    return '<div class="voz-bloco voz-qualidade voz-qualidade-alerta">' +
+        '<div><b>🔈 Dá para melhorar muito, de graça</b>' +
+        '<small>' + recado + ' ' + comoFazer + '</small></div></div>';
+}
+
 // Passo a passo para baixar as vozes melhores que o próprio aparelho oferece de graça
 function vozDicaAparelho() {
     var ua = navigator.userAgent || '';
@@ -11035,9 +11086,10 @@ function vozBlocoNuvem() {
     var ns = vozNuvemStatus;
     if (!ns) { return '<div class="voz-nota">Verificando…</div>'; }
     if (ns.ativo) {
-        var pct = ns.limite ? Math.min(100, Math.round((ns.usado || 0) / ns.limite * 100)) : 0;
-        return '<div class="voz-nota">✅ <b>Ativas.</b> Vozes quase humanas, iguais em todos os aparelhos (precisa de internet). ' +
-            'Usado este mês: <b>' + pct + '%</b> da cota grátis. Se acabar, o app usa a voz do aparelho até virar o mês — nunca cobra.</div>';
+        return '<div class="voz-nota">✅ <b>Ativas, mas com teto baixo.</b> São as vozes mais humanas que existem aqui, iguais em todos os aparelhos. ' +
+            'Só que a conta grátis do Google solta <b>poucas falas por dia</b> — quando acaba, o app volta sozinho para a voz do aparelho e avisa. ' +
+            'Nunca cobra nada.<br>Para ter voz natural <b>sem limite nenhum</b>, use a dica do bloco laranja lá em cima: ' +
+            'no PC é abrir pelo Microsoft Edge; no celular é baixar a voz melhorada.</div>';
     }
     return '<div class="voz-nota">🔒 <b>Ainda não ativadas.</b> Quando ativar, estas 6 vozes de IA ficam disponíveis em todos os aparelhos.</div>' +
         '<details class="voz-dica"><summary>Como ativar — grátis, sem cartão (uma vez só, no computador)</summary><ol>' +
@@ -11059,8 +11111,21 @@ function vozOuvir(i) {
     }
     if (vozAudio) { try { vozAudio.pause(); } catch (e) { } }
     window.speechSynthesis.cancel();
+    // se a nuvem falhar na hora de ouvir, a pessoa precisa saber por quê —
+    // senão ela ouve a voz fraca do aparelho achando que é a premium
+    var opTeste = Object.assign({}, op, {
+        aoFalhar: function (erro) {
+            if (erro === 'cota_dia' || erro === 'limite') {
+                alert('A cota grátis de falas do Google acabou por hoje.\n\nO que você está ouvindo agora é a voz do próprio aparelho.\n\nA cota volta amanhã. Para ter voz natural sem limite nenhum, veja a dica laranja no topo desta tela.');
+            } else if (erro === 'sem_chave') {
+                alert('As vozes de IA ainda não foram ativadas no servidor.');
+            } else {
+                alert('Não consegui buscar a voz de IA agora (internet?).\n\nO que você está ouvindo é a voz do próprio aparelho.');
+            }
+        }
+    });
     vozFalar((op.divertida ? '' : 'Olá, esta é a voz ' + (i + 1) + ', ' + vozLimparNome(op.nome) + '. ') +
-        vozChamada() + 'Atenção: entrega atrasada. Piramides Distribuidora, atrasado há 40 minutos.', null, op);
+        vozChamada() + 'Atenção: entrega atrasada. Piramides Distribuidora, atrasado há 40 minutos.', null, opTeste);
 }
 
 function vozUsar(i) {
