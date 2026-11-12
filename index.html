@@ -430,6 +430,24 @@
     .voz-btn { flex: 0 0 auto; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
     .voz-btn.on { background: var(--accent); color: var(--accent-text, #fff); border-color: transparent; }
     .voz-escolhida { flex: 0 0 auto; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+    /* lista de produtos do fornecedor, dentro do lançamento */
+    .fornecedor-caixa-produtos { margin-bottom: 10px; }
+    .ped-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+        font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 700; color: var(--text); margin: 2px 0 6px; }
+    .ped-cab-dica { font-weight: 400; color: var(--text-dim); font-size: 10.5px; }
+    .ped-busca { margin: 0 0 8px 0 !important; }
+    .ped-lista { max-height: 320px; overflow-y: auto; border-radius: 12px; }
+    .ped-linha { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 10px; margin-bottom: 4px;
+        background: var(--surface-2); }
+    .ped-linha-on { background: rgba(var(--accent-rgb), 0.18); box-shadow: inset 0 0 0 1.5px var(--accent); }
+    .ped-nome { flex: 1; min-width: 0; font-family: 'Inter', sans-serif; font-size: 12px; color: var(--text);
+        line-height: 1.3; overflow-wrap: anywhere; }
+    .ped-qtd { flex: 0 0 56px; width: 56px; padding: 7px 6px; border: none; border-radius: 9px; text-align: center;
+        background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; outline: none; }
+    .ped-un { flex: 0 0 auto; padding: 7px 4px; border: 1px solid var(--line); border-radius: 9px;
+        background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 11.5px; outline: none; }
+    .ped-vazio { font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); line-height: 1.45;
+        background: var(--surface-2); border-radius: 12px; padding: 9px 11px; margin-bottom: 8px; }
     .dash-fab { position: fixed; right: 20px; bottom: 24px; width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer;
         display: flex; align-items: center; justify-content: center; z-index: 50; color: var(--accent-text);
         background: linear-gradient(145deg, var(--accent-light), var(--accent) 65%);
@@ -439,6 +457,12 @@
         box-shadow: 0 6px 12px rgba(0,0,0,0.45), inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -6px 8px rgba(0,0,0,0.35); }
     .dash-fab svg { width: 26px; height: 26px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
     .voz-nome { flex-direction: column; align-items: stretch; gap: 8px; }
+    .voz-gerente { flex-direction: column; align-items: stretch; gap: 10px; border-left: 4px solid var(--accent); }
+    .voz-ger-linha { display: flex; align-items: center; gap: 10px; }
+    .voz-ger-linha > span:first-child { flex: 1; min-width: 0; }
+    .voz-ger-linha select { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+        padding: 7px 8px; font-family: 'Inter', sans-serif; font-size: 12.5px; }
+    .voz-ger-horas { flex: 0 0 auto; font-size: 12px; color: var(--text-dim); }
     .voz-qualidade { align-items: flex-start; border-left: 4px solid var(--accent); }
     .voz-qualidade-ok { border-left-color: #3FC98A; }
     .voz-qualidade-alerta { border-left-color: #D4A24C; }
@@ -8444,6 +8468,104 @@ function trocarTela(idTela) {
     }
 }
 
+// ============================================================
+// PEDIDO POR FORNECEDOR
+// Ao digitar o nome do fornecedor, aparecem os produtos dele com uma caixinha
+// de quantidade. A lista vem de dois lugares: o que já está marcado no app
+// (campo "grupo" dos produtos) e o que o app foi aprendendo dos pedidos antigos.
+// ============================================================
+var pedAprendidos = [];          // [{fornecedor, produto, unidade, vezes}]
+var pedAprendidosLidoEm = 0;
+
+function pedNormalizar(t) {
+    return String(t == null ? '' : t).toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+// Produtos que já vêm marcados com fornecedor dentro do app
+function pedProdutosCadastrados() {
+    var saida = [];
+    for (var i = 0; i < setores.length; i++) {
+        var s = setores[i];
+        var lista = s.produtos || [];
+        for (var j = 0; j < lista.length; j++) {
+            var p = lista[j];
+            if (!p.grupo) { continue; }
+            saida.push({ fornecedor: p.grupo, produto: p.nome, icone: p.icone || '',
+                         unidades: s.unidades || [], setor: s.nome });
+        }
+    }
+    return saida;
+}
+
+function pedCarregarAprendidos(forcar, cb) {
+    var agora = Date.now();
+    if (!forcar && pedAprendidos.length && agora - pedAprendidosLidoEm < 5 * 60000) { if (cb) { cb(); } return; }
+    pedAprendidosLidoEm = agora;
+    supabaseGet('fornecedor_produtos', 'select=*&order=vezes.desc', function (err, d) {
+        if (!err && d) { pedAprendidos = d; }
+        if (cb) { cb(); }
+    });
+}
+
+// Lista de fornecedores que o app conhece, com quantos produtos tem cada um
+function pedFornecedoresConhecidos() {
+    var mapa = {};
+    // conta produto sem repetir: o mesmo item aparece em mais de um setor (ex.: Cotação)
+    function juntar(nome, produto) {
+        var chave = pedNormalizar(nome);
+        if (!chave) { return; }
+        if (!mapa[chave]) { mapa[chave] = { nome: nome, produtos: 0, vistos: {} }; }
+        var ch = pedNormalizar(produto);
+        if (ch && !mapa[chave].vistos[ch]) { mapa[chave].vistos[ch] = true; mapa[chave].produtos++; }
+    }
+    pedProdutosCadastrados().forEach(function (p) { juntar(p.fornecedor, p.produto); });
+    pedAprendidos.forEach(function (a) { juntar(a.fornecedor, a.produto); });
+    // os fornecedores que vieram das notas fiscais (razão social) entram no fim da lista
+    (typeof fornecedoresCache !== 'undefined' ? (fornecedoresCache || []) : []).forEach(function (f) {
+        juntar(f.razao_social || f.nome, null);
+    });
+    var lista = [];
+    for (var k in mapa) { lista.push({ nome: mapa[k].nome, produtos: mapa[k].produtos }); }
+    lista.sort(function (a, b) {
+        if (b.produtos !== a.produtos) { return b.produtos - a.produtos; }   // quem tem produto vem primeiro
+        return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+    return lista;
+}
+
+// Os produtos de um fornecedor (cadastrados + aprendidos), sem repetir
+function pedProdutosDoFornecedor(nome) {
+    var alvo = pedNormalizar(nome);
+    if (!alvo) { return []; }
+    var vistos = {}, saida = [];
+    function por(produto, unidades, unidade, icone) {
+        var ch = pedNormalizar(produto);
+        if (!ch || vistos[ch]) { return; }
+        vistos[ch] = true;
+        saida.push({ produto: produto, unidades: unidades || [], unidade: unidade || '', icone: icone || '' });
+    }
+    pedProdutosCadastrados().forEach(function (p) {
+        if (pedNormalizar(p.fornecedor) === alvo) { por(p.produto, p.unidades, '', p.icone); }
+    });
+    pedAprendidos.forEach(function (a) {
+        if (pedNormalizar(a.fornecedor) === alvo) { por(a.produto, [], a.unidade, ''); }
+    });
+    saida.sort(function (a, b) { return a.produto.localeCompare(b.produto, 'pt-BR'); });
+    return saida;
+}
+
+// Unidades oferecidas na caixinha
+var PED_UNIDADES = ['Cx', 'Kg', 'Und', 'Pct', 'Fardo', 'Lt', 'Dz', 'Maço', 'Garrafa', 'Saco'];
+function pedUnidadesDe(item) {
+    var lista = [];
+    (item.unidades || []).forEach(function (u) { if (lista.indexOf(u) < 0) { lista.push(u); } });
+    PED_UNIDADES.forEach(function (u) { if (lista.indexOf(u) < 0) { lista.push(u); } });
+    if (item.unidade && lista.indexOf(item.unidade) < 0) { lista.unshift(item.unidade); }
+    return lista;
+}
+
 function montarCaixasFornecedor(entradas) {
     var lista = document.getElementById('editFornecedoresLista');
     lista.innerHTML = "";
@@ -8476,12 +8598,35 @@ function criarCaixaFornecedor(obsValor, prazoIso) {
     };
     linhaTopo.appendChild(removerBtn);
 
+    // --- nome do fornecedor, com sugestão enquanto digita ---
+    var idLista = 'pedForn' + Math.random().toString(36).slice(2, 8);
+    var nomeInput = document.createElement('input');
+    nomeInput.type = 'text';
+    nomeInput.className = 'fornecedor-caixa-nome ficha-input';
+    nomeInput.setAttribute('list', idLista);
+    nomeInput.placeholder = 'Fornecedor (digite as primeiras letras)';
+    nomeInput.style.margin = '0 0 8px 0';
+
+    var datalist = document.createElement('datalist');
+    datalist.id = idLista;
+    pedFornecedoresConhecidos().forEach(function (f) {
+        var o = document.createElement('option');
+        o.value = f.nome;
+        if (f.produtos) { o.label = f.produtos + (f.produtos === 1 ? ' produto' : ' produtos'); }
+        datalist.appendChild(o);
+    });
+
+    var painel = document.createElement('div');
+    painel.className = 'fornecedor-caixa-produtos';
+
+    nomeInput.oninput = function () { pedDesenharProdutos(painel, nomeInput.value); };
+
     var textarea = document.createElement('textarea');
     textarea.className = 'edit-obs fornecedor-caixa-obs';
     textarea.style.marginTop = '0';
     textarea.style.marginBottom = '0';
     textarea.style.display = 'block';
-    textarea.placeholder = 'Nome do fornecedor / o que foi pedido...';
+    textarea.placeholder = 'Outros itens ou observação (ex.: 2 Cx de algo fora da lista, horário, pedir nota)';
     textarea.value = obsValor;
 
     var prazoLabel = document.createElement('label');
@@ -8508,10 +8653,113 @@ function criarCaixaFornecedor(obsValor, prazoIso) {
     if (prazoIso) { prazoInputEl.value = isoParaDatetimeLocal(prazoIso); }
 
     bloco.appendChild(linhaTopo);
+    bloco.appendChild(nomeInput);
+    bloco.appendChild(datalist);
+    bloco.appendChild(painel);
     bloco.appendChild(textarea);
     bloco.appendChild(prazoLabel);
     bloco.appendChild(prazoInputEl);
     lista.appendChild(bloco);
+
+    // se a lista de aprendidos ainda não chegou do servidor, redesenha quando chegar
+    pedCarregarAprendidos(false, function () {
+        if (!bloco.parentNode) { return; }
+        var atual = nomeInput.value;
+        datalist.innerHTML = '';
+        pedFornecedoresConhecidos().forEach(function (f) {
+            var o = document.createElement('option');
+            o.value = f.nome;
+            if (f.produtos) { o.label = f.produtos + (f.produtos === 1 ? ' produto' : ' produtos'); }
+            datalist.appendChild(o);
+        });
+        if (atual) { pedDesenharProdutos(painel, atual); }
+    });
+}
+
+// Desenha a lista de produtos do fornecedor digitado, cada um com quantidade e unidade
+function pedDesenharProdutos(painel, nomeFornecedor) {
+    var itens = pedProdutosDoFornecedor(nomeFornecedor);
+    var antigos = {};
+    painel.querySelectorAll('.ped-linha').forEach(function (l) {
+        var q = l.querySelector('.ped-qtd').value, u = l.querySelector('.ped-un').value;
+        if (q) { antigos[l.getAttribute('data-produto')] = { q: q, u: u }; }
+    });
+
+    painel.innerHTML = '';
+    if (!itens.length) {
+        if (pedNormalizar(nomeFornecedor)) {
+            painel.innerHTML = '<div class="ped-vazio">Ainda não conheço os produtos desse fornecedor. ' +
+                'Escreva o pedido no campo abaixo (ex.: <i>- 3 Cx - MOLHO SHOYU</i>) que eu guardo para a próxima vez.</div>';
+        }
+        return;
+    }
+
+    var cab = document.createElement('div');
+    cab.className = 'ped-cab';
+    cab.innerHTML = '<span>' + itens.length + (itens.length === 1 ? ' produto deste fornecedor' : ' produtos deste fornecedor') +
+        '</span><span class="ped-cab-dica">preencha só o que vai pedir</span>';
+    painel.appendChild(cab);
+
+    var busca = null;
+    if (itens.length > 12) {
+        busca = document.createElement('input');
+        busca.type = 'text';
+        busca.className = 'ficha-input ped-busca';
+        busca.placeholder = 'Filtrar produto...';
+        painel.appendChild(busca);
+    }
+
+    var caixa = document.createElement('div');
+    caixa.className = 'ped-lista';
+    painel.appendChild(caixa);
+
+    itens.forEach(function (it) {
+        var linha = document.createElement('div');
+        linha.className = 'ped-linha';
+        linha.setAttribute('data-produto', it.produto);
+
+        var nome = document.createElement('span');
+        nome.className = 'ped-nome';
+        nome.innerText = (it.icone ? it.icone + ' ' : '') + it.produto;
+
+        var qtd = document.createElement('input');
+        qtd.type = 'number';
+        qtd.className = 'ped-qtd';
+        qtd.inputMode = 'decimal';
+        qtd.min = '0';
+        qtd.placeholder = '0';
+
+        var un = document.createElement('select');
+        un.className = 'ped-un';
+        pedUnidadesDe(it).forEach(function (u) {
+            var o = document.createElement('option');
+            o.value = u; o.innerText = u;
+            un.appendChild(o);
+        });
+
+        var guardado = antigos[it.produto];
+        if (guardado) { qtd.value = guardado.q; un.value = guardado.u; }
+
+        // marca a linha quando tem quantidade, pra enxergar o que já foi pedido
+        function marcar() { linha.className = 'ped-linha' + (Number(qtd.value) > 0 ? ' ped-linha-on' : ''); }
+        qtd.oninput = marcar;
+        marcar();
+
+        linha.appendChild(nome);
+        linha.appendChild(qtd);
+        linha.appendChild(un);
+        caixa.appendChild(linha);
+    });
+
+    if (busca) {
+        busca.oninput = function () {
+            var alvo = pedNormalizar(busca.value);
+            caixa.querySelectorAll('.ped-linha').forEach(function (l) {
+                var casa = !alvo || pedNormalizar(l.getAttribute('data-produto')).indexOf(alvo) >= 0;
+                l.style.display = casa ? '' : 'none';
+            });
+        };
+    }
 }
 
 function adicionarCaixaFornecedor() {
@@ -8522,15 +8770,80 @@ function lerCaixasFornecedor() {
     var blocos = document.querySelectorAll('#editFornecedoresLista .fornecedor-caixa');
     var entradas = [];
     for (var i = 0; i < blocos.length; i++) {
-        var obsVal = blocos[i].querySelector('.fornecedor-caixa-obs').value.trim();
-        var prazoVal = blocos[i].querySelector('.fornecedor-caixa-prazo').value;
+        var bloco = blocos[i];
+        var campoNome = bloco.querySelector('.fornecedor-caixa-nome');
+        var nomeVal = campoNome ? campoNome.value.trim() : '';
+        var livre = bloco.querySelector('.fornecedor-caixa-obs').value.trim();
+        var prazoVal = bloco.querySelector('.fornecedor-caixa-prazo').value;
+
+        // o que foi marcado na lista de produtos vira linha "- 3 Cx - PRODUTO"
+        var itens = [];
+        bloco.querySelectorAll('.ped-linha').forEach(function (l) {
+            var q = String(l.querySelector('.ped-qtd').value || '').trim();
+            if (!q || Number(q) <= 0) { return; }
+            var u = l.querySelector('.ped-un').value;
+            var nomeProd = l.getAttribute('data-produto');
+            itens.push({ qtd: q, unidade: u, produto: nomeProd });
+        });
+
+        var partes = [];
+        if (nomeVal) { partes.push(nomeVal); }
+        itens.forEach(function (it) { partes.push('- ' + it.qtd + ' ' + it.unidade + ' - ' + it.produto); });
+        if (livre) { partes.push(livre); }
+        var obsVal = partes.join('\n').trim();
+
         if (!obsVal && !prazoVal) { continue; }
         entradas.push({
             obs: obsVal,
-            prazo: prazoVal ? new Date(prazoVal).toISOString() : null
+            prazo: prazoVal ? new Date(prazoVal).toISOString() : null,
+            fornecedor: nomeVal,
+            itens: itens,
+            textoLivre: livre
         });
     }
     return entradas;
+}
+
+// Guarda os produtos pedidos neste fornecedor, para aparecerem sozinhos na próxima vez.
+// Aprende tanto o que foi marcado na lista quanto o que foi digitado à mão.
+function pedAprenderDoPedido(entradas) {
+    (entradas || []).forEach(function (e) {
+        var forn = (e.fornecedor || '').trim();
+        if (!forn) { return; }
+        var aprender = (e.itens || []).slice();
+
+        // linhas digitadas à mão no formato "- 3 Cx - PRODUTO" (ou "- 3 Cx PRODUTO")
+        String(e.textoLivre || '').split('\n').forEach(function (linha) {
+            var m = /^\s*[-▪•]?\s*([\d.,]+)\s*([A-Za-zÀ-ú]{1,8})?\s*-?\s*(.+?)\s*$/.exec(linha);
+            if (!m || !m[3]) { return; }
+            var nomeProd = m[3].trim();
+            if (nomeProd.length < 3 || /^\d+$/.test(nomeProd)) { return; }
+            aprender.push({ qtd: m[1], unidade: (m[2] || '').trim(), produto: nomeProd });
+        });
+
+        aprender.forEach(function (it) {
+            var chave = pedNormalizar(forn) + '|' + pedNormalizar(it.produto);
+            if (!chave || chave.length < 3) { return; }
+            var jaTem = null;
+            for (var i = 0; i < pedAprendidos.length; i++) {
+                if (pedAprendidos[i].id === chave) { jaTem = pedAprendidos[i]; break; }
+            }
+            var registro = {
+                id: chave, fornecedor: forn, produto: it.produto,
+                unidade: it.unidade || (jaTem ? jaTem.unidade : ''),
+                vezes: (jaTem ? Number(jaTem.vezes || 1) : 0) + 1,
+                ultimo_em: new Date().toISOString(),
+                criado_por: (typeof usuarioAtual !== 'undefined' ? usuarioAtual : null)
+            };
+            if (jaTem) {
+                jaTem.vezes = registro.vezes; jaTem.unidade = registro.unidade;
+                supabasePatch('fornecedor_produtos', 'id=eq.' + encodeURIComponent(chave), registro, function () { });
+            } else {
+                pedAprendidos.push(registro);
+                supabasePost('fornecedor_produtos', registro, function () { });
+            }
+        });
+    });
 }
 
 function abrirEdicao(nomeProduto, iconeProduto) {
@@ -8664,7 +8977,12 @@ function confirmarQuantidade() {
         if (entradas.length === 0) {
             pedidos[setor.id][produtoSendoEditado] = null;
         } else {
-            pedidos[setor.id][produtoSendoEditado] = { confirmado: true, entradas: entradas };
+            pedAprenderDoPedido(entradas);   // guarda os produtos para a próxima vez
+            // o que vai para o pedido continua sendo só o texto e o prazo, como antes
+            pedidos[setor.id][produtoSendoEditado] = {
+                confirmado: true,
+                entradas: entradas.map(function (e) { return { obs: e.obs, prazo: e.prazo }; })
+            };
         }
     } else if (setor.tipo === 'checklist') {
         var obs = document.getElementById('editObs').value;
@@ -10355,11 +10673,57 @@ function salvarAlertadosSeguro(mapa) {
 //  • Agenda: 15 min antes de cada compromisso com horário
 // Só fala entre 7h e 23h. Cada aparelho escolhe a sua voz.
 // ============================================================
+// Valores de fábrica — valem enquanto a configuração do gerente não chegou do servidor
 var VOZ_REPETIR_MIN = 30;
 var VOZ_MANUT_REPETIR_MIN = 120;
 var VOZ_HORA_GELADEIRAS = 10;
 var VOZ_AGENDA_ANTES_MIN = 15;
 var VOZ_HORA_INICIO = 7, VOZ_HORA_FIM = 23;
+
+// ---------- Controle central (só o gerente mexe) ----------
+// Fica numa linha única da tabela voz_config, no servidor. Todos os aparelhos leem daqui,
+// então o intervalo e o liga/desliga valem para a equipe inteira.
+var VOZ_GERENTE = 'Brito Junior';
+var vozCfg = null;              // o que veio do servidor
+var vozCfgLidoEm = 0;
+
+function vozEhGerente() {
+    return String((typeof usuarioAtual !== 'undefined' && usuarioAtual) || '').trim() === VOZ_GERENTE;
+}
+function vozCfgValor(campo, padrao) {
+    if (vozCfg && vozCfg[campo] !== null && vozCfg[campo] !== undefined) { return vozCfg[campo]; }
+    return padrao;
+}
+function vozIntervaloFornecedores() { return Math.max(1, Number(vozCfgValor('intervalo_min', VOZ_REPETIR_MIN))); }
+function vozIntervaloManutencao() { return Math.max(1, Number(vozCfgValor('intervalo_manutencao_min', VOZ_MANUT_REPETIR_MIN))); }
+function vozHoraInicio() { return Number(vozCfgValor('hora_inicio', VOZ_HORA_INICIO)); }
+function vozHoraFim() { return Number(vozCfgValor('hora_fim', VOZ_HORA_FIM)); }
+function vozLigadoNoServidor() { return vozCfgValor('ligado', true) !== false; }
+function vozAparelhosTravados() { return vozCfgValor('travar_aparelhos', false) === true; }
+
+// Lê a configuração do servidor (no máximo de 3 em 3 minutos)
+function vozCarregarConfig(forcar, cb) {
+    var agora = Date.now();
+    if (!forcar && vozCfg && agora - vozCfgLidoEm < 3 * 60000) { if (cb) { cb(); } return; }
+    vozCfgLidoEm = agora;
+    supabaseGet('voz_config', 'select=*&id=eq.geral', function (err, d) {
+        if (!err && d && d[0]) { vozCfg = d[0]; }
+        if (cb) { cb(); }
+    });
+}
+
+// Grava a configuração — só o gerente chega aqui pela tela
+function vozSalvarConfig(mudancas, cb) {
+    if (!vozEhGerente()) { if (cb) { cb(new Error('so o gerente')); } return; }
+    var corpo = Object.assign({}, mudancas, {
+        atualizado_em: new Date().toISOString(),
+        atualizado_por: usuarioAtual
+    });
+    supabasePatch('voz_config', 'id=eq.geral', corpo, function (err) {
+        if (!err) { vozCfg = Object.assign({}, vozCfg || {}, corpo); }
+        if (cb) { cb(err); }
+    });
+}
 var VOZ_FONTES = [
     { id: 'fornecedores', icone: '🚚', nome: 'Fornecedores', desc: 'atrasado a cada 30 min · chegando 1 vez' },
     { id: 'manutencao',   icone: '🛠️', nome: 'Manutenção',   desc: 'vencido a cada 2 h · perto do prazo 1 vez' },
@@ -10381,8 +10745,15 @@ function vozLer(chave, padrao) {
 function vozGravar(chave, valor) {
     try { localStorage.setItem(chave, typeof valor === 'string' ? valor : JSON.stringify(valor)); } catch (e) { }
 }
-function vozLigada() {
+function vozLigadaNesteAparelho() {
     try { return localStorage.getItem('vozAvisosABS') !== 'off'; } catch (e) { return true; }
+}
+// Quem manda é o servidor: se o gerente desligou, ninguém fala; se ele travou os
+// aparelhos, ninguém consegue silenciar o próprio celular.
+function vozLigada() {
+    if (!vozLigadoNoServidor()) { return false; }
+    if (vozAparelhosTravados()) { return true; }
+    return vozLigadaNesteAparelho();
 }
 function vozFonteLigada(id) {
     var m = vozLer('vozFontesABS', {});
@@ -10841,7 +11212,7 @@ function vozColetar(agora) {
         pendentesFornecedor.forEach(function (f) {
             var st = statusDoPrazo(f.prazo), t = new Date(f.prazo).getTime();
             if (st === 'vencido') {
-                avisos.push({ chave: 'forn:' + f.id + ':v', modo: 'repetir', minutos: VOZ_REPETIR_MIN, fonte: 'forn-atraso',
+                avisos.push({ chave: 'forn:' + f.id + ':v', modo: 'repetir', minutos: vozIntervaloFornecedores(), fonte: 'forn-atraso',
                     frase: vozLimparNome(f.nome) + ', atrasado há ' + vozDuracao(agora - t) + '.' });
             } else if (st === 'proximo') {
                 avisos.push({ chave: 'forn:' + f.id + ':p', modo: 'uma', fonte: 'forn-chegando',
@@ -10855,7 +11226,7 @@ function vozColetar(agora) {
             var st = statusDoPrazo(p.prazo), t = new Date(p.prazo).getTime();
             var oque = vozLimparNome(p.areaNome) + ', ' + String(p.descricao || '').replace(/\s+/g, ' ').trim().slice(0, 120);
             if (st === 'vencido') {
-                avisos.push({ chave: 'man:' + p.id + ':v', modo: 'repetir', minutos: VOZ_MANUT_REPETIR_MIN, fonte: 'manut',
+                avisos.push({ chave: 'man:' + p.id + ':v', modo: 'repetir', minutos: vozIntervaloManutencao(), fonte: 'manut',
                     frase: 'Manutenção vencida: ' + oque + ', venceu há ' + vozDuracao(agora - t) + '.' });
             } else if (st === 'proximo') {
                 avisos.push({ chave: 'man:' + p.id + ':p', modo: 'uma', fonte: 'manut',
@@ -10902,7 +11273,7 @@ function vozColetar(agora) {
                     faltam.slice(0, 4).map(function (it) { return vozLimparNome(it.texto); }).join(', ') +
                     (faltam.length > 4 ? ' e outras' : '') + '.';
             }
-            avisos.push({ chave: 'gel:' + hoje, modo: 'repetir', minutos: VOZ_REPETIR_MIN, fonte: 'geladeiras', frase: frase });
+            avisos.push({ chave: 'gel:' + hoje, modo: 'repetir', minutos: vozIntervaloFornecedores(), fonte: 'geladeiras', frase: frase });
         }
     }
 
@@ -10940,9 +11311,10 @@ function vozMontarFala(lista) {
 }
 
 function vozVerificarFornecedores() {   // nome antigo mantido: agora verifica todos os lembretes
+    vozCarregarConfig(false);            // mantém a regra do gerente fresca neste aparelho
     if (!vozDisponivel() || !vozLigada()) { return; }
     var agora = Date.now(), h = new Date(agora).getHours();
-    if (h < VOZ_HORA_INICIO || h >= VOZ_HORA_FIM) { return; }
+    if (h < vozHoraInicio() || h >= vozHoraFim()) { return; }
     vozAtualizarDados(false);
     if (window.speechSynthesis.speaking || window.speechSynthesis.pending || vozAudioTocando()) { return; }
 
@@ -10983,6 +11355,7 @@ function vozVerificarFornecedores() {   // nome antigo mantido: agora verifica t
 
 function vozAbrirAjustes() {
     vozConsultarNuvem(vozRenderizarAjustes);
+    vozCarregarConfig(true, vozRenderizarAjustes);   // pega a regra do gerente na hora
     vozRenderizarAjustes();
     trocarTela('voz-screen');
     // algumas vozes só aparecem depois de um instante (Chrome carrega a lista em segundo plano)
@@ -10998,11 +11371,19 @@ function vozRenderizarAjustes() {
     }
     var ligada = vozLigada();
     var esc = vozOpcaoEscolhida();
+    var travado = vozAparelhosTravados(), desligadoGeral = !vozLigadoNoServidor();
+    var rodape = desligadoGeral ? 'o gerente desligou os avisos para todos'
+        : (travado ? 'travado pelo gerente — não dá para desligar neste aparelho'
+                   : 'vale só para este aparelho');
     var html = '<div class="voz-bloco voz-topo">' +
         '<div><b>' + (ligada ? '🔊 Aviso por voz ligado' : '🔇 Aviso por voz desligado') + '</b>' +
-        '<small>vale só para este aparelho · fala entre ' + VOZ_HORA_INICIO + 'h e ' + VOZ_HORA_FIM + 'h</small></div>' +
-        '<button type="button" class="voz-btn' + (ligada ? '' : ' on') + '" onclick="vozAlternar()">' + (ligada ? 'Desligar' : 'Ligar') + '</button></div>';
+        '<small>' + rodape + ' · fala entre ' + vozHoraInicio() + 'h e ' + vozHoraFim() + 'h</small></div>' +
+        (desligadoGeral || travado
+            ? '<span class="voz-travada">🔒</span>'
+            : '<button type="button" class="voz-btn' + (ligada ? '' : ' on') + '" onclick="vozAlternar()">' + (ligada ? 'Desligar' : 'Ligar') + '</button>') +
+        '</div>';
 
+    html += vozBlocoGerente();
     html += vozAvisoQualidade();
 
     var velAtual = vozVelocidade();
@@ -11058,9 +11439,14 @@ function vozRenderizarAjustes() {
     html += '<div class="voz-sec">O que a voz avisa</div>';
     VOZ_FONTES.forEach(function (f) {
         var on = vozFonteLigada(f.id);
+        // o texto acompanha o intervalo que o gerente escolheu
+        var desc = f.desc;
+        if (f.id === 'fornecedores') { desc = 'atrasado a cada ' + vozIntervaloFornecedores() + ' min · chegando 1 vez'; }
+        else if (f.id === 'manutencao') { desc = 'vencido a cada ' + vozIntervaloManutencao() + ' min · perto do prazo 1 vez'; }
+        else if (f.id === 'geladeiras') { desc = 'se até as ' + VOZ_HORA_GELADEIRAS + 'h ninguém registrou, a cada ' + vozIntervaloFornecedores() + ' min'; }
         html += '<label class="voz-bloco voz-fonte"><input type="checkbox"' + (on ? ' checked' : '') +
             ' onchange="vozFonteAlternar(\'' + f.id + '\', this.checked)">' +
-            '<span><b>' + f.icone + ' ' + f.nome + '</b><small>' + f.desc + '</small></span></label>';
+            '<span><b>' + f.icone + ' ' + f.nome + '</b><small>' + desc + '</small></span></label>';
     });
 
     html += '<button type="button" class="btn-confirm" style="width:100%;margin-top:16px;" onclick="vozTestar()">🔊 Falar agora os avisos pendentes</button>';
@@ -11076,6 +11462,87 @@ function vozNaturaisDoAparelho() {
 }
 
 // Aviso no topo da tela: grátis e ilimitado, só depende de instalar a voz certa no aparelho.
+// Bloco de controle central. Só o gerente vê os botões; os outros veem só a regra em vigor.
+function vozBlocoGerente() {
+    var quando = '';
+    if (vozCfg && vozCfg.atualizado_em) {
+        var d = new Date(vozCfg.atualizado_em);
+        if (!isNaN(d.getTime())) {
+            quando = ' · mudado por ' + escHtmlSeguro(vozCfg.atualizado_por || 'alguém') +
+                ' em ' + ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) +
+                ' às ' + ('0' + d.getHours()).slice(-2) + 'h' + ('0' + d.getMinutes()).slice(-2);
+        }
+    }
+
+    if (!vozEhGerente()) {
+        return '<div class="voz-sec">Regra da casa</div>' +
+            '<div class="voz-bloco voz-qualidade"><div><b>⏱️ Fornecedor atrasado: a cada ' + vozIntervaloFornecedores() + ' min</b>' +
+            '<small>Manutenção vencida a cada ' + vozIntervaloManutencao() + ' min. Quem define é o gerente' + quando + '.</small></div></div>';
+    }
+
+    function opcoes(lista, atual) {
+        return lista.map(function (n) {
+            return '<option value="' + n + '"' + (Number(atual) === n ? ' selected' : '') + '>' + n + ' min</option>';
+        }).join('');
+    }
+    function horas(atual) {
+        var h = '';
+        for (var i = 0; i <= 23; i++) { h += '<option value="' + i + '"' + (Number(atual) === i ? ' selected' : '') + '>' + i + 'h</option>'; }
+        return h;
+    }
+
+    var lig = vozLigadoNoServidor();
+    return '<div class="voz-sec">🔑 Controle do gerente · vale para todos os aparelhos</div>' +
+        '<div class="voz-bloco voz-gerente">' +
+            '<div class="voz-ger-linha"><span><b>' + (lig ? 'Avisos ligados para a equipe' : 'Avisos desligados para todos') + '</b>' +
+                '<small>desligando aqui, nenhum aparelho fala</small></span>' +
+                '<button type="button" class="voz-btn' + (lig ? '' : ' on') + '" onclick="vozGerenteAlternarGeral()">' + (lig ? 'Desligar' : 'Ligar') + '</button></div>' +
+
+            '<div class="voz-ger-linha"><span>🚚 <b>Fornecedor atrasado</b><small>repete até alguém resolver</small></span>' +
+                '<select onchange="vozGerenteMudar(\'intervalo_min\', this.value)">' + opcoes([5, 10, 15, 20, 30, 45, 60, 90, 120], vozIntervaloFornecedores()) + '</select></div>' +
+
+            '<div class="voz-ger-linha"><span>🛠️ <b>Manutenção vencida</b><small>repete até fecharem o chamado</small></span>' +
+                '<select onchange="vozGerenteMudar(\'intervalo_manutencao_min\', this.value)">' + opcoes([15, 30, 60, 120, 180, 240, 360], vozIntervaloManutencao()) + '</select></div>' +
+
+            '<div class="voz-ger-linha"><span>🕐 <b>Só falar entre</b><small>fora desse horário fica quieto</small></span>' +
+                '<span class="voz-ger-horas"><select onchange="vozGerenteMudar(\'hora_inicio\', this.value)">' + horas(vozHoraInicio()) + '</select>' +
+                ' e <select onchange="vozGerenteMudar(\'hora_fim\', this.value)">' + horas(vozHoraFim()) + '</select></span></div>' +
+
+            '<label class="voz-nome-check" style="margin-top:4px;"><input type="checkbox"' + (vozAparelhosTravados() ? ' checked' : '') +
+                ' onchange="vozGerenteMudar(\'travar_aparelhos\', this.checked)"> Não deixar ninguém desligar no próprio aparelho</label>' +
+            '<small style="color:var(--text-dim);">A equipe vê a regra, mas não vê estes botões' + quando + '.</small>' +
+            '<div id="vozGerenteAviso" class="voz-nota" style="display:none;"></div>' +
+        '</div>';
+}
+
+function vozGerenteRecado(texto, erro) {
+    var el = document.getElementById('vozGerenteAviso');
+    if (!el) { return; }
+    el.style.display = 'block';
+    el.style.color = erro ? '#F5867A' : '#7EDCB0';
+    el.innerText = texto;
+}
+
+function vozGerenteMudar(campo, valor) {
+    var v = (campo === 'travar_aparelhos') ? !!valor : Number(valor);
+    var pacote = {}; pacote[campo] = v;
+    vozGerenteRecado('Salvando...', false);
+    vozSalvarConfig(pacote, function (err) {
+        if (err) { vozGerenteRecado('Não consegui salvar (sem internet?). Tente de novo.', true); return; }
+        vozGerenteRecado('✅ Salvo. Vale para todos os aparelhos.', false);
+        vozRenderizarAjustes();
+    });
+}
+
+function vozGerenteAlternarGeral() {
+    var novo = !vozLigadoNoServidor();
+    vozGerenteRecado('Salvando...', false);
+    vozSalvarConfig({ ligado: novo }, function (err) {
+        if (err) { vozGerenteRecado('Não consegui salvar (sem internet?). Tente de novo.', true); return; }
+        vozRenderizarAjustes();
+    });
+}
+
 function vozAvisoQualidade() {
     // com a IA ligada, a qualidade do aparelho vira só assunto de reserva
     if (vozNuvemAtiva()) {
@@ -11199,6 +11666,8 @@ function vozFonteAlternar(id, ligado) {
 }
 
 function vozAlternar() {
+    if (!vozLigadoNoServidor()) { alert('O gerente desligou os avisos por voz para todos os aparelhos.'); return; }
+    if (vozAparelhosTravados()) { alert('O gerente travou os avisos: não dá para desligar neste aparelho.'); return; }
     var ligar = !vozLigada();
     try { localStorage.setItem('vozAvisosABS', ligar ? 'on' : 'off'); } catch (e) { }
     if (vozDisponivel()) {
