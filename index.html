@@ -9234,7 +9234,18 @@ function gerarTextoPedido() {
                 linha = "- " + k;
                 for (var e = 0; e < registro.entradas.length; e++) {
                     var en = registro.entradas[e];
-                    linha += "\n  • " + (en.obs || '(sem nome)') + (en.prazo ? " (previsão: " + new Date(en.prazo).toLocaleDateString('pt-BR') + " às " + new Date(en.prazo).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) + ")" : "");
+                    // o pedido virou várias linhas (fornecedor + produtos): a primeira fica no
+                    // marcador • e as demais alinhadas embaixo, sem linha em branco no meio
+                    var corpo = String(en.obs || '(sem nome)').split('\n')
+                        .filter(function (l) { return l.trim() !== ''; })
+                        .map(function (l, idx) { return idx === 0 ? l.trim() : '    ' + l.trim(); })
+                        .join('\n');
+                    linha += "\n  • " + corpo;
+                    // a previsão de entrega fica numa linha só dela, para não se confundir com produto
+                    if (en.prazo) {
+                        linha += "\n    ⏰ Previsão: " + new Date(en.prazo).toLocaleDateString('pt-BR') +
+                            " às " + new Date(en.prazo).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    }
                 }
             } else if (setor.tipo === 'checklist') {
                 linha = "- " + k + (registro.obs ? "\n  " + registro.obs : "");
