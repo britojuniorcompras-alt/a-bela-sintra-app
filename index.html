@@ -448,6 +448,15 @@
         background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 11.5px; outline: none; }
     .ped-vazio { font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-dim); line-height: 1.45;
         background: var(--surface-2); border-radius: 12px; padding: 9px 11px; margin-bottom: 8px; }
+    .ped-nome { cursor: text; }
+    .ped-nome-edit { flex: 1; min-width: 0; padding: 6px 8px; border: 1.5px solid var(--accent); border-radius: 9px;
+        background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 12px; outline: none; }
+    .ped-tirar { flex: 0 0 auto; width: 24px; height: 24px; padding: 0; border: none; border-radius: 50%;
+        background: transparent; color: var(--text-dim); font-size: 13px; cursor: pointer; line-height: 1; }
+    .ped-tirar:hover { background: rgba(228,72,58,0.2); color: #F5867A; }
+    .ped-add { width: 100%; margin-top: 8px; padding: 9px; border: 1px dashed var(--line); border-radius: 12px;
+        background: transparent; color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 11.5px; cursor: pointer; }
+    .ped-add:hover { color: var(--text); border-color: var(--accent); }
     .dash-fab { position: fixed; right: 20px; bottom: 24px; width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer;
         display: flex; align-items: center; justify-content: center; z-index: 50; color: var(--accent-text);
         background: linear-gradient(145deg, var(--accent-light), var(--accent) 65%);
@@ -8394,6 +8403,7 @@ function iniciar() {
     sincronizarProblemasSupabase();
     sincronizarAgendaSupabase();
     sincronizarPendentesFornecedorSupabase();
+    pedCarregarAprendidos(true);   // correções de produto por fornecedor, prontas antes de abrir o pedido
     verificarNovasUrgencias();
     limparFilaReenvioObsoleta();
     
@@ -8591,15 +8601,27 @@ function pedAcharFornecedor(nome) {
     return null;
 }
 
+// Produtos que o gerente escondeu da lista daquele fornecedor
+function pedEstaOculto(fornecedor, produto) {
+    var cf = pedNormalizar(fornecedor), cp = pedNormalizar(produto);
+    for (var i = 0; i < pedAprendidos.length; i++) {
+        var a = pedAprendidos[i];
+        if (a.oculto && pedNormalizar(a.fornecedor) === cf && pedNormalizar(a.produto) === cp) { return true; }
+    }
+    return false;
+}
+
 // Os produtos de um fornecedor (cadastrados + aprendidos), sem repetir
 function pedProdutosDoFornecedor(nome) {
     var canonico = pedAcharFornecedor(nome);
     var alvo = pedNormalizar(canonico || nome);
     if (!alvo) { return []; }
+    var nomeFornecedor = canonico || nome;
     var vistos = {}, saida = [];
     function por(produto, unidades, unidade, icone) {
         var ch = pedNormalizar(produto);
         if (!ch || vistos[ch]) { return; }
+        if (pedEstaOculto(nomeFornecedor, produto)) { return; }   // corrigido ou removido pelo gerente
         vistos[ch] = true;
         saida.push({ produto: produto, unidades: unidades || [], unidade: unidade || '', icone: icone || '' });
     }
@@ -8607,10 +8629,56 @@ function pedProdutosDoFornecedor(nome) {
         if (pedNormalizar(p.fornecedor) === alvo) { por(p.produto, p.unidades, '', p.icone); }
     });
     pedAprendidos.forEach(function (a) {
-        if (pedNormalizar(a.fornecedor) === alvo) { por(a.produto, [], a.unidade, ''); }
+        if (!a.oculto && pedNormalizar(a.fornecedor) === alvo) { por(a.produto, [], a.unidade, ''); }
     });
     saida.sort(function (a, b) { return a.produto.localeCompare(b.produto, 'pt-BR'); });
     return saida;
+}
+
+// ---------- corrigir a lista de produtos do fornecedor ----------
+// Grava uma linha em fornecedor_produtos. Os produtos que já vêm de fábrica no app
+// não podem ser alterados lá dentro, então a correção é guardada aqui por cima:
+// o nome errado fica "oculto" e o certo entra como produto do fornecedor.
+function pedGravarProduto(fornecedor, produto, dados, cb) {
+    var chave = pedNormalizar(fornecedor) + '|' + pedNormalizar(produto);
+    if (!chave || chave.length < 3) { if (cb) { cb(new Error('dados faltando')); } return; }
+    var existente = null;
+    for (var i = 0; i < pedAprendidos.length; i++) {
+        if (pedAprendidos[i].id === chave) { existente = pedAprendidos[i]; break; }
+    }
+    var registro = {
+        id: chave, fornecedor: fornecedor, produto: produto,
+        unidade: (dados && dados.unidade !== undefined) ? dados.unidade : (existente ? existente.unidade : ''),
+        oculto: (dados && dados.oculto !== undefined) ? !!dados.oculto : (existente ? !!existente.oculto : false),
+        vezes: existente ? Number(existente.vezes || 1) : 1,
+        ultimo_em: new Date().toISOString(),
+        criado_por: (typeof usuarioAtual !== 'undefined' ? usuarioAtual : null)
+    };
+    if (existente) {
+        Object.assign(existente, registro);
+        supabasePatch('fornecedor_produtos', 'id=eq.' + encodeURIComponent(chave), registro, function (err) { if (cb) { cb(err); } });
+    } else {
+        pedAprendidos.push(registro);
+        supabasePost('fornecedor_produtos', registro, function (err) {
+            // se já existia no servidor, vira atualização em vez de duplicar
+            if (err) { supabasePatch('fornecedor_produtos', 'id=eq.' + encodeURIComponent(chave), registro, function () { }); }
+            if (cb) { cb(err); }
+        });
+    }
+}
+
+// Corrigir o nome: esconde o antigo e cadastra o novo nesse fornecedor
+function pedRenomearProduto(fornecedor, antigo, novo, unidade, cb) {
+    novo = String(novo || '').trim();
+    if (!novo || pedNormalizar(novo) === pedNormalizar(antigo)) { if (cb) { cb(null); } return; }
+    pedGravarProduto(fornecedor, antigo, { oculto: true }, function () {
+        pedGravarProduto(fornecedor, novo, { oculto: false, unidade: unidade || '' }, cb);
+    });
+}
+
+// Tirar da lista (não apaga nada do app, só some para esse fornecedor)
+function pedOcultarProduto(fornecedor, produto, cb) {
+    pedGravarProduto(fornecedor, produto, { oculto: true }, cb);
 }
 
 // Unidades oferecidas na caixinha
@@ -8732,13 +8800,67 @@ function criarCaixaFornecedor(obsValor, prazoIso) {
             if (f.produtos) { o.label = f.produtos + (f.produtos === 1 ? ' produto' : ' produtos'); }
             datalist.appendChild(o);
         });
-        if (atual) { pedDesenharProdutos(painel, atual); }
+        // não redesenha por cima de uma correção que a pessoa está digitando
+        if (atual && !painel.querySelector('.ped-nome-edit')) { pedDesenharProdutos(painel, atual, true); }
     });
 }
 
+// Troca o nome do produto por um campo de texto, ali na própria linha.
+// Enter ou sair do campo grava; Esc desiste.
+function pedEditarNome(linha, painel, nomeFornecedor, item) {
+    if (linha.querySelector('.ped-nome-edit')) { return; }
+    var span = linha.querySelector('.ped-nome');
+    if (!span) { return; }
+
+    var campo = document.createElement('input');
+    campo.type = 'text';
+    campo.className = 'ped-nome-edit';
+    campo.value = item.produto;
+    span.style.display = 'none';
+    linha.insertBefore(campo, span);
+    campo.focus();
+    campo.select();
+
+    var encerrado = false;
+    function desistir() {
+        if (encerrado) { return; }
+        encerrado = true;
+        campo.remove();
+        span.style.display = '';
+    }
+    function gravar() {
+        if (encerrado) { return; }
+        var novo = campo.value.trim();
+        if (!novo || pedNormalizar(novo) === pedNormalizar(item.produto)) { desistir(); return; }
+        encerrado = true;          // trava já aqui: o Enter dispara o blur logo em seguida
+        campo.onblur = null;
+        campo.disabled = true;
+        var unidadeAtual = linha.querySelector('.ped-un') ? linha.querySelector('.ped-un').value : '';
+        pedRenomearProduto(nomeFornecedor, item.produto, novo, unidadeAtual, function (err) {
+            if (err) { alert('Não consegui salvar a correção agora (sem internet?). Tente de novo.'); }
+            pedDesenharProdutos(painel, nomeFornecedor, true);
+        });
+    }
+
+    campo.onkeydown = function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); gravar(); }
+        else if (ev.key === 'Escape') { ev.preventDefault(); desistir(); }
+    };
+    campo.onblur = gravar;
+}
+
 // Desenha a lista de produtos do fornecedor digitado, cada um com quantidade e unidade
-function pedDesenharProdutos(painel, nomeFornecedor) {
-    var itens = pedProdutosDoFornecedor(nomeFornecedor);
+function pedDesenharProdutos(painel, nomeDigitado, forcar) {
+    // as correções são gravadas no nome "oficial" do fornecedor, não no que foi digitado
+    var nomeFornecedor = pedAcharFornecedor(nomeDigitado) || nomeDigitado;
+
+    // Se o fornecedor não mudou, não redesenha. Sem isso, sair do campo do nome
+    // (o que acontece ao tocar num produto) apagaria a edição em andamento.
+    var assinatura = pedNormalizar(nomeDigitado);
+    if (!forcar && painel.getAttribute('data-ped-forn') === assinatura && painel.children.length) { return; }
+    painel.setAttribute('data-ped-forn', assinatura);
+
+    var itens = pedProdutosDoFornecedor(nomeDigitado);
     var antigos = {};
     painel.querySelectorAll('.ped-linha').forEach(function (l) {
         var q = l.querySelector('.ped-qtd').value, u = l.querySelector('.ped-un').value;
@@ -8747,25 +8869,40 @@ function pedDesenharProdutos(painel, nomeFornecedor) {
 
     painel.innerHTML = '';
     if (!itens.length) {
-        if (pedNormalizar(nomeFornecedor)) {
+        if (pedNormalizar(nomeDigitado)) {
             var temLista = pedFornecedoresConhecidos().filter(function (f) { return f.produtos > 0; }).slice(0, 8);
-            painel.innerHTML = '<div class="ped-vazio">Ainda não conheço os produtos de <b>' +
-                escHtmlSeguro(nomeFornecedor) + '</b>. Escreva o pedido no campo abaixo ' +
-                '(ex.: <i>- 3 Cx - MOLHO SHOYU</i>) que eu guardo para a próxima vez.' +
+            var vazio = document.createElement('div');
+            vazio.className = 'ped-vazio';
+            vazio.innerHTML = 'Ainda não conheço os produtos de <b>' + escHtmlSeguro(nomeDigitado) +
+                '</b>. Escreva o pedido no campo abaixo (ex.: <i>- 3 Cx - MOLHO SHOYU</i>) que eu guardo para a próxima vez' +
+                ', ou vá cadastrando pelo botão aqui embaixo.' +
                 (temLista.length ? '<br><br>Já tenho lista pronta de: ' +
-                    temLista.map(function (f) { return '<b>' + escHtmlSeguro(f.nome) + '</b> (' + f.produtos + ')'; }).join(', ') + '.' : '') +
-                '</div>';
+                    temLista.map(function (f) { return '<b>' + escHtmlSeguro(f.nome) + '</b> (' + f.produtos + ')'; }).join(', ') + '.' : '');
+            painel.appendChild(vazio);
+
+            var addVazio = document.createElement('button');
+            addVazio.type = 'button';
+            addVazio.className = 'ped-add';
+            addVazio.innerText = '+ Cadastrar produto de ' + nomeDigitado;
+            addVazio.onclick = function () {
+                var novo = prompt('Nome do produto de ' + nomeDigitado + ':', '');
+                if (!novo || !novo.trim()) { return; }
+                pedGravarProduto(nomeDigitado, novo.trim(), { oculto: false }, function () {
+                    pedDesenharProdutos(painel, nomeDigitado, true);
+                });
+            };
+            painel.appendChild(addVazio);
         }
         return;
     }
 
-    var canonico = pedAcharFornecedor(nomeFornecedor);
-    var titulo = (canonico && pedNormalizar(canonico) !== pedNormalizar(nomeFornecedor))
+    var canonico = pedAcharFornecedor(nomeDigitado);
+    var titulo = (canonico && pedNormalizar(canonico) !== pedNormalizar(nomeDigitado))
         ? itens.length + ' produtos de <b>' + escHtmlSeguro(canonico) + '</b>'
         : itens.length + (itens.length === 1 ? ' produto deste fornecedor' : ' produtos deste fornecedor');
     var cab = document.createElement('div');
     cab.className = 'ped-cab';
-    cab.innerHTML = '<span>' + titulo + '</span><span class="ped-cab-dica">preencha só o que vai pedir</span>';
+    cab.innerHTML = '<span>' + titulo + '</span><span class="ped-cab-dica">toque no nome para corrigir</span>';
     painel.appendChild(cab);
 
     var busca = null;
@@ -8789,6 +8926,9 @@ function pedDesenharProdutos(painel, nomeFornecedor) {
         var nome = document.createElement('span');
         nome.className = 'ped-nome';
         nome.innerText = (it.icone ? it.icone + ' ' : '') + it.produto;
+        nome.title = 'Toque para corrigir o nome';
+        // tocar no nome abre a correção ali mesmo
+        nome.onclick = function () { pedEditarNome(linha, painel, nomeFornecedor, it); };
 
         var qtd = document.createElement('input');
         qtd.type = 'number';
@@ -8805,6 +8945,8 @@ function pedDesenharProdutos(painel, nomeFornecedor) {
             un.appendChild(o);
         });
 
+        // a unidade que esse produto costuma usar já vem escolhida
+        if (it.unidade) { un.value = it.unidade; }
         var guardado = antigos[it.produto];
         if (guardado) { qtd.value = guardado.q; un.value = guardado.u; }
 
@@ -8813,11 +8955,35 @@ function pedDesenharProdutos(painel, nomeFornecedor) {
         qtd.oninput = marcar;
         marcar();
 
+        var tirar = document.createElement('button');
+        tirar.type = 'button';
+        tirar.className = 'ped-tirar';
+        tirar.innerText = '✕';
+        tirar.title = 'Tirar este produto da lista deste fornecedor';
+        tirar.onclick = function () {
+            if (!confirm('Tirar "' + it.produto + '" da lista de ' + nomeFornecedor + '?\n\nIsso não apaga o produto do app, só some da lista deste fornecedor.')) { return; }
+            pedOcultarProduto(nomeFornecedor, it.produto, function () { pedDesenharProdutos(painel, nomeFornecedor, true); });
+        };
+
         linha.appendChild(nome);
         linha.appendChild(qtd);
         linha.appendChild(un);
+        linha.appendChild(tirar);
         caixa.appendChild(linha);
     });
+
+    var addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'ped-add';
+    addBtn.innerText = '+ Acrescentar produto deste fornecedor';
+    addBtn.onclick = function () {
+        var novo = prompt('Nome do produto novo de ' + nomeFornecedor + ':', '');
+        if (!novo || !novo.trim()) { return; }
+        pedGravarProduto(nomeFornecedor, novo.trim(), { oculto: false }, function () {
+            pedDesenharProdutos(painel, nomeFornecedor, true);
+        });
+    };
+    painel.appendChild(addBtn);
 
     if (busca) {
         busca.oninput = function () {
