@@ -8509,6 +8509,19 @@ function pedCarregarAprendidos(forcar, cb) {
     });
 }
 
+// Dois nomes falam do mesmo fornecedor? Compara as palavras grandes, aceitando
+// começo igual ("avelino" x "avelinos", "piramide" x "piramides").
+function pedMesmaRaiz(normA, normB) {
+    function grandes(t) { return String(t || '').split(' ').filter(function (p) { return p.length >= 4; }); }
+    var a = grandes(normA), b = grandes(normB);
+    for (var i = 0; i < a.length; i++) {
+        for (var j = 0; j < b.length; j++) {
+            if (a[i] === b[j] || a[i].indexOf(b[j]) === 0 || b[j].indexOf(a[i]) === 0) { return true; }
+        }
+    }
+    return false;
+}
+
 // Lista de fornecedores que o app conhece, com quantos produtos tem cada um
 function pedFornecedoresConhecidos() {
     var mapa = {};
@@ -8522,9 +8535,20 @@ function pedFornecedoresConhecidos() {
     }
     pedProdutosCadastrados().forEach(function (p) { juntar(p.fornecedor, p.produto); });
     pedAprendidos.forEach(function (a) { juntar(a.fornecedor, a.produto); });
-    // os fornecedores que vieram das notas fiscais (razão social) entram no fim da lista
+    // Os fornecedores das notas fiscais (razão social) entram no fim da lista — mas só
+    // os que NÃO são a versão comprida de um nome que já tem produtos. Senão a pessoa
+    // escolhe "AROUMAR DISTRIBUIDORA ... LTDA" e fica achando que não tem produto.
+    var comProduto = [];
+    for (var ch in mapa) { if (mapa[ch].produtos > 0) { comProduto.push(ch); } }
     (typeof fornecedoresCache !== 'undefined' ? (fornecedoresCache || []) : []).forEach(function (f) {
-        juntar(f.razao_social || f.nome, null);
+        var nome = f.razao_social || f.nome;
+        var norm = pedNormalizar(nome);
+        if (!norm) { return; }
+        for (var i = 0; i < comProduto.length; i++) {
+            if (comProduto[i].length >= 3 && norm.indexOf(comProduto[i]) >= 0) { return; }   // já tem o nome curto
+            if (pedMesmaRaiz(norm, comProduto[i])) { return; }                               // "AVELINO" x "Avelinos"
+        }
+        juntar(nome, null);
     });
     var lista = [];
     for (var k in mapa) { lista.push({ nome: mapa[k].nome, produtos: mapa[k].produtos }); }
@@ -8535,9 +8559,42 @@ function pedFornecedoresConhecidos() {
     return lista;
 }
 
+// Descobre de qual fornecedor conhecido o texto digitado está falando.
+// Precisa disso porque o nome da nota fiscal é a razão social comprida
+// ("AROUMAR DISTRIBUIDORA DE PRODUTOS ALIMENTICIOS LTDA") e os produtos
+// estão marcados com o nome curto ("Aroumar").
+function pedAcharFornecedor(nome) {
+    var alvo = pedNormalizar(nome);
+    if (!alvo) { return null; }
+    var comProduto = pedFornecedoresConhecidos().filter(function (f) { return f.produtos > 0; });
+
+    // 1) nome igualzinho
+    for (var i = 0; i < comProduto.length; i++) {
+        if (pedNormalizar(comProduto[i].nome) === alvo) { return comProduto[i].nome; }
+    }
+    // 2) um nome está dentro do outro (razão social contém o nome curto, ou o contrário)
+    if (alvo.length >= 3) {
+        var melhor = null, melhorTam = 0;
+        for (var j = 0; j < comProduto.length; j++) {
+            var n = pedNormalizar(comProduto[j].nome);
+            if (n.length < 3) { continue; }
+            if (alvo.indexOf(n) >= 0 || n.indexOf(alvo) >= 0) {
+                if (n.length > melhorTam) { melhor = comProduto[j].nome; melhorTam = n.length; }
+            }
+        }
+        if (melhor) { return melhor; }
+    }
+    // 3) alguma palavra grande em comum (ex.: "avelino" x "avelinos")
+    for (var k = 0; k < comProduto.length; k++) {
+        if (pedMesmaRaiz(alvo, pedNormalizar(comProduto[k].nome))) { return comProduto[k].nome; }
+    }
+    return null;
+}
+
 // Os produtos de um fornecedor (cadastrados + aprendidos), sem repetir
 function pedProdutosDoFornecedor(nome) {
-    var alvo = pedNormalizar(nome);
+    var canonico = pedAcharFornecedor(nome);
+    var alvo = pedNormalizar(canonico || nome);
     if (!alvo) { return []; }
     var vistos = {}, saida = [];
     function por(produto, unidades, unidade, icone) {
@@ -8619,7 +8676,10 @@ function criarCaixaFornecedor(obsValor, prazoIso) {
     var painel = document.createElement('div');
     painel.className = 'fornecedor-caixa-produtos';
 
+    // input cobre a digitação; change/blur cobrem a escolha pelo menu de sugestão
     nomeInput.oninput = function () { pedDesenharProdutos(painel, nomeInput.value); };
+    nomeInput.onchange = nomeInput.oninput;
+    nomeInput.onblur = nomeInput.oninput;
 
     var textarea = document.createElement('textarea');
     textarea.className = 'edit-obs fornecedor-caixa-obs';
@@ -8688,16 +8748,24 @@ function pedDesenharProdutos(painel, nomeFornecedor) {
     painel.innerHTML = '';
     if (!itens.length) {
         if (pedNormalizar(nomeFornecedor)) {
-            painel.innerHTML = '<div class="ped-vazio">Ainda não conheço os produtos desse fornecedor. ' +
-                'Escreva o pedido no campo abaixo (ex.: <i>- 3 Cx - MOLHO SHOYU</i>) que eu guardo para a próxima vez.</div>';
+            var temLista = pedFornecedoresConhecidos().filter(function (f) { return f.produtos > 0; }).slice(0, 8);
+            painel.innerHTML = '<div class="ped-vazio">Ainda não conheço os produtos de <b>' +
+                escHtmlSeguro(nomeFornecedor) + '</b>. Escreva o pedido no campo abaixo ' +
+                '(ex.: <i>- 3 Cx - MOLHO SHOYU</i>) que eu guardo para a próxima vez.' +
+                (temLista.length ? '<br><br>Já tenho lista pronta de: ' +
+                    temLista.map(function (f) { return '<b>' + escHtmlSeguro(f.nome) + '</b> (' + f.produtos + ')'; }).join(', ') + '.' : '') +
+                '</div>';
         }
         return;
     }
 
+    var canonico = pedAcharFornecedor(nomeFornecedor);
+    var titulo = (canonico && pedNormalizar(canonico) !== pedNormalizar(nomeFornecedor))
+        ? itens.length + ' produtos de <b>' + escHtmlSeguro(canonico) + '</b>'
+        : itens.length + (itens.length === 1 ? ' produto deste fornecedor' : ' produtos deste fornecedor');
     var cab = document.createElement('div');
     cab.className = 'ped-cab';
-    cab.innerHTML = '<span>' + itens.length + (itens.length === 1 ? ' produto deste fornecedor' : ' produtos deste fornecedor') +
-        '</span><span class="ped-cab-dica">preencha só o que vai pedir</span>';
+    cab.innerHTML = '<span>' + titulo + '</span><span class="ped-cab-dica">preencha só o que vai pedir</span>';
     painel.appendChild(cab);
 
     var busca = null;
